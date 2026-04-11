@@ -761,8 +761,32 @@
      PRO PAYWALL MODAL
   ═══════════════════════════════════════════════════════════════ */
 
-  function _showProPaywall(action) {
+  async function _showProPaywall(action) {
     document.getElementById('pro-paywall-modal')?.remove();
+
+    // ── جلب الـ discount ديناميكياً من Supabase ──────────────
+    const ORIGINAL_PRICE = 200;
+    let finalPrice  = ORIGINAL_PRICE;
+    let discountPct = 0;
+    try {
+      const sb = window._supabaseClient;
+      if (sb) {
+        const { data: authData } = await sb.auth.getUser();
+        const userId = authData?.user?.id;
+        if (userId) {
+          const { data: stats } = await sb.rpc('get_referral_stats', { p_user_id: userId });
+          if (stats && stats.length > 0) {
+            discountPct = stats[0].discount_tier ?? 0;
+            finalPrice  = ORIGINAL_PRICE - Math.round(ORIGINAL_PRICE * discountPct / 100);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[Portfolio] Could not load discount:', e);
+    }
+    const priceDisplay = discountPct > 0
+      ? '<strong style="color:#E8F0EB;">' + finalPrice + ' جنيه</strong> <span style="color:#4A5E52;text-decoration:line-through;font-size:0.75rem;">' + ORIGINAL_PRICE + '</span> <span style="color:#00FF88;font-size:0.72rem;">(خصم ' + discountPct + '%)</span>'
+      : '<strong style="color:#E8F0EB;">' + ORIGINAL_PRICE + ' جنيه</strong>';
 
     const modal = document.createElement('div');
     modal.id = 'pro-paywall-modal';
@@ -822,7 +846,7 @@
               <div style="display:flex;gap:0.75rem;align-items:flex-start;">
                 <span style="background:rgba(0,255,136,0.15);color:#00FF88;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:700;flex-shrink:0;margin-top:1px;">1</span>
                 <span style="font-size:0.8rem;color:#A8C0B0;line-height:1.5;">
-                  حوّل <strong style="color:#E8F0EB;">99 جنيه</strong> على InstaPay أو فودافون كاش
+                  حوّل ${priceDisplay} على InstaPay أو فودافون كاش
                   <br><span style="color:#00FF88;font-size:0.78rem;">📱 01096952150</span>
                 </span>
               </div>
@@ -830,7 +854,7 @@
                 <span style="background:rgba(0,255,136,0.15);color:#00FF88;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:700;flex-shrink:0;margin-top:1px;">2</span>
                 <span style="font-size:0.8rem;color:#A8C0B0;line-height:1.5;">
                   ابعت الـ screenshot على Telegram
-                  <br><a href="https://t.me/@GPORT_Payment_BOT" target="_blank" rel="noopener" style="color:#00FF88;font-size:0.78rem;text-decoration:none;">@GPortBot →</a>
+                  <br><a href="https://t.me/GPORT_Payment_BOT" target="_blank" rel="noopener" style="color:#00FF88;font-size:0.78rem;text-decoration:none;">@GPORT_Payment_BOT →</a>
                 </span>
               </div>
               <div style="display:flex;gap:0.75rem;align-items:flex-start;">
