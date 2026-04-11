@@ -823,14 +823,14 @@
                 <span style="background:rgba(0,255,136,0.15);color:#00FF88;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:700;flex-shrink:0;margin-top:1px;">1</span>
                 <span style="font-size:0.8rem;color:#A8C0B0;line-height:1.5;">
                   حوّل <strong style="color:#E8F0EB;">99 جنيه</strong> على InstaPay أو فودافون كاش
-                  <br><span style="color:#00FF88;font-size:0.78rem;">📱 01xxxxxxxxx</span>
+                  <br><span style="color:#00FF88;font-size:0.78rem;">📱 01096952150</span>
                 </span>
               </div>
               <div style="display:flex;gap:0.75rem;align-items:flex-start;">
                 <span style="background:rgba(0,255,136,0.15);color:#00FF88;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:700;flex-shrink:0;margin-top:1px;">2</span>
                 <span style="font-size:0.8rem;color:#A8C0B0;line-height:1.5;">
                   ابعت الـ screenshot على Telegram
-                  <br><a href="https://t.me/YOUR_BOT_USERNAME" target="_blank" rel="noopener" style="color:#00FF88;font-size:0.78rem;text-decoration:none;">@GPortBot →</a>
+                  <br><a href="https://t.me/@GPORT_Payment_BOT" target="_blank" rel="noopener" style="color:#00FF88;font-size:0.78rem;text-decoration:none;">@GPortBot →</a>
                 </span>
               </div>
               <div style="display:flex;gap:0.75rem;align-items:flex-start;">
