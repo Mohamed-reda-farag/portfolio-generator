@@ -1,0 +1,566 @@
+/* ============================================================
+   GLASS3D THEME — Glassmorphism Pro
+   Floating glass cards, depth layers, CSS-only particle dots
+   ============================================================ */
+
+[data-theme="glass3d"] {
+  /* ── Color Tokens ── */
+  --bg-primary:       #070b14;
+  --bg-secondary:     rgba(255, 255, 255, 0.04);
+  --bg-card:          rgba(255, 255, 255, 0.06);
+  --bg-card-hover:    rgba(255, 255, 255, 0.10);
+  --bg-glass:         rgba(255, 255, 255, 0.07);
+  --bg-glass-strong:  rgba(255, 255, 255, 0.12);
+
+  --border-subtle:    rgba(255, 255, 255, 0.10);
+  --border-card:      rgba(255, 255, 255, 0.14);
+  --border-active:    rgba(99, 220, 255, 0.50);
+
+  --text-primary:     #e8f0ff;
+  --text-secondary:   rgba(200, 220, 255, 0.65);
+  --text-muted:       rgba(160, 190, 240, 0.45);
+  --text-accent:      #63dcff;
+  --text-accent-2:    #b088ff;
+
+  --accent:           #63dcff;
+  --accent-glow:      rgba(99, 220, 255, 0.25);
+  --accent-secondary: #b088ff;
+  --accent-sec-glow:  rgba(176, 136, 255, 0.20);
+
+  --shadow-card:      0 8px 32px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255,255,255,0.08) inset;
+  --shadow-hover:     0 20px 60px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(255,255,255,0.12) inset;
+  --shadow-glow:      0 0 40px rgba(99, 220, 255, 0.15);
+
+  --blur-card:        blur(16px) saturate(180%);
+  --blur-panel:       blur(24px) saturate(200%);
+
+  --radius-card:      20px;
+  --radius-pill:      999px;
+}
+
+/* ── Base & Background ── */
+[data-theme="glass3d"] body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Animated gradient orbs behind everything */
+[data-theme="glass3d"] body::before,
+[data-theme="glass3d"] body::after {
+  content: '';
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.35;
+  pointer-events: none;
+  z-index: 0;
+  animation: glass-orb-drift 18s ease-in-out infinite alternate;
+}
+
+[data-theme="glass3d"] body::before {
+  width: 700px;
+  height: 700px;
+  top: -200px;
+  left: -150px;
+  background: radial-gradient(circle, #1a4aff 0%, #6320ee 60%, transparent 100%);
+  animation-duration: 22s;
+}
+
+[data-theme="glass3d"] body::after {
+  width: 600px;
+  height: 600px;
+  bottom: -100px;
+  right: -100px;
+  background: radial-gradient(circle, #00c6ff 0%, #0072ff 50%, transparent 100%);
+  animation-duration: 16s;
+  animation-delay: -8s;
+}
+
+@keyframes glass-orb-drift {
+  0%   { transform: translate(0, 0) scale(1); }
+  33%  { transform: translate(60px, -40px) scale(1.08); }
+  66%  { transform: translate(-30px, 50px) scale(0.95); }
+  100% { transform: translate(40px, 20px) scale(1.05); }
+}
+
+/* Third orb — accent secondary */
+[data-theme="glass3d"] #glass-orb-3 {
+  position: fixed;
+  width: 500px;
+  height: 500px;
+  top: 40%;
+  left: 60%;
+  border-radius: 50%;
+  background: radial-gradient(circle, #b088ff 0%, transparent 70%);
+  filter: blur(90px);
+  opacity: 0.20;
+  pointer-events: none;
+  z-index: 0;
+  animation: glass-orb-drift 26s ease-in-out infinite alternate-reverse;
+}
+
+/* ── CSS-Only Particle Dots ── */
+[data-theme="glass3d"] .glass-particles {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+
+[data-theme="glass3d"] .glass-particles::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1.5px 1.5px at 12% 18%, rgba(99,220,255,0.6) 0%, transparent 100%),
+    radial-gradient(1px 1px at 28% 72%, rgba(176,136,255,0.5) 0%, transparent 100%),
+    radial-gradient(2px 2px at 45% 35%, rgba(99,220,255,0.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 62% 88%, rgba(255,255,255,0.35) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 78% 22%, rgba(176,136,255,0.5) 0%, transparent 100%),
+    radial-gradient(1px 1px at 91% 55%, rgba(99,220,255,0.4) 0%, transparent 100%),
+    radial-gradient(2px 2px at 5% 65%, rgba(255,255,255,0.25) 0%, transparent 100%),
+    radial-gradient(1px 1px at 36% 92%, rgba(176,136,255,0.4) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 55% 8%, rgba(99,220,255,0.5) 0%, transparent 100%),
+    radial-gradient(1px 1px at 82% 78%, rgba(255,255,255,0.3) 0%, transparent 100%),
+    radial-gradient(1px 1px at 18% 45%, rgba(176,136,255,0.35) 0%, transparent 100%),
+    radial-gradient(2px 2px at 70% 48%, rgba(99,220,255,0.3) 0%, transparent 100%),
+    radial-gradient(1px 1px at 95% 15%, rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 40% 60%, rgba(176,136,255,0.45) 0%, transparent 100%),
+    radial-gradient(1px 1px at 8% 90%, rgba(99,220,255,0.35) 0%, transparent 100%),
+    radial-gradient(1px 1px at 88% 38%, rgba(255,255,255,0.3) 0%, transparent 100%),
+    radial-gradient(2px 2px at 22% 28%, rgba(176,136,255,0.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 65% 68%, rgba(99,220,255,0.45) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 48% 82%, rgba(255,255,255,0.28) 0%, transparent 100%),
+    radial-gradient(1px 1px at 75% 5%, rgba(176,136,255,0.5) 0%, transparent 100%);
+  animation: particles-float 30s linear infinite;
+}
+
+[data-theme="glass3d"] .glass-particles::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 33% 12%, rgba(99,220,255,0.45) 0%, transparent 100%),
+    radial-gradient(2px 2px at 58% 52%, rgba(176,136,255,0.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 15% 75%, rgba(255,255,255,0.35) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 82% 28%, rgba(99,220,255,0.5) 0%, transparent 100%),
+    radial-gradient(1px 1px at 72% 95%, rgba(176,136,255,0.35) 0%, transparent 100%),
+    radial-gradient(1px 1px at 42% 42%, rgba(255,255,255,0.3) 0%, transparent 100%),
+    radial-gradient(2px 2px at 25% 58%, rgba(99,220,255,0.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 90% 70%, rgba(176,136,255,0.45) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 52% 22%, rgba(255,255,255,0.35) 0%, transparent 100%),
+    radial-gradient(1px 1px at 3% 38%, rgba(99,220,255,0.5) 0%, transparent 100%);
+  animation: particles-float 45s linear infinite reverse;
+  animation-delay: -15s;
+}
+
+@keyframes particles-float {
+  0%   { transform: translateY(0) translateX(0); }
+  25%  { transform: translateY(-15px) translateX(8px); }
+  50%  { transform: translateY(-8px) translateX(-12px); }
+  75%  { transform: translateY(-20px) translateX(5px); }
+  100% { transform: translateY(0) translateX(0); }
+}
+
+/* ── Layout Wrapper ── */
+[data-theme="glass3d"] .portfolio-wrapper {
+  position: relative;
+  z-index: 2;
+}
+
+/* ── Glass Mixin (applied to cards) ── */
+[data-theme="glass3d"] .card,
+[data-theme="glass3d"] .project-card,
+[data-theme="glass3d"] .stats-bar,
+[data-theme="glass3d"] .skill-tag {
+  background: var(--bg-card);
+  backdrop-filter: var(--blur-card);
+  -webkit-backdrop-filter: var(--blur-card);
+  border: 1px solid var(--border-card);
+  box-shadow: var(--shadow-card);
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.35s ease,
+              background 0.25s ease,
+              border-color 0.25s ease;
+}
+
+/* ── Hero Section ── */
+[data-theme="glass3d"] .hero {
+  padding: 80px 0 60px;
+  position: relative;
+}
+
+[data-theme="glass3d"] .hero-name {
+  font-size: clamp(2.8rem, 7vw, 5.5rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.0;
+  background: linear-gradient(135deg, #e8f0ff 0%, var(--accent) 50%, var(--accent-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  background-size: 200% 200%;
+  animation: glass-name-shimmer 6s ease-in-out infinite;
+}
+
+@keyframes glass-name-shimmer {
+  0%, 100% { background-position: 0% 50%; }
+  50%       { background-position: 100% 50%; }
+}
+
+[data-theme="glass3d"] .hero-avatar {
+  border: 2px solid var(--border-card);
+  box-shadow: 0 0 0 6px rgba(99, 220, 255, 0.08), var(--shadow-card);
+  backdrop-filter: var(--blur-card);
+}
+
+[data-theme="glass3d"] .hero-bio {
+  color: var(--text-secondary);
+  line-height: 1.75;
+}
+
+/* ── Stats Bar ── */
+[data-theme="glass3d"] .stats-bar {
+  border-radius: var(--radius-card);
+  padding: 20px 32px;
+  margin: 40px 0;
+  display: flex;
+  gap: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+[data-theme="glass3d"] .stats-bar::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(99,220,255,0.5), rgba(176,136,255,0.5), transparent);
+}
+
+[data-theme="glass3d"] .stat-item {
+  flex: 1;
+  text-align: center;
+  padding: 8px 0;
+  position: relative;
+}
+
+[data-theme="glass3d"] .stat-item + .stat-item::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 10%; height: 80%;
+  width: 1px;
+  background: var(--border-subtle);
+}
+
+[data-theme="glass3d"] .stat-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 20px var(--accent-glow);
+}
+
+[data-theme="glass3d"] .stat-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* ── Project Cards ── */
+[data-theme="glass3d"] .projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 20px;
+}
+
+[data-theme="glass3d"] .project-card {
+  border-radius: var(--radius-card);
+  padding: 28px;
+  position: relative;
+  overflow: hidden;
+  transform-style: preserve-3d;
+  perspective: 1000px;
+}
+
+/* Glass sheen — top highlight */
+[data-theme="glass3d"] .project-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 10%, rgba(255,255,255,0.25) 50%, transparent 90%);
+  pointer-events: none;
+}
+
+/* Inner glow on hover approach */
+[data-theme="glass3d"] .project-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-card);
+  background: radial-gradient(ellipse at 50% 0%, rgba(99,220,255,0.08) 0%, transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+[data-theme="glass3d"] .project-card:hover {
+  transform: translateY(-6px) scale(1.01);
+  background: var(--bg-card-hover);
+  border-color: var(--border-active);
+  box-shadow: var(--shadow-hover), var(--shadow-glow);
+}
+
+[data-theme="glass3d"] .project-card:hover::after {
+  opacity: 1;
+}
+
+/* Featured card — wider + special glow */
+[data-theme="glass3d"] .project-card.featured {
+  grid-column: span 2;
+  border-color: rgba(99, 220, 255, 0.25);
+  background: rgba(99, 220, 255, 0.05);
+}
+
+@media (max-width: 780px) {
+  [data-theme="glass3d"] .project-card.featured {
+    grid-column: span 1;
+  }
+}
+
+[data-theme="glass3d"] .project-card.featured::before {
+  background: linear-gradient(90deg, transparent 0%, rgba(99,220,255,0.4) 50%, transparent 100%);
+}
+
+[data-theme="glass3d"] .project-name {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+[data-theme="glass3d"] .project-description {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.65;
+  margin-bottom: 16px;
+}
+
+[data-theme="glass3d"] .project-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+[data-theme="glass3d"] .project-lang {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+[data-theme="glass3d"] .project-stars {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+[data-theme="glass3d"] .project-link {
+  margin-left: auto;
+  color: var(--accent);
+  opacity: 0.7;
+  transition: opacity 0.2s;
+  text-decoration: none;
+}
+
+[data-theme="glass3d"] .project-link:hover { opacity: 1; }
+
+[data-theme="glass3d"] .topic-chip {
+  font-size: 0.72rem;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(99, 220, 255, 0.08);
+  border: 1px solid rgba(99, 220, 255, 0.18);
+  color: var(--text-accent);
+}
+
+/* ── Skills ── */
+[data-theme="glass3d"] .skills-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+[data-theme="glass3d"] .skill-tag {
+  border-radius: 10px;
+  padding: 8px 16px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  position: relative;
+  overflow: hidden;
+  cursor: default;
+}
+
+[data-theme="glass3d"] .skill-tag::before {
+  content: '';
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent-glow);
+  margin-right: 8px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+[data-theme="glass3d"] .skill-tag:hover {
+  border-color: var(--border-active);
+  background: rgba(99, 220, 255, 0.08);
+  transform: translateY(-2px);
+}
+
+/* ── Section Headings ── */
+[data-theme="glass3d"] .section-title {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--text-accent);
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+[data-theme="glass3d"] .section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--border-card), transparent);
+}
+
+/* ── Buttons ── */
+[data-theme="glass3d"] .btn-primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+  color: #07080f;
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 12px 28px;
+  box-shadow: 0 4px 20px var(--accent-glow);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+[data-theme="glass3d"] .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(99, 220, 255, 0.4);
+}
+
+[data-theme="glass3d"] .btn-ghost {
+  background: var(--bg-glass);
+  backdrop-filter: var(--blur-card);
+  border: 1px solid var(--border-card);
+  color: var(--text-primary);
+  border-radius: var(--radius-pill);
+  padding: 11px 24px;
+  transition: background 0.2s, border-color 0.2s, transform 0.2s;
+}
+
+[data-theme="glass3d"] .btn-ghost:hover {
+  background: var(--bg-glass-strong);
+  border-color: var(--border-active);
+  transform: translateY(-1px);
+}
+
+/* ── Nav ── */
+[data-theme="glass3d"] .portfolio-nav {
+  background: rgba(7, 11, 20, 0.7);
+  backdrop-filter: var(--blur-panel);
+  -webkit-backdrop-filter: var(--blur-panel);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* ── Edit Toolbar integration ── */
+[data-theme="glass3d"] .edit-toolbar {
+  background: rgba(7, 11, 20, 0.85);
+  backdrop-filter: var(--blur-panel);
+  border-bottom: 1px solid var(--border-card);
+}
+
+/* ── Featured Badge ── */
+[data-theme="glass3d"] .badge-featured {
+  background: linear-gradient(135deg, rgba(99,220,255,0.15), rgba(176,136,255,0.15));
+  border: 1px solid rgba(99, 220, 255, 0.3);
+  color: var(--text-accent);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+/* ── Floating depth card — JS can add data-float to any card ── */
+[data-theme="glass3d"] [data-float] {
+  animation: glass-float var(--float-duration, 6s) ease-in-out infinite;
+  animation-delay: var(--float-delay, 0s);
+}
+
+@keyframes glass-float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-8px); }
+}
+
+/* ── Theme Preview Card (for index.html showcase) ── */
+.theme-preview-card[data-theme-name="glass3d"] {
+  background: linear-gradient(135deg, #070b14 0%, #0d1428 100%);
+  border-color: rgba(99, 220, 255, 0.2);
+}
+
+.theme-preview-card[data-theme-name="glass3d"] .preview-bar {
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  height: 10px;
+  width: 80%;
+}
+
+.theme-preview-card[data-theme-name="glass3d"] .preview-dot {
+  background: #63dcff;
+  box-shadow: 0 0 8px rgba(99,220,255,0.6);
+}
+
+/* ── Scrollbar ── */
+[data-theme="glass3d"] ::-webkit-scrollbar { width: 6px; }
+[data-theme="glass3d"] ::-webkit-scrollbar-track { background: transparent; }
+[data-theme="glass3d"] ::-webkit-scrollbar-thumb {
+  background: rgba(99, 220, 255, 0.2);
+  border-radius: 3px;
+}
+[data-theme="glass3d"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 220, 255, 0.35);
+}
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+  [data-theme="glass3d"] .stats-bar {
+    flex-direction: column;
+    gap: 12px;
+    text-align: left;
+  }
+  [data-theme="glass3d"] .stat-item + .stat-item::before { display: none; }
+  [data-theme="glass3d"] .projects-grid { grid-template-columns: 1fr; }
+}

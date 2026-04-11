@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en" data-page="edit">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Edit Portfolio — Portfolio Generator</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Syne:wght@400;600;700;800&family=Newsreader:ital,wght@0,400;1,300;1,400&display=swap" rel="stylesheet" />
+
+  <!-- GSAP — before app.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/edit-ui.css" />
+  <link id="active-theme-css" rel="stylesheet" href="" />
+  <link rel="icon" href="data:,">
+
+  <script>
+    window.SUPABASE_URL      = "https://zxybqbjsnriwpjehinwb.supabase.co";
+    window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4eWJxYmpzbnJpd3BqZWhpbndiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMjI1NDEsImV4cCI6MjA5MDY5ODU0MX0.ED8CX81h78oga482b9pepZPsqfvX7znMqmtO0VRn3AM";
+  </script>
+
+  <style>
+    body { padding-top: var(--toolbar-height, 52px); }
+
+    /* ── No-draft ── */
+    .no-draft-screen {
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center; gap: var(--sp-5); padding: var(--sp-8);
+    }
+    .no-draft-screen__icon { font-size: 3rem; opacity: 0.2; }
+    .no-draft-screen__title {
+      font-family: var(--font-display); font-size: var(--fs-xl);
+      font-weight: 700; letter-spacing: var(--ls-tight);
+    }
+    .no-draft-screen__sub { font-size: var(--fs-sm); color: var(--clr-text-2); }
+
+    /* ── Portfolio wrapper ── */
+    .portfolio-container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 var(--sp-6) var(--sp-32);
+    }
+
+    /* ── Hero ── */
+    .portfolio-hero {
+      padding: var(--sp-20) 0 var(--sp-16);
+      position: relative;
+    }
+    .portfolio-hero::after {
+      content: ''; position: absolute;
+      bottom: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, var(--clr-accent), transparent);
+      opacity: 0.2;
+    }
+
+    .hero-eyebrow {
+      display: inline-flex; align-items: center; gap: var(--sp-2);
+      font-size: var(--fs-xs); font-weight: 500;
+      letter-spacing: var(--ls-wider); text-transform: uppercase;
+      color: var(--clr-accent); margin-bottom: var(--sp-5); opacity: 0.8;
+    }
+    .hero-eyebrow::before {
+      content: ''; width: 24px; height: 1px; background: var(--clr-accent);
+    }
+
+    .portfolio-hero__name {
+      font-family: var(--font-display);
+      font-size: clamp(3rem, 8vw, 6.5rem);
+      font-weight: 800; letter-spacing: var(--ls-tight);
+      line-height: 0.95; margin-bottom: var(--sp-5);
+      color: var(--clr-text); min-height: 1.2em;
+    }
+
+    .portfolio-hero__title {
+      font-family: var(--font-body); font-size: var(--fs-lg);
+      color: var(--clr-accent); letter-spacing: var(--ls-wide);
+      margin-bottom: var(--sp-8); opacity: 0.9; min-height: 1.5em;
+    }
+
+    .portfolio-hero__bio {
+      font-family: var(--font-serif); font-style: italic;
+      font-size: clamp(1rem, 2vw, 1.2rem); font-weight: 300;
+      color: var(--clr-text-2); line-height: var(--lh-loose);
+      max-width: 640px; margin-bottom: var(--sp-10); min-height: 2em;
+    }
+
+    .hero-links {
+      display: flex; align-items: center; gap: var(--sp-5);
+    }
+    .hero-link {
+      display: inline-flex; align-items: center; gap: var(--sp-2);
+      font-size: var(--fs-sm); color: var(--clr-text-3);
+      letter-spacing: var(--ls-wide); text-transform: uppercase;
+      transition: color var(--dur-fast); text-decoration: none;
+    }
+    .hero-link:hover { color: var(--clr-accent); }
+
+    /* ── Sections ── */
+    .portfolio-section { padding: var(--sp-16) 0 0; }
+
+    .section-label {
+      display: flex; align-items: center; gap: var(--sp-4);
+      font-size: var(--fs-xs); font-weight: 500;
+      letter-spacing: var(--ls-wider); text-transform: uppercase;
+      color: var(--clr-text-3); margin-bottom: var(--sp-8);
+    }
+    .section-label::after {
+      content: ''; flex: 1; height: 1px; background: var(--clr-border-dim);
+    }
+    .section-label span {
+      color: var(--clr-accent); font-family: var(--font-display);
+      font-weight: 700; font-size: var(--fs-sm); letter-spacing: normal;
+    }
+
+    /* ── Skills ── */
+    .skills-container { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+
+    /* ── Projects ── */
+    .projects-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+      gap: var(--sp-5);
+    }
+
+    /* Project card */
+    .project-card {
+      background: var(--clr-bg-3);
+      border: 1px solid var(--clr-border-dim);
+      border-radius: var(--radius-lg);
+      padding: var(--sp-6);
+      display: flex; flex-direction: column; gap: var(--sp-3);
+      transition: border-color var(--dur-base) var(--ease-out),
+                  box-shadow var(--dur-base) var(--ease-out),
+                  transform var(--dur-base) var(--ease-out);
+      position: relative; overflow: hidden;
+    }
+    .project-card::before {
+      content: ''; position: absolute;
+      top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, var(--clr-accent), transparent);
+      opacity: 0; transition: opacity var(--dur-base);
+    }
+    .project-card:hover {
+      border-color: var(--clr-border);
+      box-shadow: var(--shadow-md);
+      transform: translateY(-3px);
+    }
+    .project-card:hover::before { opacity: 0.5; }
+    .project-card--featured {
+      border-color: rgba(0,255,136,0.15);
+      background: linear-gradient(135deg, var(--clr-bg-3), var(--clr-surface));
+    }
+    .project-card--featured::before { opacity: 0.5; }
+
+    .project-card__header {
+      display: flex; align-items: center;
+      justify-content: space-between; min-height: 28px;
+    }
+    .project-card__meta { display: flex; align-items: center; gap: var(--sp-2); }
+    .lang-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .project-card__lang { font-size: var(--fs-xs); color: var(--clr-text-3); }
+    .featured-badge {
+      font-size: var(--fs-xs); font-weight: 600;
+      letter-spacing: var(--ls-wide); text-transform: uppercase;
+      color: var(--clr-accent); border: 1px solid rgba(0,255,136,0.3);
+      border-radius: var(--radius-sm); padding: 2px 8px;
+    }
+    .project-card__actions {
+      display: flex; align-items: center; gap: 4px;
+      opacity: 0; transition: opacity var(--dur-fast);
+    }
+    .project-card:hover .project-card__actions,
+    .project-card:focus-within .project-card__actions { opacity: 1; }
+
+    .project-card__name {
+      font-family: var(--font-display); font-weight: 700;
+      font-size: var(--fs-lg); letter-spacing: var(--ls-tight);
+      color: var(--clr-text); line-height: var(--lh-snug);
+    }
+    .project-card__desc {
+      font-size: var(--fs-sm); color: var(--clr-text-2);
+      line-height: var(--lh-loose); flex: 1;
+    }
+    .project-card__footer {
+      display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2);
+      padding-top: var(--sp-3);
+      border-top: 1px solid var(--clr-border-dim); margin-top: auto;
+    }
+    .project-stat { font-size: var(--fs-xs); color: var(--clr-text-3); }
+    .topic-chip {
+      font-size: var(--fs-xs); padding: 2px 8px;
+      border-radius: var(--radius-full);
+      background: var(--clr-accent-dim); color: var(--clr-accent);
+      border: 1px solid rgba(0,255,136,0.15);
+    }
+
+    /* ── Edit hint ── */
+    .edit-mode-hint {
+      position: fixed; bottom: var(--sp-5); left: 50%;
+      transform: translateX(-50%);
+      background: var(--clr-bg-3); border: 1px solid var(--clr-border);
+      border-radius: var(--radius-full); padding: var(--sp-2) var(--sp-5);
+      font-size: var(--fs-xs); color: var(--clr-text-3);
+      letter-spacing: var(--ls-wide);
+      display: flex; align-items: center; gap: var(--sp-2);
+      z-index: 10; backdrop-filter: blur(8px);
+      white-space: nowrap; box-shadow: var(--shadow-md);
+      animation: hint-in 0.5s var(--ease-out) 0.8s both;
+      pointer-events: none;
+    }
+    @keyframes hint-in {
+      from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+      to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+    .hint-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--clr-accent); animation: pulse-dot 2s ease-in-out infinite;
+    }
+    kbd {
+      font-family: var(--font-body); font-size: 10px;
+      background: var(--clr-bg-2); border: 1px solid var(--clr-border);
+      border-radius: 3px; padding: 1px 5px; color: var(--clr-text-2);
+    }
+
+    /* ── Toast ── */
+    .toast-container {
+      position: fixed; bottom: var(--sp-6); right: var(--sp-6);
+      display: flex; flex-direction: column; gap: var(--sp-3);
+      z-index: var(--z-toast); pointer-events: none;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .portfolio-container { padding: 0 var(--sp-4) var(--sp-20); }
+      .projects-grid { grid-template-columns: 1fr; }
+      .portfolio-hero__name { font-size: clamp(2.5rem, 12vw, 4rem); }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- No Draft -->
+  <div id="no-draft-screen" class="no-draft-screen" style="display:none;">
+    <div class="no-draft-screen__icon" aria-hidden="true">⚡</div>
+    <h1 class="no-draft-screen__title">No portfolio data found</h1>
+    <p class="no-draft-screen__sub">Go back and generate your portfolio first.</p>
+    <a href="index.html" class="btn btn-primary" style="margin-top:var(--sp-3);">← Generate Portfolio</a>
+  </div>
+
+  <!-- Portfolio -->
+  <div id="portfolio-content" style="display:none;">
+    <div class="portfolio-container">
+
+      <header class="portfolio-hero">
+        <div class="hero-eyebrow" aria-hidden="true">Portfolio</div>
+
+        <h1 class="portfolio-hero__name" data-edit="name"
+            aria-label="Your name — click to edit"></h1>
+
+        <p class="portfolio-hero__title" data-edit="jobTitle"
+           aria-label="Your job title — click to edit"></p>
+
+        <p class="portfolio-hero__bio" data-edit="bio"
+           aria-label="Your bio — click to edit"></p>
+
+        <div class="hero-links" id="hero-links"></div>
+      </header>
+
+      <section class="portfolio-section" aria-labelledby="skills-label">
+        <div class="section-label" id="skills-label"><span>Skills</span></div>
+        <div class="skills-container" data-skills-container></div>
+      </section>
+
+      <section class="portfolio-section" aria-labelledby="projects-label">
+        <div class="section-label" id="projects-label"><span>Projects</span></div>
+        <div class="projects-grid" data-projects-grid></div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- Edit Hint -->
+  <div class="edit-mode-hint" id="edit-hint" role="status">
+    <span class="hint-dot" aria-hidden="true"></span>
+    Click any text to edit &nbsp;·&nbsp;
+    <kbd>Ctrl+Z</kbd> undo &nbsp;·&nbsp;
+    <kbd>Ctrl+S</kbd> save
+  </div>
+
+  <!-- Toast -->
+  <div class="toast-container" id="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/portfolio.js"></script>
+  <script src="js/pdf.js"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+
+      // 1. Check for portfolio id in URL (coming from dashboard Edit button)
+      const urlParams  = new URLSearchParams(window.location.search);
+      const portfolioId = urlParams.get('id');
+
+      let rawDraft = null;
+
+      if (portfolioId) {
+        // ── Load from Supabase by portfolio ID ──────────────────────────
+        try {
+          const sb = window._supabaseClient || (() => {
+            if (window.supabase?.createClient) {
+              const c = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+              window._supabaseClient = c;
+              return c;
+            }
+            return null;
+          })();
+
+          if (sb) {
+            const { data: portfolio } = await sb
+              .from('portfolios')
+              .select(`id, bio, skills, theme, slug, user_id,
+                projects ( github_repo_name, ai_description, stars, language, topics, sort_order, repo_url, is_featured )`)
+              .eq('id', portfolioId)
+              .single();
+
+            const { data: userData } = await sb
+              .from('users')
+              .select('full_name, github_username, job_title')
+              .eq('id', portfolio?.user_id)
+              .single();
+
+            if (portfolio) {
+              const projects = (portfolio.projects || [])
+                .sort((a, b) => a.sort_order - b.sort_order)
+                .map(p => ({
+                  repo_name:        p.github_repo_name,
+                  github_repo_name: p.github_repo_name,
+                  description:      p.ai_description,
+                  ai_description:   p.ai_description,
+                  stars:            p.stars || 0,
+                  language:         p.language,
+                  topics:           p.topics || [],
+                  repo_url:         p.repo_url || `https://github.com/${userData?.github_username}/${p.github_repo_name}`,
+                }));
+
+              rawDraft = {
+                bio:            portfolio.bio,
+                skills:         portfolio.skills || [],
+                projects,
+                fullName:       userData?.full_name || userData?.github_username || '',
+                name:           userData?.full_name || userData?.github_username || '',
+                jobTitle:       userData?.job_title || 'Software Developer',
+                githubUsername: userData?.github_username || '',
+                theme:          portfolio.theme || 'dark',
+                githubUser:     {},
+                githubRepos:    projects,
+                portfolioId,
+              };
+
+              // حفظ في sessionStorage عشان portfolio.js يقدر يقراه
+              window.AI?.saveDraft?.(rawDraft);
+            }
+          }
+        } catch (err) {
+          console.error('[edit.html] Failed to load from Supabase:', err);
+        }
+      } else {
+        // ── Load from sessionStorage (after fresh generation) ───────────
+        rawDraft = window.AI?.getDraft?.();
+      }
+
+      if (!rawDraft) {
+        document.getElementById('no-draft-screen').style.display = 'flex';
+        document.getElementById('edit-hint').style.display = 'none';
+        return;
+      }
+
+      // 2. Show page
+      document.getElementById('portfolio-content').style.display = 'block';
+
+      // 3. Page title
+      const displayName = rawDraft.fullName
+        || rawDraft.githubUser?.name
+        || rawDraft.githubUsername
+        || 'Portfolio';
+      document.title = `${displayName} — Portfolio Generator`;
+
+      // 4. GitHub link
+      if (rawDraft.githubUsername) {
+        document.getElementById('hero-links').innerHTML = `
+          <a href="https://github.com/${rawDraft.githubUsername}"
+             target="_blank" rel="noopener" class="hero-link">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+            </svg>
+            @${rawDraft.githubUsername}
+          </a>
+          ${rawDraft.githubUser?.followers
+            ? `<span class="hero-link" style="cursor:default; pointer-events:none;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                </svg>
+                ${rawDraft.githubUser.followers.toLocaleString()} followers
+              </span>`
+            : ''}
+        `;
+      }
+
+      // 4.5 — Expose Supabase client على window.supabase
+      // portfolio.js بيستخدم window.supabase.auth.getUser() مباشرة
+      // لكن الـ initialized client في window._supabaseClient
+      if (window._supabaseClient && !window.supabase?.auth) {
+        // الـ SDK موجود في window.supabase لكن الـ initialized client في _supabaseClient
+        // نعمل wrapper يحل المشكلة
+        window.supabase = window._supabaseClient;
+      } else if (!window._supabaseClient && window.supabase?.createClient) {
+        // أنشئ client جديد واحفظه
+        window._supabaseClient = window.supabase.createClient(
+          window.SUPABASE_URL,
+          window.SUPABASE_ANON_KEY
+        );
+        window.supabase = window._supabaseClient;
+      }
+
+      // 5. Normalise draft:
+      //    portfolio.js بيدور على data-edit='name' — نعمل alias من fullName
+      const draft = {
+        ...rawDraft,
+        name:     rawDraft.fullName || rawDraft.githubUser?.name || '',
+        fullName: rawDraft.fullName || rawDraft.githubUser?.name || '',
+        // projects: normalise field names
+        projects: (rawDraft.projects || []).map(p => ({
+          ...p,
+          github_repo_name: p.repo_name || p.github_repo_name || p.name || '',
+          ai_description:   p.description || p.ai_description || '',
+          repo_url: p.repo_url
+            || (rawDraft.githubRepos?.find(r => r.name === (p.repo_name || p.github_repo_name))?.html_url)
+            || `https://github.com/${rawDraft.githubUsername}/${p.repo_name || p.github_repo_name}`,
+          language: p.language
+            || rawDraft.githubRepos?.find(r => r.name === (p.repo_name || p.github_repo_name))?.language
+            || null,
+          stars: p.stars
+            || rawDraft.githubRepos?.find(r => r.name === (p.repo_name || p.github_repo_name))?.stars
+            || 0,
+          topics: p.topics
+            || rawDraft.githubRepos?.find(r => r.name === (p.repo_name || p.github_repo_name))?.topics
+            || [],
+        })),
+      };
+
+      // Save normalised draft back
+      window.AI?.saveDraft?.(draft);
+
+      // 6. Patch portfolio.js publish for unauthenticated users
+      // portfolio.js بيحتاج user مسجل — لو مش مسجل، نحفظ locally بس
+      const _origPublish = window.Portfolio?.publish;
+
+      // Override publish to handle missing auth gracefully
+      // سيتم override بعد init() لأن Portfolio.publish بيتعرّف جوا الـ IIFE
+
+      // 6. Set initial theme attributes before Portfolio.init
+      const initialTheme = draft.theme || 'dark';
+      document.documentElement.setAttribute('data-theme', initialTheme);
+      document.body.setAttribute('data-theme', initialTheme);
+      document.body.classList.add(`theme-${initialTheme}`);
+
+      // 6. Init Portfolio editor with normalised draft
+      window.Portfolio?.init({ isPro: false, draft });
+
+      // Re-trigger app.js animations if GSAP loaded after window.load
+      if (typeof gsap !== 'undefined' && typeof ScrollTrigger === 'undefined') {
+        // GSAP loaded but ScrollTrigger not — animations will work on next page load
+      }
+
+      // 7. Fade hint after 6s
+      setTimeout(() => {
+        const h = document.getElementById('edit-hint');
+        if (!h) return;
+        h.style.transition = 'opacity 0.6s ease';
+        h.style.opacity = '0';
+        setTimeout(() => h?.remove(), 600);
+      }, 6000);
+
+    });
+  </script>
+
+</body>
+</html>

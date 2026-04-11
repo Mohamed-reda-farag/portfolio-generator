@@ -1,0 +1,572 @@
+/* ============================================================
+   CYBERPUNK THEME — Neon Grid Pro
+   Animated grid background, neon glow, scanlines, glitch effects
+   ============================================================ */
+
+[data-theme="cyberpunk"] {
+  /* ── Color Tokens ── */
+  --bg-primary:       #020408;
+  --bg-secondary:     #060d14;
+  --bg-card:          rgba(0, 255, 170, 0.03);
+  --bg-card-hover:    rgba(0, 255, 170, 0.06);
+  --bg-input:         rgba(0, 255, 170, 0.04);
+
+  --border-subtle:    rgba(0, 255, 170, 0.08);
+  --border-card:      rgba(0, 255, 170, 0.15);
+  --border-active:    rgba(0, 255, 170, 0.55);
+  --border-hot:       rgba(255, 0, 170, 0.45);
+
+  --text-primary:     #c8ffe8;
+  --text-secondary:   rgba(160, 240, 200, 0.65);
+  --text-muted:       rgba(0, 255, 170, 0.35);
+  --text-accent:      #00ffaa;
+  --text-hot:         #ff00aa;
+  --text-warn:        #ffcc00;
+
+  --accent:           #00ffaa;
+  --accent-glow:      rgba(0, 255, 170, 0.35);
+  --accent-hot:       #ff00aa;
+  --accent-hot-glow:  rgba(255, 0, 170, 0.30);
+  --accent-warn:      #ffcc00;
+
+  --neon-text-shadow:  0 0 8px var(--accent), 0 0 20px rgba(0,255,170,0.5);
+  --neon-hot-shadow:   0 0 8px var(--accent-hot), 0 0 20px rgba(255,0,170,0.5);
+  --neon-warn-shadow:  0 0 8px var(--accent-warn), 0 0 20px rgba(255,204,0,0.4);
+
+  --shadow-card:      0 0 0 1px rgba(0,255,170,0.12), 0 8px 32px rgba(0,0,0,0.7);
+  --shadow-hover:     0 0 0 1px rgba(0,255,170,0.4), 0 0 30px rgba(0,255,170,0.15), 0 12px 40px rgba(0,0,0,0.8);
+
+  --radius-card:      4px;
+  --radius-inner:     2px;
+  --radius-pill:      2px;
+
+  --grid-color:       rgba(0, 255, 170, 0.055);
+  --grid-size:        44px;
+}
+
+/* ── Base ── */
+[data-theme="cyberpunk"] body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'DM Mono', 'Courier New', monospace;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* ── Animated Grid Background ── */
+[data-theme="cyberpunk"] body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    linear-gradient(var(--grid-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+  background-size: var(--grid-size) var(--grid-size);
+  animation: grid-pulse 8s ease-in-out infinite;
+}
+
+@keyframes grid-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.65; }
+}
+
+/* Perspective grid at the bottom */
+[data-theme="cyberpunk"] body::after {
+  content: '';
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 45vh;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    linear-gradient(rgba(0, 255, 170, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 170, 0.04) 1px, transparent 1px);
+  background-size: 60px 30px;
+  transform: perspective(500px) rotateX(60deg);
+  transform-origin: bottom center;
+  mask-image: linear-gradient(to top, rgba(0,0,0,0.4), transparent);
+  -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,0.4), transparent);
+}
+
+/* ── Scanline overlay ── */
+[data-theme="cyberpunk"] .portfolio-wrapper::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.08) 2px,
+    rgba(0, 0, 0, 0.08) 4px
+  );
+  animation: scan-scroll 12s linear infinite;
+}
+
+@keyframes scan-scroll {
+  0%   { background-position: 0 0; }
+  100% { background-position: 0 80px; }
+}
+
+/* ── Portfolio Wrapper ── */
+[data-theme="cyberpunk"] .portfolio-wrapper {
+  position: relative;
+  z-index: 2;
+}
+
+/* ── Hero ── */
+[data-theme="cyberpunk"] .hero {
+  padding: 80px 0 60px;
+  position: relative;
+}
+
+[data-theme="cyberpunk"] .hero-name {
+  font-size: clamp(2.5rem, 6vw, 5rem);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.0;
+  color: var(--accent);
+  text-transform: uppercase;
+  text-shadow: var(--neon-text-shadow);
+  position: relative;
+  display: inline-block;
+}
+
+/* Glitch effect — controlled by JS; also CSS-only fallback */
+[data-theme="cyberpunk"] .hero-name.glitch-active {
+  animation: name-glitch 0.4s steps(2) forwards;
+}
+
+@keyframes name-glitch {
+  0%   { text-shadow: var(--neon-text-shadow); clip-path: inset(0 0 100% 0); }
+  15%  {
+    clip-path: inset(20% 0 60% 0);
+    transform: translateX(-4px);
+    text-shadow: 3px 0 var(--accent-hot), -3px 0 var(--accent), var(--neon-text-shadow);
+  }
+  30%  {
+    clip-path: inset(50% 0 30% 0);
+    transform: translateX(3px);
+    text-shadow: -3px 0 var(--accent-hot), 3px 0 var(--accent), var(--neon-text-shadow);
+  }
+  45%  {
+    clip-path: inset(10% 0 80% 0);
+    transform: translateX(-2px);
+  }
+  60%  {
+    clip-path: inset(70% 0 5% 0);
+    transform: translateX(2px);
+    text-shadow: 2px 0 var(--accent-warn), -2px 0 var(--accent-hot);
+  }
+  80%  { clip-path: inset(30% 0 40% 0); transform: none; }
+  100% { clip-path: inset(0 0 0 0); text-shadow: var(--neon-text-shadow); transform: none; }
+}
+
+[data-theme="cyberpunk"] .hero-job-title {
+  font-size: 0.85rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent-hot);
+  text-shadow: var(--neon-hot-shadow);
+  margin-bottom: 20px;
+}
+
+[data-theme="cyberpunk"] .hero-job-title::before {
+  content: '> ';
+  color: var(--text-muted);
+}
+
+[data-theme="cyberpunk"] .hero-bio {
+  color: var(--text-secondary);
+  line-height: 1.8;
+  max-width: 60ch;
+  font-size: 0.92rem;
+  border-left: 2px solid var(--border-active);
+  padding-left: 16px;
+  margin-left: 2px;
+}
+
+[data-theme="cyberpunk"] .hero-avatar {
+  border: 2px solid var(--border-active);
+  box-shadow: 0 0 0 4px rgba(0,255,170,0.05), 0 0 30px rgba(0,255,170,0.2);
+  filter: saturate(0.8) contrast(1.1);
+  border-radius: var(--radius-card);
+}
+
+/* ── Stats Bar ── */
+[data-theme="cyberpunk"] .stats-bar {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-card);
+  padding: 20px 32px;
+  margin: 40px 0;
+  display: flex;
+  gap: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+[data-theme="cyberpunk"] .stats-bar::before {
+  content: 'SYSTEM STATUS';
+  position: absolute;
+  top: 6px; right: 16px;
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  color: var(--text-muted);
+}
+
+[data-theme="cyberpunk"] .stats-bar::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-hot));
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
+[data-theme="cyberpunk"] .stat-item {
+  flex: 1;
+  text-align: center;
+  padding: 8px 0;
+  position: relative;
+}
+
+[data-theme="cyberpunk"] .stat-item + .stat-item::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 10%; height: 80%;
+  width: 1px;
+  background: var(--border-subtle);
+}
+
+[data-theme="cyberpunk"] .stat-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-shadow: var(--neon-text-shadow);
+  font-variant-numeric: tabular-nums;
+  animation: value-flicker 8s ease-in-out infinite;
+}
+
+@keyframes value-flicker {
+  0%, 95%, 100% { opacity: 1; }
+  96%            { opacity: 0.8; }
+  97%            { opacity: 1; }
+  98%            { opacity: 0.85; }
+  99%            { opacity: 1; }
+}
+
+[data-theme="cyberpunk"] .stat-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* ── Cards ── */
+[data-theme="cyberpunk"] .project-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-card);
+  padding: 28px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.25s, box-shadow 0.25s, background 0.25s;
+  box-shadow: var(--shadow-card);
+}
+
+/* Corner decorations */
+[data-theme="cyberpunk"] .project-card::before,
+[data-theme="cyberpunk"] .project-card::after {
+  content: '';
+  position: absolute;
+  width: 12px; height: 12px;
+  pointer-events: none;
+}
+
+[data-theme="cyberpunk"] .project-card::before {
+  top: -1px; left: -1px;
+  border-top: 2px solid var(--accent);
+  border-left: 2px solid var(--accent);
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
+[data-theme="cyberpunk"] .project-card::after {
+  bottom: -1px; right: -1px;
+  border-bottom: 2px solid var(--accent);
+  border-right: 2px solid var(--accent);
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
+[data-theme="cyberpunk"] .project-card:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-active);
+  box-shadow: var(--shadow-hover);
+}
+
+/* Progress bar-like top accent on hover */
+[data-theme="cyberpunk"] .project-card .neon-top-bar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-hot));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.35s ease;
+}
+
+[data-theme="cyberpunk"] .project-card:hover .neon-top-bar {
+  transform: scaleX(1);
+}
+
+[data-theme="cyberpunk"] .project-card.featured {
+  grid-column: span 2;
+  border-color: rgba(0, 255, 170, 0.25);
+}
+
+@media (max-width: 780px) {
+  [data-theme="cyberpunk"] .project-card.featured { grid-column: span 1; }
+}
+
+[data-theme="cyberpunk"] .project-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-accent);
+  text-shadow: 0 0 12px rgba(0,255,170,0.3);
+  letter-spacing: 0.04em;
+  margin-bottom: 10px;
+}
+
+[data-theme="cyberpunk"] .project-name::before {
+  content: '// ';
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+[data-theme="cyberpunk"] .project-description {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin-bottom: 18px;
+}
+
+[data-theme="cyberpunk"] .project-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+[data-theme="cyberpunk"] .project-lang,
+[data-theme="cyberpunk"] .project-stars {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+[data-theme="cyberpunk"] .project-link {
+  margin-left: auto;
+  color: var(--accent-hot);
+  text-decoration: none;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  opacity: 0.7;
+  transition: opacity 0.2s, text-shadow 0.2s;
+}
+
+[data-theme="cyberpunk"] .project-link:hover {
+  opacity: 1;
+  text-shadow: var(--neon-hot-shadow);
+}
+
+[data-theme="cyberpunk"] .topic-chip {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 0;
+  background: rgba(0, 255, 170, 0.05);
+  border: 1px solid rgba(0, 255, 170, 0.2);
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+/* ── Skills ── */
+[data-theme="cyberpunk"] .skills-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+[data-theme="cyberpunk"] .skill-tag {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-inner);
+  padding: 6px 14px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-accent);
+  letter-spacing: 0.06em;
+  position: relative;
+  transition: border-color 0.2s, box-shadow 0.2s, color 0.2s;
+  cursor: default;
+}
+
+[data-theme="cyberpunk"] .skill-tag::before {
+  content: '#';
+  color: var(--text-muted);
+  margin-right: 2px;
+}
+
+[data-theme="cyberpunk"] .skill-tag:hover {
+  border-color: var(--border-active);
+  box-shadow: 0 0 12px rgba(0,255,170,0.15);
+  color: var(--accent);
+}
+
+/* ── Section Headings ── */
+[data-theme="cyberpunk"] .section-title {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.25em;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+[data-theme="cyberpunk"] .section-title::before {
+  content: '[';
+  color: var(--accent);
+  text-shadow: var(--neon-text-shadow);
+  font-size: 1rem;
+}
+
+[data-theme="cyberpunk"] .section-title::after {
+  content: ']';
+  color: var(--accent);
+  text-shadow: var(--neon-text-shadow);
+  font-size: 1rem;
+  margin-left: -8px;
+}
+
+/* ── Neon Divider ── */
+[data-theme="cyberpunk"] .neon-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  box-shadow: 0 0 8px var(--accent-glow);
+  margin: 40px 0;
+  border: none;
+  opacity: 0.4;
+}
+
+/* ── Buttons ── */
+[data-theme="cyberpunk"] .btn-primary {
+  background: transparent;
+  border: 2px solid var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  border-radius: var(--radius-card);
+  padding: 12px 28px;
+  text-shadow: 0 0 8px var(--accent-glow);
+  box-shadow: 0 0 15px rgba(0,255,170,0.1), inset 0 0 15px rgba(0,255,170,0.03);
+  transition: background 0.2s, box-shadow 0.2s, color 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+[data-theme="cyberpunk"] .btn-primary:hover {
+  background: rgba(0, 255, 170, 0.08);
+  box-shadow: 0 0 25px rgba(0,255,170,0.25), inset 0 0 25px rgba(0,255,170,0.05);
+}
+
+[data-theme="cyberpunk"] .btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border-card);
+  color: var(--text-secondary);
+  letter-spacing: 0.05em;
+  border-radius: var(--radius-card);
+  padding: 11px 24px;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+[data-theme="cyberpunk"] .btn-ghost:hover {
+  border-color: var(--accent-hot);
+  color: var(--accent-hot);
+  text-shadow: var(--neon-hot-shadow);
+}
+
+/* ── Nav ── */
+[data-theme="cyberpunk"] .portfolio-nav {
+  background: rgba(2, 4, 8, 0.92);
+  border-bottom: 1px solid var(--border-card);
+  box-shadow: 0 1px 0 var(--border-card), 0 4px 20px rgba(0,255,170,0.05);
+}
+
+/* ── Badge ── */
+[data-theme="cyberpunk"] .badge-featured {
+  background: rgba(0, 255, 170, 0.06);
+  border: 1px solid rgba(0, 255, 170, 0.3);
+  color: var(--accent);
+  text-shadow: 0 0 8px var(--accent-glow);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 0;
+}
+
+/* ── Edit Toolbar ── */
+[data-theme="cyberpunk"] .edit-toolbar {
+  background: rgba(2, 4, 8, 0.95);
+  border-bottom: 1px solid var(--border-card);
+}
+
+/* ── Theme preview card ── */
+.theme-preview-card[data-theme-name="cyberpunk"] {
+  background: #020408;
+  border-color: rgba(0, 255, 170, 0.2);
+}
+
+.theme-preview-card[data-theme-name="cyberpunk"] .preview-bar {
+  background: transparent;
+  border: 1px solid rgba(0, 255, 170, 0.25);
+  border-radius: 0;
+  height: 10px;
+  width: 80%;
+}
+
+.theme-preview-card[data-theme-name="cyberpunk"] .preview-dot {
+  background: #00ffaa;
+  box-shadow: 0 0 8px rgba(0,255,170,0.8);
+  border-radius: 0;
+}
+
+/* ── Scrollbar ── */
+[data-theme="cyberpunk"] ::-webkit-scrollbar { width: 4px; }
+[data-theme="cyberpunk"] ::-webkit-scrollbar-track { background: #020408; }
+[data-theme="cyberpunk"] ::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 170, 0.25);
+  border-radius: 0;
+}
+[data-theme="cyberpunk"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 255, 170, 0.45);
+}
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+  [data-theme="cyberpunk"] .stats-bar { flex-direction: column; }
+  [data-theme="cyberpunk"] .stat-item + .stat-item::before { display: none; }
+}

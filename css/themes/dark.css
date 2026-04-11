@@ -1,0 +1,70 @@
+/* ═══════════════════════════════════════════════════════════════
+   themes/dark.css — Free Theme: Dark
+   ═══════════════════════════════════════════════════════════════ */
+
+.theme-dark,
+body.theme-dark {
+  /* Colors */
+  --color-bg:           #0d1117;
+  --color-bg-secondary: #161b22;
+  --color-bg-card:      #1c2128;
+  --color-border:       rgba(255, 255, 255, 0.08);
+  --color-text:         #e6edf3;
+  --color-text-muted:   #8b949e;
+  --color-accent:       #00FF88;
+  --color-accent-muted: rgba(0, 255, 136, 0.12);
+
+  /* Shadows */
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --shadow-card-hover: 0 8px 24px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(0, 255, 136, 0.15);
+}
+
+.theme-dark body,
+body.theme-dark {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+body.theme-dark .project-card,
+body.theme-dark .card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-card);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+body.theme-dark .project-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-card-hover);
+}
+
+body.theme-dark .skill-tag {
+  background: rgba(0, 255, 136, 0.06);
+  border-color: rgba(0, 255, 136, 0.18);
+}
+
+body.theme-dark .topic-chip {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--color-text-muted);
+}
+
+body.theme-dark .stats-bar {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+}
+
+/* Scrollbar */
+body.theme-dark {
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+/* Theme preview card in index.html */
+.theme-preview-card[data-theme-name="dark"] {
+  background: #0d1117;
+  color: #e6edf3;
+}

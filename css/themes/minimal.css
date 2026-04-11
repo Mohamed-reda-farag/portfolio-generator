@@ -1,0 +1,132 @@
+/* ═══════════════════════════════════════════════════════════════
+   themes/minimal.css — Free Theme: Minimal
+   Pure typography, no decorative color, editorial feel.
+   ═══════════════════════════════════════════════════════════════ */
+
+.theme-minimal,
+body.theme-minimal {
+  --color-bg:           #ffffff;
+  --color-bg-secondary: #fafafa;
+  --color-bg-card:      #ffffff;
+  --color-border:       #e5e7eb;
+  --color-text:         #111111;
+  --color-text-muted:   #6b7280;
+  --color-accent:       #111111;
+  --color-accent-muted: rgba(17, 17, 17, 0.06);
+
+  --shadow-card:       none;
+  --shadow-card-hover: none;
+
+  /* Override font sizes for editorial feel */
+  --font-display: 'Newsreader', Georgia, serif;
+}
+
+body.theme-minimal {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  background-image: none;
+}
+
+/* Typography overrides — editorial */
+body.theme-minimal h1,
+body.theme-minimal h2,
+body.theme-minimal h3 {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+body.theme-minimal .portfolio-hero__name {
+  font-size: clamp(2.5rem, 7vw, 5rem);
+  font-family: 'Newsreader', Georgia, serif;
+  font-style: italic;
+}
+
+/* Cards — border only, no background difference */
+body.theme-minimal .project-card {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 0;
+  box-shadow: none;
+  padding: 1.5rem;
+  transition: border-color 0.2s;
+}
+
+body.theme-minimal .project-card:hover {
+  border-color: var(--color-text);
+  transform: none;
+  box-shadow: none;
+}
+
+/* Skills — text only */
+body.theme-minimal .skill-tag {
+  background: transparent;
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
+  border-radius: 0;
+  font-style: italic;
+}
+
+body.theme-minimal .skill-tag:hover {
+  border-color: var(--color-text);
+  color: var(--color-text);
+}
+
+/* Topics — understated */
+body.theme-minimal .topic-chip {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+}
+
+/* Stats bar — text list */
+body.theme-minimal .stats-bar {
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--color-border);
+  border-radius: 0;
+  padding: 1rem 0;
+}
+
+/* Accent — black, no green */
+body.theme-minimal .featured-badge {
+  color: var(--color-text);
+  border-color: var(--color-text);
+}
+
+body.theme-minimal .portfolio-hero__avatar {
+  filter: grayscale(100%);
+}
+
+/* Horizontal rules as section dividers */
+body.theme-minimal .portfolio-section + .portfolio-section {
+  border-top: 1px solid var(--color-border);
+  padding-top: 3rem;
+}
+
+/* Links — underline style */
+body.theme-minimal a {
+  color: var(--color-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--color-border);
+}
+
+body.theme-minimal a:hover {
+  text-decoration-color: var(--color-text);
+}
+
+/* Scrollbar */
+body.theme-minimal {
+  scrollbar-color: #d1d5db transparent;
+}
+
+/* Theme preview card */
+.theme-preview-card[data-theme-name="minimal"] {
+  background: #ffffff;
+  color: #111111;
+  font-family: Georgia, serif;
+  font-style: italic;
+}

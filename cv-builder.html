@@ -1,0 +1,1601 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" data-page="cv-builder">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CV Builder — Portfolio Generator</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Syne:wght@400;600;700;800&family=Newsreader:ital,wght@1,300;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/main.css" />
+  <link rel="icon" href="data:,">
+
+  <script>
+    window.SUPABASE_URL      = "https://zxybqbjsnriwpjehinwb.supabase.co";
+    window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4eWJxYmpzbnJpd3BqZWhpbndiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMjI1NDEsImV4cCI6MjA5MDY5ODU0MX0.ED8CX81h78oga482b9pepZPsqfvX7znMqmtO0VRn3AM";
+  </script>
+
+  <style>
+    /* ══════════════════════════════════════════════════════
+       CV BUILDER — Layout & Styles
+    ══════════════════════════════════════════════════════ */
+
+    * { box-sizing: border-box; }
+
+    body {
+      background: var(--clr-bg);
+      color: var(--clr-text);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Top Bar ── */
+    .cv-topbar {
+      position: fixed; top: 0; left: 0; right: 0;
+      height: 52px; z-index: 100;
+      background: rgba(8,12,10,0.92);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--clr-border);
+      display: flex; align-items: center;
+      justify-content: space-between;
+      padding: 0 var(--sp-6);
+      gap: var(--sp-4);
+    }
+
+    .cv-topbar__brand {
+      font-family: var(--font-display);
+      font-weight: 800; font-size: var(--fs-sm);
+      color: var(--clr-accent);
+      letter-spacing: 0.05em;
+      display: flex; align-items: center; gap: var(--sp-2);
+    }
+
+    .cv-topbar__actions { display: flex; align-items: center; gap: var(--sp-3); }
+
+    /* ── Completion bar ── */
+    .cv-completion {
+      background: var(--clr-bg-2);
+      border-bottom: 1px solid var(--clr-border-dim);
+      padding: var(--sp-2) var(--sp-6);
+      margin-top: 52px;
+      display: flex; align-items: center; gap: var(--sp-4);
+    }
+
+    .cv-completion__label {
+      font-size: var(--fs-xs); color: var(--clr-text-3);
+      letter-spacing: var(--ls-wide); white-space: nowrap;
+    }
+
+    .cv-completion__bar {
+      flex: 1; height: 3px;
+      background: var(--clr-border-dim);
+      border-radius: 99px; overflow: hidden;
+    }
+
+    .cv-completion__fill {
+      height: 100%; background: var(--clr-accent);
+      border-radius: 99px;
+      transition: width 0.4s var(--ease-out);
+      box-shadow: 0 0 8px rgba(0,255,136,0.4);
+    }
+
+    .cv-completion__pct {
+      font-size: var(--fs-xs); font-weight: 600;
+      color: var(--clr-accent); min-width: 32px; text-align: right;
+    }
+
+    /* ── Step Indicator ── */
+    .cv-steps {
+      display: flex; gap: var(--sp-2);
+      padding: var(--sp-3) var(--sp-6);
+      overflow-x: auto; background: var(--clr-bg-2);
+      border-bottom: 1px solid var(--clr-border-dim);
+      scrollbar-width: none;
+    }
+    .cv-steps::-webkit-scrollbar { display: none; }
+
+    .cv-step-btn {
+      display: inline-flex; align-items: center; gap: var(--sp-2);
+      padding: 5px 14px; border-radius: 99px;
+      font-size: var(--fs-xs); font-family: var(--font-body);
+      font-weight: 500; letter-spacing: var(--ls-wide);
+      cursor: pointer; border: none; white-space: nowrap;
+      transition: background 0.2s, color 0.2s;
+      background: var(--clr-bg-3);
+      color: var(--clr-text-3);
+    }
+
+    .cv-step-btn.active {
+      background: var(--clr-accent);
+      color: var(--clr-text-inv);
+    }
+
+    .cv-step-btn.done {
+      background: var(--clr-accent-dim);
+      color: var(--clr-accent);
+      border: 1px solid rgba(0,255,136,0.2);
+    }
+
+    .cv-step-btn.done .step-num { display: none; }
+    .cv-step-btn.done .step-check { display: inline; }
+    .cv-step-btn .step-check { display: none; }
+
+    /* ── Main Layout ── */
+    .cv-layout {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      min-height: calc(100vh - 52px - 36px - 44px);
+    }
+
+    /* ── Step Content ── */
+    .cv-content {
+      padding: var(--sp-8) var(--sp-8) var(--sp-20);
+      overflow-y: auto;
+    }
+
+    .cv-step-panel { display: none; }
+    .cv-step-panel.active { display: block; }
+
+    /* ── ATS Preview Panel ── */
+    .cv-preview {
+      background: var(--clr-bg-2);
+      border-left: 1px solid var(--clr-border-dim);
+      position: sticky; top: calc(52px + 36px + 44px);
+      height: calc(100vh - 52px - 36px - 44px);
+      overflow-y: auto;
+      padding: var(--sp-5);
+    }
+
+    .cv-preview__title {
+      font-size: var(--fs-xs); text-transform: uppercase;
+      letter-spacing: var(--ls-wider); color: var(--clr-text-3);
+      margin-bottom: var(--sp-4); display: flex; align-items: center; gap: var(--sp-2);
+    }
+
+    .cv-preview__title::after {
+      content: ''; flex: 1; height: 1px; background: var(--clr-border-dim);
+    }
+
+    /* ATS Preview document */
+    .cv-doc {
+      background: #fff; color: #111;
+      font-family: 'Arial', sans-serif;
+      font-size: 10px; line-height: 1.4;
+      padding: 24px 20px;
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-lg);
+      min-height: 400px;
+    }
+
+    .cv-doc__name {
+      font-size: 16px; font-weight: 700;
+      color: #1a3a6b; margin-bottom: 2px;
+    }
+
+    .cv-doc__title {
+      font-size: 11px; color: #2a5ab0;
+      margin-bottom: 4px;
+    }
+
+    .cv-doc__contact {
+      font-size: 9px; color: #666;
+      margin-bottom: 2px;
+    }
+
+    .cv-doc__divider {
+      height: 2px; background: #1a3a6b;
+      margin: 8px 0;
+    }
+
+    .cv-doc__section-title {
+      font-size: 9px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 1px;
+      color: #1a3a6b; margin: 10px 0 2px;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 2px;
+    }
+
+    .cv-doc__entry { margin-bottom: 8px; }
+
+    .cv-doc__entry-header {
+      display: flex; justify-content: space-between;
+      align-items: baseline;
+    }
+
+    .cv-doc__entry-name { font-weight: 700; font-size: 10px; }
+    .cv-doc__entry-date { font-size: 8px; color: #888; font-style: italic; }
+    .cv-doc__entry-sub { font-size: 9px; color: #2a5ab0; font-style: italic; }
+
+    .cv-doc__bullet {
+      font-size: 9px; color: #333;
+      padding-left: 10px; position: relative;
+      margin-bottom: 1px;
+    }
+
+    .cv-doc__bullet::before {
+      content: '–'; position: absolute; left: 0;
+    }
+
+    .cv-doc__text { font-size: 9px; color: #333; line-height: 1.5; }
+
+    .cv-doc__skills-row {
+      font-size: 9px; color: #333;
+      margin-bottom: 3px;
+    }
+
+    .cv-doc__skills-row strong { color: #111; }
+
+    /* ── Bottom Nav ── */
+    .cv-bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      height: 60px;
+      background: rgba(8,12,10,0.95);
+      backdrop-filter: blur(12px);
+      border-top: 1px solid var(--clr-border-dim);
+      display: flex; align-items: center;
+      justify-content: space-between;
+      padding: 0 var(--sp-6);
+      z-index: 100;
+    }
+
+    .cv-bottom-nav__center {
+      font-size: var(--fs-xs); color: var(--clr-text-3);
+    }
+
+    /* ── Form Styles ── */
+    .cv-section-title {
+      font-family: var(--font-display);
+      font-weight: 700; font-size: var(--fs-lg);
+      letter-spacing: var(--ls-tight);
+      margin-bottom: var(--sp-2);
+    }
+
+    .cv-section-sub {
+      font-size: var(--fs-sm); color: var(--clr-text-2);
+      margin-bottom: var(--sp-6); line-height: var(--lh-loose);
+    }
+
+    .cv-field-group {
+      display: flex; flex-direction: column; gap: var(--sp-2);
+      margin-bottom: var(--sp-4);
+    }
+
+    .cv-field-row {
+      display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4);
+      margin-bottom: var(--sp-4);
+    }
+
+    .cv-label {
+      font-size: var(--fs-xs); text-transform: uppercase;
+      letter-spacing: var(--ls-wider); color: var(--clr-text-2);
+    }
+
+    .cv-input, .cv-textarea, .cv-select {
+      width: 100%;
+      background: var(--clr-bg-3);
+      border: 1px solid var(--clr-border-dim);
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
+      color: var(--clr-text);
+      font-family: var(--font-body);
+      font-size: var(--fs-sm);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .cv-input:focus, .cv-textarea:focus, .cv-select:focus {
+      border-color: var(--clr-accent);
+      box-shadow: 0 0 0 3px var(--clr-accent-dim);
+    }
+
+    .cv-textarea { resize: vertical; min-height: 100px; line-height: 1.6; }
+
+    .cv-select { cursor: pointer; }
+
+    .cv-select option { background: var(--clr-bg-3); }
+
+    /* ATS Tip box */
+    .ats-tip {
+      background: rgba(0,255,136,0.04);
+      border: 1px solid rgba(0,255,136,0.15);
+      border-radius: var(--radius-md);
+      padding: var(--sp-4);
+      margin-bottom: var(--sp-6);
+      display: flex; gap: var(--sp-3);
+    }
+
+    .ats-tip__icon { font-size: 1.2rem; flex-shrink: 0; }
+
+    .ats-tip__title {
+      font-size: var(--fs-xs); font-weight: 600;
+      color: var(--clr-accent); margin-bottom: var(--sp-1);
+      text-transform: uppercase; letter-spacing: var(--ls-wide);
+    }
+
+    .ats-tip__text {
+      font-size: var(--fs-xs); color: var(--clr-text-2);
+      line-height: var(--lh-loose);
+    }
+
+    /* Entry cards (experience, education, etc.) */
+    .cv-card {
+      background: var(--clr-bg-3);
+      border: 1px solid var(--clr-border-dim);
+      border-radius: var(--radius-lg);
+      padding: var(--sp-5);
+      margin-bottom: var(--sp-4);
+      position: relative;
+    }
+
+    .cv-card__header {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--sp-4);
+      cursor: pointer;
+    }
+
+    .cv-card__title {
+      font-size: var(--fs-sm); font-weight: 600;
+      color: var(--clr-text);
+    }
+
+    .cv-card__actions { display: flex; gap: var(--sp-2); }
+
+    .cv-card-toggle {
+      background: transparent; border: none;
+      color: var(--clr-text-3); cursor: pointer;
+      font-size: var(--fs-sm); padding: 4px;
+    }
+
+    .cv-card-delete {
+      background: transparent; border: none;
+      color: var(--clr-error); cursor: pointer;
+      font-size: var(--fs-sm); padding: 4px;
+      transition: color 0.2s;
+    }
+
+    .cv-card-delete:hover { color: #ff6b6b; }
+
+    .cv-card__body { }
+    .cv-card__body.collapsed { display: none; }
+
+    /* Add button */
+    .cv-add-btn {
+      width: 100%; padding: var(--sp-4);
+      background: transparent;
+      border: 1px dashed var(--clr-border);
+      border-radius: var(--radius-md);
+      color: var(--clr-text-3);
+      font-family: var(--font-body);
+      font-size: var(--fs-sm);
+      cursor: pointer; text-align: center;
+      transition: border-color 0.2s, color 0.2s, background 0.2s;
+    }
+
+    .cv-add-btn:hover {
+      border-color: var(--clr-accent);
+      color: var(--clr-accent);
+      background: var(--clr-accent-dim);
+    }
+
+    /* Checkbox */
+    .cv-checkbox-row {
+      display: flex; align-items: center; gap: var(--sp-2);
+      margin-bottom: var(--sp-4);
+    }
+
+    .cv-checkbox-row input[type="checkbox"] {
+      width: 16px; height: 16px; cursor: pointer;
+      accent-color: var(--clr-accent);
+    }
+
+    .cv-checkbox-row label {
+      font-size: var(--fs-sm); color: var(--clr-text-2); cursor: pointer;
+    }
+
+    /* Bullet list */
+    .cv-bullet-list { margin-bottom: var(--sp-4); }
+
+    .cv-bullet-item {
+      display: flex; align-items: flex-start; gap: var(--sp-2);
+      margin-bottom: var(--sp-2);
+    }
+
+    .cv-bullet-item input {
+      flex: 1;
+      background: var(--clr-bg-3);
+      border: 1px solid var(--clr-border-dim);
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      color: var(--clr-text);
+      font-family: var(--font-body);
+      font-size: var(--fs-sm);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .cv-bullet-item input:focus { border-color: var(--clr-accent); }
+
+    .cv-bullet-remove {
+      background: transparent; border: none;
+      color: var(--clr-error); cursor: pointer;
+      padding: 8px 6px; font-size: 1rem; flex-shrink: 0;
+    }
+
+    /* Tech chips */
+    .cv-chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-bottom: var(--sp-3); }
+
+    .cv-chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: var(--clr-accent-dim);
+      border: 1px solid rgba(0,255,136,0.2);
+      border-radius: 99px;
+      padding: 3px 10px;
+      font-size: var(--fs-xs); color: var(--clr-accent);
+      font-family: var(--font-body);
+    }
+
+    .cv-chip-remove {
+      background: none; border: none; cursor: pointer;
+      color: var(--clr-accent); font-size: 12px; padding: 0;
+      line-height: 1; opacity: 0.7;
+    }
+
+    .cv-chip-remove:hover { opacity: 1; }
+
+    /* Language cards */
+    .lang-option {
+      border: 2px solid var(--clr-border-dim);
+      border-radius: var(--radius-lg);
+      padding: var(--sp-5); margin-bottom: var(--sp-4);
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      display: flex; align-items: center; gap: var(--sp-4);
+    }
+
+    .lang-option:hover { border-color: var(--clr-border); }
+    .lang-option.selected { border-color: var(--clr-accent); background: var(--clr-accent-dim); }
+
+    .lang-option__flag { font-size: 2.5rem; }
+
+    .lang-option__title {
+      font-family: var(--font-display); font-weight: 700;
+      font-size: var(--fs-md);
+    }
+
+    .lang-option__sub { font-size: var(--fs-xs); color: var(--clr-text-3); }
+
+    .lang-option__check {
+      margin-left: auto; color: var(--clr-accent);
+      font-size: var(--fs-lg); display: none;
+    }
+
+    .lang-option.selected .lang-option__check { display: block; }
+
+    /* Empty state */
+    .cv-empty {
+      text-align: center; padding: var(--sp-12) var(--sp-8);
+      color: var(--clr-text-3);
+    }
+
+    .cv-empty__icon { font-size: 3rem; opacity: 0.3; margin-bottom: var(--sp-4); }
+    .cv-empty__text { font-size: var(--fs-sm); }
+
+    /* Skill level bar */
+    .skill-level {
+      display: flex; gap: 4px; margin-top: var(--sp-2);
+    }
+
+    .skill-level-dot {
+      width: 20px; height: 4px; border-radius: 2px;
+      background: var(--clr-border-dim); cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .skill-level-dot.filled { background: var(--clr-accent); }
+
+    /* Download PDF button */
+    #download-pdf-btn {
+      position: relative; overflow: hidden;
+    }
+
+    @media (max-width: 900px) {
+      .cv-layout { grid-template-columns: 1fr; }
+      .cv-preview { display: none; }
+    }
+
+    @media (max-width: 600px) {
+      .cv-field-row { grid-template-columns: 1fr; }
+      .cv-content { padding: var(--sp-5) var(--sp-4) var(--sp-20); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Top Bar ─────────────────────────────────────────── -->
+<header class="cv-topbar">
+  <div class="cv-topbar__brand">
+    <span>⚡</span> CV Builder
+    <span style="font-weight:400;color:var(--clr-text-3);font-family:var(--font-body);font-size:var(--fs-xs);">ATS-Ready</span>
+  </div>
+  <div class="cv-topbar__actions">
+    <a href="dashboard.html" class="btn btn--ghost btn--sm" style="text-decoration:none;">← Dashboard</a>
+    <button id="save-btn" class="btn btn--ghost btn--sm">Save</button>
+    <button id="download-pdf-btn" class="btn btn-primary btn--sm">⬇ Download PDF</button>
+  </div>
+</header>
+
+<!-- ── Completion Bar ──────────────────────────────────── -->
+<div class="cv-completion">
+  <span class="cv-completion__label">CV Completion</span>
+  <div class="cv-completion__bar">
+    <div class="cv-completion__fill" id="completion-fill" style="width:0%"></div>
+  </div>
+  <span class="cv-completion__pct" id="completion-pct">0%</span>
+</div>
+
+<!-- ── Step Indicator ─────────────────────────────────── -->
+<nav class="cv-steps" id="cv-steps" role="tablist" aria-label="CV Builder steps"></nav>
+
+<!-- ── Main Layout ────────────────────────────────────── -->
+<div class="cv-layout">
+
+  <!-- Left: Step Content -->
+  <main class="cv-content" id="cv-content">
+
+    <!-- Step 0: Language -->
+    <div class="cv-step-panel active" id="step-0">
+      <h2 class="cv-section-title">CV Language</h2>
+      <p class="cv-section-sub">Choose the language for your CV. Most international companies prefer English.</p>
+
+      <div class="ats-tip">
+        <div class="ats-tip__icon">💡</div>
+        <div>
+          <div class="ats-tip__title">ATS Tip</div>
+          <div class="ats-tip__text">ATS (Applicant Tracking System) automatically filters CVs before recruiters read them. This CV is designed to be 100% ATS-compatible.</div>
+        </div>
+      </div>
+
+      <div class="lang-option selected" data-lang="english" onclick="CVBuilder.setLanguage('english')">
+        <span class="lang-option__flag">🇬🇧</span>
+        <div>
+          <div class="lang-option__title">English CV</div>
+          <div class="lang-option__sub">Best for international companies and global opportunities</div>
+        </div>
+        <span class="lang-option__check">✓</span>
+      </div>
+
+      <div class="lang-option" data-lang="arabic" onclick="CVBuilder.setLanguage('arabic')">
+        <span class="lang-option__flag">🇸🇦</span>
+        <div>
+          <div class="lang-option__title">السيرة الذاتية العربية</div>
+          <div class="lang-option__sub">مناسب للشركات المحلية والحكومية</div>
+        </div>
+        <span class="lang-option__check">✓</span>
+      </div>
+    </div>
+
+    <!-- Step 1: Personal -->
+    <div class="cv-step-panel" id="step-1">
+      <h2 class="cv-section-title" id="s1-title">Personal Information</h2>
+      <p class="cv-section-sub" id="s1-sub">Your basic contact details. Keep them accurate and professional.</p>
+
+      <div class="cv-field-group">
+        <label class="cv-label" id="l-fullname">Full Name *</label>
+        <input class="cv-input" id="f-fullname" type="text" placeholder="Mohamed Reda Farag" oninput="CVBuilder.save()" />
+      </div>
+      <div class="cv-field-group">
+        <label class="cv-label" id="l-jobtitle">Job Title *</label>
+        <input class="cv-input" id="f-jobtitle" type="text" placeholder="Flutter Developer" oninput="CVBuilder.save()" />
+      </div>
+      <div class="cv-field-row">
+        <div class="cv-field-group">
+          <label class="cv-label" id="l-email">Email *</label>
+          <input class="cv-input" id="f-email" type="email" placeholder="email@example.com" oninput="CVBuilder.save()" />
+        </div>
+        <div class="cv-field-group">
+          <label class="cv-label" id="l-phone">Phone *</label>
+          <input class="cv-input" id="f-phone" type="tel" placeholder="+20 10 XXXX XXXX" oninput="CVBuilder.save()" />
+        </div>
+      </div>
+      <div class="cv-field-row">
+        <div class="cv-field-group">
+          <label class="cv-label" id="l-city">City</label>
+          <input class="cv-input" id="f-city" type="text" placeholder="Cairo" oninput="CVBuilder.save()" />
+        </div>
+        <div class="cv-field-group">
+          <label class="cv-label" id="l-country">Country</label>
+          <input class="cv-input" id="f-country" type="text" placeholder="Egypt" oninput="CVBuilder.save()" />
+        </div>
+      </div>
+
+      <div class="ats-tip" style="margin-top:var(--sp-4);">
+        <div class="ats-tip__icon">🔗</div>
+        <div>
+          <div class="ats-tip__title">Professional Links</div>
+          <div class="ats-tip__text">Adding links increases your chances by 40%. Include your Portfolio Generator link!</div>
+        </div>
+      </div>
+
+      <div class="cv-field-group">
+        <label class="cv-label">LinkedIn</label>
+        <input class="cv-input" id="f-linkedin" type="url" placeholder="linkedin.com/in/username" oninput="CVBuilder.save()" />
+      </div>
+      <div class="cv-field-group">
+        <label class="cv-label">GitHub</label>
+        <input class="cv-input" id="f-github" type="url" placeholder="github.com/username" oninput="CVBuilder.save()" />
+      </div>
+      <div class="cv-field-group">
+        <label class="cv-label" id="l-portfolio">Portfolio / Website</label>
+        <input class="cv-input" id="f-portfolio" type="url" placeholder="yourportfolio.com" oninput="CVBuilder.save()" />
+      </div>
+    </div>
+
+    <!-- Step 2: Summary -->
+    <div class="cv-step-panel" id="step-2">
+      <h2 class="cv-section-title" id="s2-title">Professional Summary</h2>
+      <p class="cv-section-sub" id="s2-sub">3-5 sentences highlighting your skills, experience, and goals. The first section ATS scans!</p>
+
+      <div class="ats-tip">
+        <div class="ats-tip__icon">✅</div>
+        <div>
+          <div class="ats-tip__title">ATS Tips for Summary</div>
+          <div class="ats-tip__text" id="summary-tips">
+            • Start with your job title and years of experience<br>
+            • Mention 2-3 key technical skills<br>
+            • Include a measurable achievement<br>
+            • Avoid generic phrases like "hard-working person"
+          </div>
+        </div>
+      </div>
+
+      <div class="cv-field-group">
+        <label class="cv-label" id="l-summary">Professional Summary</label>
+        <textarea class="cv-textarea" id="f-summary" rows="6" maxlength="600"
+          placeholder="e.g. Flutter developer with 2+ years building production apps. Expertise in Dart, Firebase, and clean architecture. Built EduMate — an education platform with 5,000+ users."
+          oninput="CVBuilder.save()"></textarea>
+        <div style="font-size:var(--fs-xs);color:var(--clr-text-3);text-align:right;" id="summary-count">0 / 600</div>
+      </div>
+    </div>
+
+    <!-- Step 3: Experience -->
+    <div class="cv-step-panel" id="step-3">
+      <h2 class="cv-section-title" id="s3-title">Work Experience</h2>
+      <p class="cv-section-sub">Add your work history. Use bullet points with measurable achievements.</p>
+
+      <div class="ats-tip">
+        <div class="ats-tip__icon">📊</div>
+        <div>
+          <div class="ats-tip__title">ATS Tip</div>
+          <div class="ats-tip__text">Use numbers: "Increased performance by 40%" ranks higher than "improved performance". Start bullets with action verbs: Built, Developed, Led, Increased.</div>
+        </div>
+      </div>
+
+      <div id="experience-list"></div>
+      <button class="cv-add-btn" onclick="CVBuilder.addExperience()">+ Add Work Experience</button>
+    </div>
+
+    <!-- Step 4: Education -->
+    <div class="cv-step-panel" id="step-4">
+      <h2 class="cv-section-title" id="s4-title">Education</h2>
+      <p class="cv-section-sub">Your academic background. Most recent first.</p>
+
+      <div id="education-list"></div>
+      <button class="cv-add-btn" onclick="CVBuilder.addEducation()">+ Add Education</button>
+    </div>
+
+    <!-- Step 5: Skills -->
+    <div class="cv-step-panel" id="step-5">
+      <h2 class="cv-section-title" id="s5-title">Skills</h2>
+      <p class="cv-section-sub">List your technical and soft skills. Match keywords from job postings.</p>
+
+      <div class="ats-tip">
+        <div class="ats-tip__icon">🎯</div>
+        <div>
+          <div class="ats-tip__title">ATS Keyword Matching</div>
+          <div class="ats-tip__text">Write skill names exactly as they appear in job postings: "React.js" not "React", "Node.js" not "Node".</div>
+        </div>
+      </div>
+
+      <div id="skills-list"></div>
+      <button class="cv-add-btn" onclick="CVBuilder.addSkill()">+ Add Skill</button>
+    </div>
+
+    <!-- Step 6: Projects -->
+    <div class="cv-step-panel" id="step-6">
+      <h2 class="cv-section-title" id="s6-title">Projects</h2>
+      <p class="cv-section-sub">Showcase your best work. Include your Portfolio Generator link!</p>
+
+      <div id="projects-list"></div>
+      <button class="cv-add-btn" onclick="CVBuilder.addProject()">+ Add Project</button>
+    </div>
+
+    <!-- Step 7: Extras -->
+    <div class="cv-step-panel" id="step-7">
+      <h2 class="cv-section-title" id="s7-title">Certifications & Languages</h2>
+      <p class="cv-section-sub">Add certifications and languages to stand out.</p>
+
+      <h3 style="font-size:var(--fs-md);font-weight:600;margin-bottom:var(--sp-4);" id="certs-title">📜 Certifications</h3>
+      <div id="certs-list"></div>
+      <button class="cv-add-btn" onclick="CVBuilder.addCertificate()" style="margin-bottom:var(--sp-8);">+ Add Certification</button>
+
+      <h3 style="font-size:var(--fs-md);font-weight:600;margin-bottom:var(--sp-4);" id="langs-title">🌐 Languages</h3>
+      <div id="langs-list"></div>
+      <button class="cv-add-btn" onclick="CVBuilder.addLanguage()">+ Add Language</button>
+    </div>
+
+  </main>
+
+  <!-- Right: ATS Preview -->
+  <aside class="cv-preview">
+    <div class="cv-preview__title">ATS Preview</div>
+    <div class="cv-doc" id="cv-preview-doc">
+      <div style="color:#aaa;font-size:11px;text-align:center;padding:40px 0;">
+        Start filling in your information to see your CV preview
+      </div>
+    </div>
+  </aside>
+
+</div>
+
+<!-- ── Bottom Nav ─────────────────────────────────────── -->
+<nav class="cv-bottom-nav">
+  <button id="prev-btn" class="btn btn--ghost btn--sm" onclick="CVBuilder.prevStep()" style="visibility:hidden;">← Back</button>
+  <span class="cv-bottom-nav__center" id="step-counter">1 / 8</span>
+  <button id="next-btn" class="btn btn-primary btn--sm" onclick="CVBuilder.nextStep()">Next →</button>
+</nav>
+
+<!-- ── Toast ──────────────────────────────────────────── -->
+<div class="toast-container" id="toast-container" aria-live="polite"></div>
+
+<!-- ── Scripts ────────────────────────────────────────── -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/app.js"></script>
+<script src="js/auth.js"></script>
+
+<script>
+;(function() {
+'use strict';
+
+// ════════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════════
+
+const STORAGE_KEY = 'pg_cv_data';
+const TOTAL_STEPS = 8;
+
+let _step = 0;
+let _cv = {
+  language: 'english',
+  personal: { fullName:'', jobTitle:'', email:'', phone:'', city:'', country:'', linkedIn:'', github:'', portfolio:'', summary:'' },
+  experience: [],
+  education: [],
+  skills: [],
+  projects: [],
+  certificates: [],
+  languages: [],
+};
+
+const STEPS_EN = ['Language','Personal','Summary','Experience','Education','Skills','Projects','Extras'];
+const STEPS_AR = ['اللغة','البيانات','الملخص','الخبرات','التعليم','المهارات','المشاريع','إضافات'];
+
+const SKILL_CATS_EN = ['Programming Languages','Frameworks & Libraries','Databases','Cloud & DevOps','Design','Soft Skills','Other'];
+const SKILL_CATS_AR = ['لغات البرمجة','الأطر والمكتبات','قواعد البيانات','السحابة','التصميم','المهارات الشخصية','أخرى'];
+
+const PROF_EN = ['Elementary','Limited Working','Professional','Full Professional','Native / Bilingual'];
+const PROF_AR = ['أساسية','محدودة','احترافية','احترافية كاملة','اللغة الأم'];
+
+const SKILL_LEVELS_EN = ['Beginner','Intermediate','Advanced','Expert'];
+const SKILL_LEVELS_AR = ['مبتدئ','متوسط','متقدم','خبير'];
+
+// ════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════
+
+function init() {
+  // Load saved data
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) _cv = JSON.parse(saved);
+  } catch {}
+
+  // Pre-fill portfolio link from portfolio generator
+  if (!_cv.personal.portfolio) {
+    try {
+      const draft = JSON.parse(sessionStorage.getItem('pg_portfolio_draft') || '{}');
+      if (draft.githubUsername) {
+        _cv.personal.portfolio = `${location.origin}/portfolio.html?slug=${draft.githubUsername}`;
+        _cv.personal.fullName  = _cv.personal.fullName  || draft.fullName || '';
+        _cv.personal.jobTitle  = _cv.personal.jobTitle  || draft.jobTitle || '';
+        _cv.personal.github    = _cv.personal.github    || (draft.githubUsername ? `github.com/${draft.githubUsername}` : '');
+      }
+    } catch {}
+  }
+
+  _buildStepIndicator();
+  _renderCurrentStep();
+  _updateCompletion();
+  _renderPreview();
+}
+
+// ════════════════════════════════════════════════════
+// STEP NAVIGATION
+// ════════════════════════════════════════════════════
+
+function _buildStepIndicator() {
+  const steps = _cv.language === 'arabic' ? STEPS_AR : STEPS_EN;
+  const nav = document.getElementById('cv-steps');
+  nav.innerHTML = steps.map((label, i) => `
+    <button
+      class="cv-step-btn ${i === _step ? 'active' : i < _step ? 'done' : ''}"
+      onclick="CVBuilder.goToStep(${i})"
+      role="tab"
+      aria-selected="${i === _step}"
+    >
+      <span class="step-num">${i+1}</span>
+      <span class="step-check">✓</span>
+      ${label}
+    </button>
+  `).join('');
+}
+
+function goToStep(n) {
+  _readCurrentStep();
+  _step = n;
+  _renderCurrentStep();
+  _buildStepIndicator();
+  _updateBottomNav();
+  window.scrollTo({ top: 0 });
+}
+
+function nextStep() {
+  _readCurrentStep();
+  if (_step < TOTAL_STEPS - 1) goToStep(_step + 1);
+}
+
+function prevStep() {
+  _readCurrentStep();
+  if (_step > 0) goToStep(_step - 1);
+}
+
+function _updateBottomNav() {
+  document.getElementById('prev-btn').style.visibility = _step > 0 ? 'visible' : 'hidden';
+  const nextBtn = document.getElementById('next-btn');
+  if (_step === TOTAL_STEPS - 1) {
+    nextBtn.textContent = '✓ Save & Finish';
+    nextBtn.onclick = () => { CVBuilder.save(); window.toast?.('CV saved! ✓', 'success'); setTimeout(() => location.href = 'dashboard.html', 1200); };
+  } else {
+    nextBtn.textContent = 'Next →';
+    nextBtn.onclick = CVBuilder.nextStep;
+  }
+  document.getElementById('step-counter').textContent = `${_step + 1} / ${TOTAL_STEPS}`;
+}
+
+// ════════════════════════════════════════════════════
+// RENDER STEPS
+// ════════════════════════════════════════════════════
+
+function _renderCurrentStep() {
+  document.querySelectorAll('.cv-step-panel').forEach((p, i) => {
+    p.classList.toggle('active', i === _step);
+  });
+
+  const isAr = _cv.language === 'arabic';
+
+  // Populate fields from state
+  if (_step === 0) _renderStep0();
+  if (_step === 1) _renderStep1(isAr);
+  if (_step === 2) _renderStep2(isAr);
+  if (_step === 3) _renderExperienceList();
+  if (_step === 4) _renderEducationList();
+  if (_step === 5) _renderSkillsList();
+  if (_step === 6) _renderProjectsList();
+  if (_step === 7) _renderExtras();
+
+  _updateBottomNav();
+  _renderPreview();
+}
+
+function _renderStep0() {
+  document.querySelectorAll('.lang-option').forEach(el => {
+    el.classList.toggle('selected', el.dataset.lang === _cv.language);
+  });
+}
+
+function _renderStep1(isAr) {
+  const p = _cv.personal;
+  const $ = id => document.getElementById(id);
+  $('f-fullname').value  = p.fullName  || '';
+  $('f-jobtitle').value  = p.jobTitle  || '';
+  $('f-email').value     = p.email     || '';
+  $('f-phone').value     = p.phone     || '';
+  $('f-city').value      = p.city      || '';
+  $('f-country').value   = p.country   || '';
+  $('f-linkedin').value  = p.linkedIn  || '';
+  $('f-github').value    = p.github    || '';
+  $('f-portfolio').value = p.portfolio || '';
+
+  if (isAr) {
+    document.getElementById('s1-title').textContent  = 'البيانات الشخصية';
+    document.getElementById('l-fullname').textContent = 'الاسم الكامل *';
+    document.getElementById('l-jobtitle').textContent = 'المسمى الوظيفي *';
+    document.getElementById('l-email').textContent    = 'البريد الإلكتروني *';
+    document.getElementById('l-phone').textContent    = 'رقم الهاتف *';
+    document.getElementById('l-city').textContent     = 'المدينة';
+    document.getElementById('l-country').textContent  = 'الدولة';
+    document.getElementById('l-portfolio').textContent = 'الموقع الشخصي / البورتفوليو';
+  }
+}
+
+function _renderStep2(isAr) {
+  const el = document.getElementById('f-summary');
+  el.value = _cv.personal.summary || '';
+  _updateSummaryCount();
+  if (isAr) {
+    document.getElementById('s2-title').textContent = 'الملخص المهني';
+    el.placeholder = 'مطور Flutter بخبرة سنتين... اكتب ملخصك هنا';
+    document.getElementById('summary-tips').innerHTML =
+      '• ابدأ بالمسمى الوظيفي وسنوات الخبرة<br>• اذكر 2-3 مهارات رئيسية<br>• أضف إنجازاً قابلاً للقياس<br>• تجنب "شخص مجتهد ومتحمس"';
+  }
+}
+
+function _updateSummaryCount() {
+  const el = document.getElementById('f-summary');
+  if (el) document.getElementById('summary-count').textContent = `${el.value.length} / 600`;
+}
+
+// ════════════════════════════════════════════════════
+// READ FROM DOM
+// ════════════════════════════════════════════════════
+
+function _readCurrentStep() {
+  const $ = id => document.getElementById(id);
+  if (_step === 1) {
+    _cv.personal.fullName  = $('f-fullname')?.value?.trim() || '';
+    _cv.personal.jobTitle  = $('f-jobtitle')?.value?.trim() || '';
+    _cv.personal.email     = $('f-email')?.value?.trim()    || '';
+    _cv.personal.phone     = $('f-phone')?.value?.trim()    || '';
+    _cv.personal.city      = $('f-city')?.value?.trim()     || '';
+    _cv.personal.country   = $('f-country')?.value?.trim()  || '';
+    _cv.personal.linkedIn  = $('f-linkedin')?.value?.trim() || '';
+    _cv.personal.github    = $('f-github')?.value?.trim()   || '';
+    _cv.personal.portfolio = $('f-portfolio')?.value?.trim()|| '';
+  }
+  if (_step === 2) {
+    _cv.personal.summary = $('f-summary')?.value?.trim() || '';
+  }
+}
+
+// ════════════════════════════════════════════════════
+// LANGUAGE
+// ════════════════════════════════════════════════════
+
+function setLanguage(lang) {
+  _cv.language = lang;
+  document.querySelectorAll('.lang-option').forEach(el => {
+    el.classList.toggle('selected', el.dataset.lang === lang);
+  });
+  document.documentElement.dir  = lang === 'arabic' ? 'rtl' : 'ltr';
+  document.documentElement.lang = lang === 'arabic' ? 'ar'  : 'en';
+  _buildStepIndicator();
+  save();
+}
+
+// ════════════════════════════════════════════════════
+// EXPERIENCE
+// ════════════════════════════════════════════════════
+
+function addExperience() {
+  _cv.experience.push({
+    id: Date.now(),
+    jobTitle:'', company:'', city:'', country:'',
+    startDate:'', endDate:'', isCurrent:false,
+    responsibilities:[],
+  });
+  _renderExperienceList();
+  save();
+}
+
+function _renderExperienceList() {
+  const isAr = _cv.language === 'arabic';
+  const container = document.getElementById('experience-list');
+  if (!container) return;
+
+  if (!_cv.experience.length) {
+    container.innerHTML = `<div class="cv-empty"><div class="cv-empty__icon">💼</div><div class="cv-empty__text">${isAr ? 'لا توجد خبرات. اضغط "إضافة"' : 'No experience added yet. Click "Add" below.'}</div></div>`;
+    return;
+  }
+
+  container.innerHTML = _cv.experience.map((exp, i) => `
+    <div class="cv-card" data-exp-id="${exp.id}">
+      <div class="cv-card__header" onclick="toggleCard(this)">
+        <span class="cv-card__title">${exp.jobTitle || (isAr ? 'خبرة جديدة' : 'New Experience')}${exp.company ? ' — ' + exp.company : ''}</span>
+        <div class="cv-card__actions">
+          <button class="cv-card-delete" onclick="CVBuilder.removeExperience(${exp.id});event.stopPropagation()">🗑</button>
+          <button class="cv-card-toggle">▾</button>
+        </div>
+      </div>
+      <div class="cv-card__body">
+        <div class="cv-field-row">
+          <div class="cv-field-group">
+            <label class="cv-label">${isAr?'المسمى الوظيفي *':'Job Title *'}</label>
+            <input class="cv-input" value="${_esc(exp.jobTitle)}" oninput="CVBuilder.updateExp(${exp.id},'jobTitle',this.value)" placeholder="${isAr?'مطور Flutter':'Flutter Developer'}" />
+          </div>
+          <div class="cv-field-group">
+            <label class="cv-label">${isAr?'اسم الشركة *':'Company *'}</label>
+            <input class="cv-input" value="${_esc(exp.company)}" oninput="CVBuilder.updateExp(${exp.id},'company',this.value)" placeholder="${isAr?'شركة التقنية':'Tech Company'}" />
+          </div>
+        </div>
+        <div class="cv-field-row">
+          <div class="cv-field-group">
+            <label class="cv-label">${isAr?'المدينة':'City'}</label>
+            <input class="cv-input" value="${_esc(exp.city)}" oninput="CVBuilder.updateExp(${exp.id},'city',this.value)" placeholder="${isAr?'القاهرة':'Cairo'}" />
+          </div>
+          <div class="cv-field-group">
+            <label class="cv-label">${isAr?'الدولة':'Country'}</label>
+            <input class="cv-input" value="${_esc(exp.country)}" oninput="CVBuilder.updateExp(${exp.id},'country',this.value)" placeholder="Egypt" />
+          </div>
+        </div>
+        <div class="cv-field-row">
+          <div class="cv-field-group">
+            <label class="cv-label">${isAr?'من':'Start Date'}</label>
+            <input class="cv-input" value="${_esc(exp.startDate)}" oninput="CVBuilder.updateExp(${exp.id},'startDate',this.value)" placeholder="MM/YYYY" />
+          </div>
+          <div class="cv-field-group">
+            <label class="cv-label">${isAr?'إلى':'End Date'}</label>
+            <input class="cv-input" value="${_esc(exp.endDate)}" oninput="CVBuilder.updateExp(${exp.id},'endDate',this.value)" placeholder="MM/YYYY" ${exp.isCurrent?'disabled':''} />
+          </div>
+        </div>
+        <div class="cv-checkbox-row">
+          <input type="checkbox" id="curr-${exp.id}" ${exp.isCurrent?'checked':''} onchange="CVBuilder.updateExp(${exp.id},'isCurrent',this.checked);CVBuilder.updateExp(${exp.id},'endDate',this.checked?'':document.querySelector('[data-exp-id=\\'${exp.id}\\'] .cv-card__body .cv-field-row:nth-child(3) .cv-field-group:nth-child(2) input').value)" />
+          <label for="curr-${exp.id}">${isAr?'أعمل هنا حالياً':'I currently work here'}</label>
+        </div>
+        <div class="cv-bullet-list" id="resp-${exp.id}">
+          <label class="cv-label" style="display:block;margin-bottom:var(--sp-2);">${isAr?'المهام والمسؤوليات':'Responsibilities'}</label>
+          ${(exp.responsibilities||[]).map((r,ri) => `
+            <div class="cv-bullet-item">
+              <input value="${_esc(r)}" placeholder="${isAr?'مثال: طورت تطبيق Flutter...':'e.g. Built Flutter app with 50k+ users'}" oninput="CVBuilder.updateResp(${exp.id},${ri},this.value)" />
+              <button class="cv-bullet-remove" onclick="CVBuilder.removeResp(${exp.id},${ri})">×</button>
+            </div>
+          `).join('')}
+          <button class="cv-add-btn" style="margin-top:var(--sp-2);" onclick="CVBuilder.addResp(${exp.id})">+ ${isAr?'إضافة مهمة':'Add Responsibility'}</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function updateExp(id, field, val) {
+  const exp = _cv.experience.find(e => e.id == id);
+  if (exp) { exp[field] = val; save(); _renderPreview(); }
+}
+
+function removeExperience(id) {
+  _cv.experience = _cv.experience.filter(e => e.id != id);
+  _renderExperienceList(); save();
+}
+
+function addResp(expId) {
+  const exp = _cv.experience.find(e => e.id == expId);
+  if (exp) { exp.responsibilities.push(''); _renderExperienceList(); save(); }
+}
+
+function updateResp(expId, idx, val) {
+  const exp = _cv.experience.find(e => e.id == expId);
+  if (exp) { exp.responsibilities[idx] = val; save(); _renderPreview(); }
+}
+
+function removeResp(expId, idx) {
+  const exp = _cv.experience.find(e => e.id == expId);
+  if (exp) { exp.responsibilities.splice(idx, 1); _renderExperienceList(); save(); }
+}
+
+// ════════════════════════════════════════════════════
+// EDUCATION
+// ════════════════════════════════════════════════════
+
+function addEducation() {
+  _cv.education.push({ id:Date.now(), degree:'', major:'', institution:'', city:'', country:'', startDate:'', endDate:'', gpa:'', achievements:[] });
+  _renderEducationList(); save();
+}
+
+function _renderEducationList() {
+  const isAr = _cv.language === 'arabic';
+  const container = document.getElementById('education-list');
+  if (!container) return;
+  if (!_cv.education.length) {
+    container.innerHTML = `<div class="cv-empty"><div class="cv-empty__icon">🎓</div><div class="cv-empty__text">${isAr?'لا يوجد تعليم. اضغط "إضافة"':'No education added yet.'}</div></div>`;
+    return;
+  }
+  container.innerHTML = _cv.education.map(edu => `
+    <div class="cv-card">
+      <div class="cv-card__header" onclick="toggleCard(this)">
+        <span class="cv-card__title">${edu.institution || (isAr?'مؤسسة تعليمية':'New Institution')}</span>
+        <div class="cv-card__actions">
+          <button class="cv-card-delete" onclick="CVBuilder.removeEducation(${edu.id});event.stopPropagation()">🗑</button>
+          <button class="cv-card-toggle">▾</button>
+        </div>
+      </div>
+      <div class="cv-card__body">
+        <div class="cv-field-row">
+          <div class="cv-field-group">
+            <label class="cv-label">${isAr?'الدرجة العلمية *':'Degree *'}</label>
+            <input class="cv-input" value="${_esc(edu.degree)}" oninput="CVBuilder.updateEdu(${edu.id},'degree',this.value)" placeholder="${isAr?'بكالوريوس':'Bachelor of Science'}" />
+          </div>
+          <div class="cv-field-group">
+            <label class="cv-label">${isAr?'التخصص *':'Major *'}</label>
+            <input class="cv-input" value="${_esc(edu.major)}" oninput="CVBuilder.updateEdu(${edu.id},'major',this.value)" placeholder="${isAr?'علوم الحاسب':'Computer Science'}" />
+          </div>
+        </div>
+        <div class="cv-field-group">
+          <label class="cv-label">${isAr?'اسم الجامعة *':'University *'}</label>
+          <input class="cv-input" value="${_esc(edu.institution)}" oninput="CVBuilder.updateEdu(${edu.id},'institution',this.value)" placeholder="${isAr?'جامعة القاهرة':'Cairo University'}" />
+        </div>
+        <div class="cv-field-row">
+          <div class="cv-field-group">
+            <label class="cv-label">${isAr?'من':'From'}</label>
+            <input class="cv-input" value="${_esc(edu.startDate)}" oninput="CVBuilder.updateEdu(${edu.id},'startDate',this.value)" placeholder="MM/YYYY" />
+          </div>
+          <div class="cv-field-group">
+            <label class="cv-label">${isAr?'إلى':'To'}</label>
+            <input class="cv-input" value="${_esc(edu.endDate)}" oninput="CVBuilder.updateEdu(${edu.id},'endDate',this.value)" placeholder="MM/YYYY" />
+          </div>
+        </div>
+        <div class="cv-field-group">
+          <label class="cv-label">${isAr?'المعدل (اختياري)':'GPA (optional)'}</label>
+          <input class="cv-input" value="${_esc(edu.gpa)}" oninput="CVBuilder.updateEdu(${edu.id},'gpa',this.value)" placeholder="3.8 / 4.0" />
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function updateEdu(id, field, val) {
+  const edu = _cv.education.find(e => e.id == id);
+  if (edu) { edu[field] = val; save(); _renderPreview(); }
+}
+
+function removeEducation(id) {
+  _cv.education = _cv.education.filter(e => e.id != id);
+  _renderEducationList(); save();
+}
+
+// ════════════════════════════════════════════════════
+// SKILLS
+// ════════════════════════════════════════════════════
+
+function addSkill() {
+  _cv.skills.push({ id:Date.now(), name:'', level:2, category:'' });
+  _renderSkillsList(); save();
+}
+
+function _renderSkillsList() {
+  const isAr = _cv.language === 'arabic';
+  const cats  = isAr ? SKILL_CATS_AR : SKILL_CATS_EN;
+  const levels = isAr ? SKILL_LEVELS_AR : SKILL_LEVELS_EN;
+  const container = document.getElementById('skills-list');
+  if (!container) return;
+  if (!_cv.skills.length) {
+    container.innerHTML = `<div class="cv-empty"><div class="cv-empty__icon">⚡</div><div class="cv-empty__text">${isAr?'لا توجد مهارات':'No skills added yet.'}</div></div>`;
+    return;
+  }
+  container.innerHTML = _cv.skills.map(sk => `
+    <div class="cv-card" style="padding:var(--sp-4);">
+      <div style="display:flex;gap:var(--sp-3);align-items:flex-start;">
+        <div style="flex:1;">
+          <input class="cv-input" value="${_esc(sk.name)}" placeholder="${isAr?'Flutter, Python, React...':'Flutter, Python, React...'}" oninput="CVBuilder.updateSkill(${sk.id},'name',this.value)" style="margin-bottom:var(--sp-2);" />
+          <div style="display:flex;gap:var(--sp-3);">
+            <select class="cv-select" style="flex:1;" onchange="CVBuilder.updateSkill(${sk.id},'category',this.value)">
+              ${cats.map(c => `<option value="${c}" ${sk.category===c?'selected':''}>${c}</option>`).join('')}
+            </select>
+            <select class="cv-select" style="flex:1;" onchange="CVBuilder.updateSkill(${sk.id},'level',parseInt(this.value))">
+              ${levels.map((l,i) => `<option value="${i}" ${sk.level===i?'selected':''}>${l}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <button class="cv-card-delete" onclick="CVBuilder.removeSkill(${sk.id})">🗑</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function updateSkill(id, field, val) {
+  const sk = _cv.skills.find(s => s.id == id);
+  if (sk) { sk[field] = val; save(); _renderPreview(); }
+}
+
+function removeSkill(id) {
+  _cv.skills = _cv.skills.filter(s => s.id != id);
+  _renderSkillsList(); save();
+}
+
+// ════════════════════════════════════════════════════
+// PROJECTS
+// ════════════════════════════════════════════════════
+
+function addProject() {
+  _cv.projects.push({ id:Date.now(), name:'', description:'', technologies:[], link:'', startDate:'', endDate:'' });
+  _renderProjectsList(); save();
+}
+
+function _renderProjectsList() {
+  const isAr = _cv.language === 'arabic';
+  const container = document.getElementById('projects-list');
+  if (!container) return;
+  if (!_cv.projects.length) {
+    container.innerHTML = `<div class="cv-empty"><div class="cv-empty__icon">🚀</div><div class="cv-empty__text">${isAr?'لا توجد مشاريع':'No projects added yet.'}</div></div>`;
+    return;
+  }
+  container.innerHTML = _cv.projects.map(proj => `
+    <div class="cv-card">
+      <div class="cv-card__header" onclick="toggleCard(this)">
+        <span class="cv-card__title">${proj.name || (isAr?'مشروع جديد':'New Project')}</span>
+        <div class="cv-card__actions">
+          <button class="cv-card-delete" onclick="CVBuilder.removeProject(${proj.id});event.stopPropagation()">🗑</button>
+          <button class="cv-card-toggle">▾</button>
+        </div>
+      </div>
+      <div class="cv-card__body">
+        <div class="cv-field-group">
+          <label class="cv-label">${isAr?'اسم المشروع *':'Project Name *'}</label>
+          <input class="cv-input" value="${_esc(proj.name)}" oninput="CVBuilder.updateProject(${proj.id},'name',this.value)" placeholder="${isAr?'تطبيق التعلم':'Learning App'}" />
+        </div>
+        <div class="cv-field-group">
+          <label class="cv-label">${isAr?'وصف المشروع':'Description'}</label>
+          <textarea class="cv-textarea" rows="3" oninput="CVBuilder.updateProject(${proj.id},'description',this.value)" placeholder="${isAr?'صف المشروع وتأثيره...':'Describe the project and its impact...'}">${_esc(proj.description)}</textarea>
+        </div>
+        <div class="cv-field-group">
+          <label class="cv-label">${isAr?'التقنيات المستخدمة':'Technologies'}</label>
+          <div class="cv-chips" id="tech-chips-${proj.id}">
+            ${(proj.technologies||[]).map(t => `
+              <span class="cv-chip">${_esc(t)}<button class="cv-chip-remove" onclick="CVBuilder.removeTech(${proj.id},'${_esc(t)}')">×</button></span>
+            `).join('')}
+          </div>
+          <div style="display:flex;gap:var(--sp-2);">
+            <input class="cv-input" id="tech-input-${proj.id}" placeholder="${isAr?'مثال: Flutter':'e.g. Flutter'}" onkeydown="if(event.key==='Enter'){CVBuilder.addTech(${proj.id});event.preventDefault();}" />
+            <button class="btn btn--ghost btn--sm" onclick="CVBuilder.addTech(${proj.id})">+</button>
+          </div>
+        </div>
+        <div class="cv-field-row">
+          <div class="cv-field-group">
+            <label class="cv-label">${isAr?'من':'From'}</label>
+            <input class="cv-input" value="${_esc(proj.startDate)}" oninput="CVBuilder.updateProject(${proj.id},'startDate',this.value)" placeholder="MM/YYYY" />
+          </div>
+          <div class="cv-field-group">
+            <label class="cv-label">${isAr?'إلى':'To'}</label>
+            <input class="cv-input" value="${_esc(proj.endDate)}" oninput="CVBuilder.updateProject(${proj.id},'endDate',this.value)" placeholder="MM/YYYY" />
+          </div>
+        </div>
+        <div class="cv-field-group">
+          <label class="cv-label">${isAr?'رابط المشروع':'Project Link'}</label>
+          <input class="cv-input" value="${_esc(proj.link)}" oninput="CVBuilder.updateProject(${proj.id},'link',this.value)" placeholder="github.com/user/project" />
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function updateProject(id, field, val) {
+  const p = _cv.projects.find(x => x.id == id);
+  if (p) { p[field] = val; save(); _renderPreview(); }
+}
+
+function removeProject(id) {
+  _cv.projects = _cv.projects.filter(p => p.id != id);
+  _renderProjectsList(); save();
+}
+
+function addTech(projId) {
+  const input = document.getElementById(`tech-input-${projId}`);
+  const val   = input?.value?.trim();
+  if (!val) return;
+  const p = _cv.projects.find(x => x.id == projId);
+  if (p && !p.technologies.includes(val)) {
+    p.technologies.push(val);
+    input.value = '';
+    _renderProjectsList(); save();
+  }
+}
+
+function removeTech(projId, tech) {
+  const p = _cv.projects.find(x => x.id == projId);
+  if (p) { p.technologies = p.technologies.filter(t => t !== tech); _renderProjectsList(); save(); }
+}
+
+// ════════════════════════════════════════════════════
+// EXTRAS (Certificates + Languages)
+// ════════════════════════════════════════════════════
+
+function addCertificate() {
+  _cv.certificates.push({ id:Date.now(), name:'', issuer:'', issueDate:'', expiryDate:'', credentialId:'' });
+  _renderExtras(); save();
+}
+
+function addLanguage() {
+  _cv.languages.push({ id:Date.now(), language:'', proficiency:2 });
+  _renderExtras(); save();
+}
+
+function _renderExtras() {
+  const isAr = _cv.language === 'arabic';
+  const profs = isAr ? PROF_AR : PROF_EN;
+
+  // Certs
+  const certsEl = document.getElementById('certs-list');
+  if (certsEl) {
+    certsEl.innerHTML = _cv.certificates.length ? _cv.certificates.map(cert => `
+      <div class="cv-card" style="padding:var(--sp-4);">
+        <div style="display:flex;justify-content:space-between;margin-bottom:var(--sp-3);">
+          <span style="font-size:var(--fs-sm);font-weight:600;">${cert.name || (isAr?'شهادة جديدة':'New Certificate')}</span>
+          <button class="cv-card-delete" onclick="CVBuilder.removeCert(${cert.id})">🗑</button>
+        </div>
+        <div class="cv-field-row">
+          <div class="cv-field-group">
+            <label class="cv-label">${isAr?'اسم الشهادة *':'Certificate Name *'}</label>
+            <input class="cv-input" value="${_esc(cert.name)}" oninput="CVBuilder.updateCert(${cert.id},'name',this.value)" placeholder="Flutter Dev Certificate" />
+          </div>
+          <div class="cv-field-group">
+            <label class="cv-label">${isAr?'الجهة المانحة *':'Issuer *'}</label>
+            <input class="cv-input" value="${_esc(cert.issuer)}" oninput="CVBuilder.updateCert(${cert.id},'issuer',this.value)" placeholder="Google, Udemy..." />
+          </div>
+        </div>
+        <div class="cv-field-row">
+          <div class="cv-field-group">
+            <label class="cv-label">${isAr?'تاريخ الإصدار':'Issue Date'}</label>
+            <input class="cv-input" value="${_esc(cert.issueDate)}" oninput="CVBuilder.updateCert(${cert.id},'issueDate',this.value)" placeholder="MM/YYYY" />
+          </div>
+          <div class="cv-field-group">
+            <label class="cv-label">${isAr?'رقم الاعتماد (اختياري)':'Credential ID (optional)'}</label>
+            <input class="cv-input" value="${_esc(cert.credentialId)}" oninput="CVBuilder.updateCert(${cert.id},'credentialId',this.value)" placeholder="ABC123" />
+          </div>
+        </div>
+      </div>
+    `).join('') : `<div class="cv-empty"><div class="cv-empty__icon">📜</div><div class="cv-empty__text">${isAr?'لا توجد شهادات':'No certifications added.'}</div></div>`;
+  }
+
+  // Languages
+  const langsEl = document.getElementById('langs-list');
+  if (langsEl) {
+    langsEl.innerHTML = _cv.languages.length ? _cv.languages.map(lang => `
+      <div class="cv-card" style="padding:var(--sp-4);">
+        <div style="display:flex;gap:var(--sp-3);align-items:center;">
+          <input class="cv-input" style="flex:1;" value="${_esc(lang.language)}" oninput="CVBuilder.updateLang(${lang.id},'language',this.value)" placeholder="${isAr?'العربية':'Arabic'}" />
+          <select class="cv-select" style="flex:1;" onchange="CVBuilder.updateLang(${lang.id},'proficiency',parseInt(this.value))">
+            ${profs.map((p,i) => `<option value="${i}" ${lang.proficiency===i?'selected':''}>${p}</option>`).join('')}
+          </select>
+          <button class="cv-card-delete" onclick="CVBuilder.removeLang(${lang.id})">🗑</button>
+        </div>
+      </div>
+    `).join('') : `<div class="cv-empty"><div class="cv-empty__icon">🌐</div><div class="cv-empty__text">${isAr?'لا توجد لغات':'No languages added.'}</div></div>`;
+  }
+}
+
+function updateCert(id, f, v) { const c = _cv.certificates.find(x=>x.id==id); if(c){c[f]=v;save();_renderPreview();} }
+function removeCert(id) { _cv.certificates = _cv.certificates.filter(x=>x.id!=id); _renderExtras(); save(); }
+function updateLang(id, f, v) { const l = _cv.languages.find(x=>x.id==id); if(l){l[f]=v;save();_renderPreview();} }
+function removeLang(id) { _cv.languages = _cv.languages.filter(x=>x.id!=id); _renderExtras(); save(); }
+
+// ════════════════════════════════════════════════════
+// COMPLETION
+// ════════════════════════════════════════════════════
+
+function _updateCompletion() {
+  const p = _cv.personal;
+  let filled = 0;
+  if (p.fullName) filled++;
+  if (p.summary)  filled++;
+  if (_cv.experience.length) filled++;
+  if (_cv.education.length)  filled++;
+  if (_cv.skills.length)     filled++;
+  if (_cv.projects.length)   filled++;
+  if (_cv.certificates.length) filled++;
+  if (_cv.languages.length)  filled++;
+  const pct = Math.round((filled / 8) * 100);
+  document.getElementById('completion-fill').style.width = pct + '%';
+  document.getElementById('completion-pct').textContent  = pct + '%';
+}
+
+// ════════════════════════════════════════════════════
+// ATS PREVIEW
+// ════════════════════════════════════════════════════
+
+function _renderPreview() {
+  _updateCompletion();
+  const isAr = _cv.language === 'arabic';
+  const p = _cv.personal;
+  const profs = isAr ? PROF_AR : PROF_EN;
+  const doc = document.getElementById('cv-preview-doc');
+  if (!doc) return;
+
+  const contact = [p.email, p.phone, [p.city,p.country].filter(Boolean).join(', ')].filter(Boolean).join(' | ');
+  const links   = [p.linkedIn, p.github, p.portfolio].filter(Boolean).join(' | ');
+
+  let html = '';
+
+  if (p.fullName) html += `<div class="cv-doc__name">${_esc(p.fullName)}</div>`;
+  if (p.jobTitle) html += `<div class="cv-doc__title">${_esc(p.jobTitle)}</div>`;
+  if (contact)    html += `<div class="cv-doc__contact">${_esc(contact)}</div>`;
+  if (links)      html += `<div class="cv-doc__contact">${_esc(links)}</div>`;
+
+  if (p.fullName || p.jobTitle) html += `<div class="cv-doc__divider"></div>`;
+
+  if (p.summary) {
+    html += `<div class="cv-doc__section-title">${isAr?'الملخص المهني':'PROFESSIONAL SUMMARY'}</div>`;
+    html += `<div class="cv-doc__text">${_esc(p.summary)}</div>`;
+  }
+
+  if (_cv.experience.length) {
+    html += `<div class="cv-doc__section-title">${isAr?'الخبرة العملية':'WORK EXPERIENCE'}</div>`;
+    _cv.experience.forEach(exp => {
+      const end = exp.isCurrent ? (isAr?'حتى الآن':'Present') : exp.endDate;
+      const dates = [exp.startDate, end].filter(Boolean).join(' - ');
+      const loc = [exp.city,exp.country].filter(Boolean).join(', ');
+      html += `<div class="cv-doc__entry">`;
+      html += `<div class="cv-doc__entry-header"><span class="cv-doc__entry-name">${_esc(exp.jobTitle)}</span><span class="cv-doc__entry-date">${_esc(dates)}</span></div>`;
+      html += `<div class="cv-doc__entry-header"><span class="cv-doc__entry-sub">${_esc(exp.company)}</span><span class="cv-doc__entry-date">${_esc(loc)}</span></div>`;
+      (exp.responsibilities||[]).forEach(r => { if(r) html += `<div class="cv-doc__bullet">${_esc(r)}</div>`; });
+      html += `</div>`;
+    });
+  }
+
+  if (_cv.education.length) {
+    html += `<div class="cv-doc__section-title">${isAr?'التعليم':'EDUCATION'}</div>`;
+    _cv.education.forEach(edu => {
+      const dates = [edu.startDate, edu.endDate].filter(Boolean).join(' - ');
+      const loc   = [edu.city, edu.country].filter(Boolean).join(', ');
+      html += `<div class="cv-doc__entry">`;
+      html += `<div class="cv-doc__entry-header"><span class="cv-doc__entry-name">${_esc([edu.degree, edu.major].filter(Boolean).join(' in '))}</span><span class="cv-doc__entry-date">${_esc(dates)}</span></div>`;
+      html += `<div class="cv-doc__entry-header"><span class="cv-doc__entry-sub">${_esc(edu.institution)}</span><span class="cv-doc__entry-date">${_esc(loc)}</span></div>`;
+      if(edu.gpa) html += `<div class="cv-doc__text">GPA: ${_esc(edu.gpa)}</div>`;
+      html += `</div>`;
+    });
+  }
+
+  if (_cv.skills.length) {
+    html += `<div class="cv-doc__section-title">${isAr?'المهارات':'SKILLS'}</div>`;
+    const grouped = {};
+    _cv.skills.forEach(s => {
+      const cat = s.category || (isAr?'عام':'General');
+      (grouped[cat] = grouped[cat] || []).push(s.name);
+    });
+    Object.entries(grouped).forEach(([cat, names]) => {
+      html += `<div class="cv-doc__skills-row"><strong>${_esc(cat)}:</strong> ${_esc(names.join(' / '))}</div>`;
+    });
+  }
+
+  if (_cv.projects.length) {
+    html += `<div class="cv-doc__section-title">${isAr?'المشاريع':'PROJECTS'}</div>`;
+    _cv.projects.forEach(proj => {
+      const dates = [proj.startDate, proj.endDate].filter(Boolean).join(' - ');
+      html += `<div class="cv-doc__entry">`;
+      html += `<div class="cv-doc__entry-header"><span class="cv-doc__entry-name">${_esc(proj.name)}</span><span class="cv-doc__entry-date">${_esc(dates)}</span></div>`;
+      if(proj.description) html += `<div class="cv-doc__text">${_esc(proj.description)}</div>`;
+      if(proj.technologies?.length) html += `<div class="cv-doc__text" style="font-style:italic;color:#888;">${isAr?'التقنيات:':'Tech:'} ${_esc(proj.technologies.join(', '))}</div>`;
+      if(proj.link) html += `<div class="cv-doc__text" style="color:#2a5ab0;">${_esc(proj.link)}</div>`;
+      html += `</div>`;
+    });
+  }
+
+  if (_cv.certificates.length) {
+    html += `<div class="cv-doc__section-title">${isAr?'الشهادات':'CERTIFICATIONS'}</div>`;
+    _cv.certificates.forEach(cert => {
+      html += `<div class="cv-doc__entry">`;
+      html += `<div class="cv-doc__entry-header"><span class="cv-doc__entry-name">${_esc(cert.name)}</span><span class="cv-doc__entry-date">${_esc(cert.issueDate)}</span></div>`;
+      html += `<div class="cv-doc__entry-sub">${_esc(cert.issuer)}</div>`;
+      if(cert.credentialId) html += `<div class="cv-doc__text">ID: ${_esc(cert.credentialId)}</div>`;
+      html += `</div>`;
+    });
+  }
+
+  if (_cv.languages.length) {
+    html += `<div class="cv-doc__section-title">${isAr?'اللغات':'LANGUAGES'}</div>`;
+    html += `<div class="cv-doc__text">${_cv.languages.map(l=>`${_esc(l.language)}: ${profs[l.proficiency]||''}`).join('    ')}</div>`;
+  }
+
+  doc.innerHTML = html || `<div style="color:#aaa;font-size:11px;text-align:center;padding:40px 0;">Start filling in your information to see your CV preview</div>`;
+}
+
+// ════════════════════════════════════════════════════
+// SAVE / DOWNLOAD PDF
+// ════════════════════════════════════════════════════
+
+function save() {
+  _readCurrentStep();
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(_cv)); } catch {}
+  _updateCompletion();
+  _renderPreview();
+}
+
+async function downloadPdf() {
+  const btn = document.getElementById('download-pdf-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Generating...';
+
+  try {
+    // Lazy load html2pdf
+    if (!window.html2pdf) {
+      await new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+        s.onload = res; s.onerror = rej;
+        document.head.appendChild(s);
+      });
+    }
+
+    save();
+    const name = (_cv.personal.fullName || 'CV').toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'');
+
+    await html2pdf()
+      .set({
+        margin: [10, 10],
+        filename: `${name}-cv.pdf`,
+        image: { type: 'jpeg', quality: 0.99 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF: { unit:'mm', format:'a4', orientation:'portrait' },
+        pagebreak: { mode:['avoid-all','css','legacy'] },
+      })
+      .from(document.getElementById('cv-preview-doc'))
+      .save();
+
+    window.toast?.('CV downloaded! ✓', 'success');
+  } catch (err) {
+    console.error(err);
+    window.toast?.('Failed to generate PDF', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '⬇ Download PDF';
+  }
+}
+
+// ════════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════════
+
+function _esc(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toggleCard(header) {
+  const body = header.nextElementSibling;
+  body.classList.toggle('collapsed');
+  const btn = header.querySelector('.cv-card-toggle');
+  if (btn) btn.textContent = body.classList.contains('collapsed') ? '▸' : '▾';
+}
+
+// ════════════════════════════════════════════════════
+// PUBLIC API
+// ════════════════════════════════════════════════════
+
+window.CVBuilder = {
+  setLanguage, goToStep, nextStep, prevStep, save,
+  addExperience, updateExp, removeExperience, addResp, updateResp, removeResp,
+  addEducation, updateEdu, removeEducation,
+  addSkill, updateSkill, removeSkill,
+  addProject, updateProject, removeProject, addTech, removeTech,
+  addCertificate, updateCert, removeCert,
+  addLanguage, updateLang, removeLang,
+};
+
+window.toggleCard = toggleCard;
+
+// Summary counter
+document.getElementById('f-summary')?.addEventListener('input', _updateSummaryCount);
+
+// Save btn
+document.getElementById('save-btn')?.addEventListener('click', () => {
+  save();
+  window.toast?.('Saved ✓', 'success');
+});
+
+// Download PDF
+document.getElementById('download-pdf-btn')?.addEventListener('click', downloadPdf);
+
+// Init
+init();
+
+})();
+</script>
+</body>
+</html>

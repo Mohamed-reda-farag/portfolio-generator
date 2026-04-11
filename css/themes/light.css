@@ -1,0 +1,360 @@
+/* ════════════════════════════════════════════════════════════════════════════
+   Portfolio Generator — Light Theme
+   css/themes/light.css
+   ════════════════════════════════════════════════════════════════════════════
+   Aesthetic: Editorial / Magazine — warm paper tone, strong typography,
+              minimal color use with accent sparks of terminal green.
+
+   يُستخدم هذا الـ file لأي صفحة بتحمل [data-theme="light"]
+   أو <html data-theme="light">
+
+   الـ CSS variables هنا بتـ override الـ variables الموجودة في main.css
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Theme Selector ─────────────────────────────────────────────────────── */
+/* يشتغل لما يكون html element عنده data-theme="light" */
+[data-theme="light"],
+.theme-light {
+
+  /* ── Core Background ───────────────────────────────────────────────── */
+  --color-bg:           #F5F2ED;   /* warm paper — مش أبيض بارد */
+  --color-bg-secondary: #EDEAE4;   /* أغمق بكدة للـ sections */
+  --color-bg-card:      #FFFFFF;
+  --color-bg-elevated:  #FAFAF8;   /* للـ dropdowns وpopovers */
+  --color-bg-hover:     rgba(10, 13, 11, 0.04);
+  --color-bg-active:    rgba(10, 13, 11, 0.07);
+
+  /* ── Text ──────────────────────────────────────────────────────────── */
+  --color-text-primary:   #0A0D0B;  /* شبه أسود — مش أسود بالظبط */
+  --color-text-secondary: #3D4240;
+  --color-text-tertiary:  #6B736F;
+  --color-text-placeholder: #9BA39F;
+  --color-text-disabled:  #BDC5C1;
+  --color-text-inverse:   #F5F2ED;
+
+  /* ── Accent (Terminal Green — من الـ brand) ────────────────────────── */
+  --color-accent:         #00CC6A;  /* أغمق شوية للـ light theme readability */
+  --color-accent-hover:   #00B05A;
+  --color-accent-subtle:  rgba(0, 204, 106, 0.08);
+  --color-accent-border:  rgba(0, 204, 106, 0.25);
+  --color-accent-glow:    rgba(0, 204, 106, 0.15);
+
+  /* ── Borders ───────────────────────────────────────────────────────── */
+  --color-border:         rgba(10, 13, 11, 0.10);
+  --color-border-strong:  rgba(10, 13, 11, 0.18);
+  --color-border-accent:  rgba(0, 204, 106, 0.30);
+
+  /* ── Shadows ───────────────────────────────────────────────────────── */
+  --shadow-xs:   0 1px 2px rgba(10, 13, 11, 0.06);
+  --shadow-sm:   0 1px 4px rgba(10, 13, 11, 0.08), 0 1px 2px rgba(10,13,11,0.04);
+  --shadow-md:   0 4px 16px rgba(10, 13, 11, 0.10), 0 1px 4px rgba(10,13,11,0.06);
+  --shadow-lg:   0 16px 48px rgba(10, 13, 11, 0.12), 0 4px 16px rgba(10,13,11,0.06);
+  --shadow-xl:   0 32px 80px rgba(10, 13, 11, 0.14), 0 8px 24px rgba(10,13,11,0.08);
+  --shadow-inset: inset 0 1px 3px rgba(10, 13, 11, 0.08);
+
+  /* ── Status Colors ─────────────────────────────────────────────────── */
+  --color-success:        #16A34A;
+  --color-success-bg:     rgba(22, 163, 74, 0.08);
+  --color-warning:        #D97706;
+  --color-warning-bg:     rgba(217, 119, 6, 0.08);
+  --color-error:          #DC2626;
+  --color-error-bg:       rgba(220, 38, 38, 0.08);
+  --color-info:           #2563EB;
+  --color-info-bg:        rgba(37, 99, 235, 0.08);
+
+  /* ── Overlay ───────────────────────────────────────────────────────── */
+  --color-overlay:        rgba(10, 13, 11, 0.5);
+  --color-overlay-subtle: rgba(10, 13, 11, 0.25);
+
+  /* ── Focus ring ────────────────────────────────────────────────────── */
+  --focus-ring: 0 0 0 3px rgba(0, 204, 106, 0.25);
+  --focus-ring-offset: 0 0 0 2px #F5F2ED, 0 0 0 4px rgba(0, 204, 106, 0.30);
+}
+
+/* ── Base Body Styles (Light) ─────────────────────────────────────────────── */
+[data-theme="light"] body,
+.theme-light body {
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+
+  /* Paper texture: subtle horizontal rule + radial glow */
+  background-image:
+    radial-gradient(
+      ellipse 70% 40% at 50% -5%,
+      rgba(0, 204, 106, 0.05) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 50% 30% at 90% 80%,
+      rgba(0, 204, 106, 0.03) 0%,
+      transparent 60%
+    ),
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 79px,
+      rgba(10, 13, 11, 0.02) 79px,
+      rgba(10, 13, 11, 0.02) 80px
+    );
+}
+
+/* ── Scrollbar (light) ────────────────────────────────────────────────────── */
+[data-theme="light"] ::-webkit-scrollbar { width: 8px; height: 8px; }
+[data-theme="light"] ::-webkit-scrollbar-track { background: var(--color-bg-secondary); }
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: rgba(10, 13, 11, 0.20);
+  border-radius: 4px;
+  border: 2px solid var(--color-bg-secondary);
+}
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: rgba(10, 13, 11, 0.35); }
+
+/* ── Selection ────────────────────────────────────────────────────────────── */
+[data-theme="light"] ::selection {
+  background: rgba(0, 204, 106, 0.20);
+  color: var(--color-text-primary);
+}
+
+/* ── Links ────────────────────────────────────────────────────────────────── */
+[data-theme="light"] a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+[data-theme="light"] a:hover {
+  color: var(--color-accent-hover);
+  text-decoration: underline;
+}
+[data-theme="light"] a:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: 3px;
+}
+
+/* ── Cards ────────────────────────────────────────────────────────────────── */
+[data-theme="light"] .card,
+[data-theme="light"] [class*="-card"] {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+
+[data-theme="light"] .card:hover,
+[data-theme="light"] [class*="-card"]:hover {
+  border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-md);
+}
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+
+/* Primary */
+[data-theme="light"] .btn-primary {
+  background: var(--color-text-primary);
+  color: var(--color-text-inverse);
+  border-color: var(--color-text-primary);
+}
+[data-theme="light"] .btn-primary:hover:not(:disabled) {
+  background: #1A2018;
+  border-color: #1A2018;
+}
+
+/* Accent */
+[data-theme="light"] .btn-accent {
+  background: var(--color-accent);
+  color: #0A0D0B;
+  border-color: var(--color-accent);
+}
+[data-theme="light"] .btn-accent:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+}
+
+/* Ghost */
+[data-theme="light"] .btn-ghost {
+  background: transparent;
+  color: var(--color-text-secondary);
+  border-color: var(--color-border-strong);
+}
+[data-theme="light"] .btn-ghost:hover:not(:disabled) {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+  border-color: var(--color-text-primary);
+}
+
+/* Focus ring for all buttons */
+[data-theme="light"] button:focus-visible,
+[data-theme="light"] [role="button"]:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring-offset);
+}
+
+/* ── Form Inputs ──────────────────────────────────────────────────────────── */
+[data-theme="light"] input,
+[data-theme="light"] textarea,
+[data-theme="light"] select {
+  background: var(--color-bg-card);
+  color: var(--color-text-primary);
+  border-color: var(--color-border-strong);
+}
+
+[data-theme="light"] input::placeholder,
+[data-theme="light"] textarea::placeholder {
+  color: var(--color-text-placeholder);
+}
+
+[data-theme="light"] input:focus,
+[data-theme="light"] textarea:focus,
+[data-theme="light"] select:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: var(--focus-ring);
+}
+
+[data-theme="light"] input:disabled,
+[data-theme="light"] textarea:disabled {
+  background: var(--color-bg-secondary);
+  color: var(--color-text-disabled);
+  cursor: not-allowed;
+}
+
+/* ── Badges ───────────────────────────────────────────────────────────────── */
+[data-theme="light"] .badge {
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+  border-color: var(--color-border);
+}
+
+[data-theme="light"] .badge-accent {
+  background: var(--color-accent-subtle);
+  color: var(--color-accent-hover);
+  border-color: var(--color-accent-border);
+}
+
+[data-theme="light"] .badge-success {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+[data-theme="light"] .badge-error {
+  background: var(--color-error-bg);
+  color: var(--color-error);
+}
+
+/* ── Progress Bar ─────────────────────────────────────────────────────────── */
+[data-theme="light"] [data-progress-bar] {
+  background: var(--color-accent);
+  box-shadow: 0 0 8px rgba(0, 204, 106, 0.30);
+}
+
+[data-theme="light"] [data-progress-track] {
+  background: var(--color-bg-secondary);
+  border-color: var(--color-border);
+}
+
+/* ── Toast Notifications ──────────────────────────────────────────────────── */
+[data-theme="light"] .toast {
+  background: var(--color-text-primary);
+  color: var(--color-text-inverse);
+  box-shadow: var(--shadow-lg);
+}
+
+[data-theme="light"] .toast-success {
+  border-left-color: var(--color-success);
+}
+
+[data-theme="light"] .toast-error {
+  border-left-color: var(--color-error);
+}
+
+[data-theme="light"] .toast-info {
+  border-left-color: var(--color-accent);
+}
+
+/* ── Nav ──────────────────────────────────────────────────────────────────── */
+[data-theme="light"] nav,
+[data-theme="light"] .nav {
+  background: rgba(245, 242, 237, 0.88);
+  border-bottom-color: var(--color-border);
+}
+
+/* ── Dividers ─────────────────────────────────────────────────────────────── */
+[data-theme="light"] hr,
+[data-theme="light"] .divider {
+  border-color: var(--color-border);
+}
+
+/* ── Code blocks ──────────────────────────────────────────────────────────── */
+[data-theme="light"] code,
+[data-theme="light"] pre {
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+}
+
+[data-theme="light"] code {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.875em;
+}
+
+/* ── Skeleton Loader ──────────────────────────────────────────────────────── */
+[data-theme="light"] .skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-secondary) 25%,
+    #E5E1DA 50%,
+    var(--color-bg-secondary) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 6px;
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Tooltips ─────────────────────────────────────────────────────────────── */
+[data-theme="light"] [data-tooltip]::after {
+  background: var(--color-text-primary);
+  color: var(--color-text-inverse);
+}
+
+/* ── Dropdown / Menu ──────────────────────────────────────────────────────── */
+[data-theme="light"] .dropdown,
+[data-theme="light"] .menu {
+  background: var(--color-bg-card);
+  border-color: var(--color-border);
+  box-shadow: var(--shadow-lg);
+}
+
+[data-theme="light"] .dropdown-item:hover,
+[data-theme="light"] .menu-item:hover {
+  background: var(--color-bg-hover);
+}
+
+/* ── Modal / Dialog ───────────────────────────────────────────────────────── */
+[data-theme="light"] .modal,
+[data-theme="light"] dialog {
+  background: var(--color-bg-card);
+  border-color: var(--color-border);
+  box-shadow: var(--shadow-xl);
+}
+
+[data-theme="light"] .modal-overlay {
+  background: var(--color-overlay);
+  backdrop-filter: blur(4px);
+}
+
+/* ── Specific: Theme Preview Card (في index.html) ─────────────────────────── */
+.theme-preview-card[data-theme-name="light"] {
+  --preview-bg:      #F5F2ED;
+  --preview-text:    #0A0D0B;
+  --preview-text-2:  #6B736F;
+  --preview-accent:  #00CC6A;
+  --preview-border:  rgba(10, 13, 11, 0.12);
+  --preview-card:    #FFFFFF;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   END: light.css
+   ════════════════════════════════════════════════════════════════════════════ */

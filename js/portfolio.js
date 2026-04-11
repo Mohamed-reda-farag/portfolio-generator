@@ -1,0 +1,1212 @@
+/**
+ * portfolio.js — Step 5
+ * Inline Editing + Theme Switcher + Edit Mode UI
+ * + Pro Paywall with HMAC Activation Code Validation
+ *
+ * Depends on: window.AI (ai.js), window.GitHub (github.js)
+ * Exposes: window.Portfolio
+ */
+
+(function () {
+  'use strict';
+
+  /* ═══════════════════════════════════════════════════════════════
+     CONSTANTS
+  ═══════════════════════════════════════════════════════════════ */
+
+  const THEMES = {
+    free: [
+      { id: 'light',    label: 'Light',    icon: '☀️' },
+      { id: 'dark',     label: 'Dark',     icon: '🌙' },
+      { id: 'minimal',  label: 'Minimal',  icon: '◻' },
+    ],
+    pro: [
+      { id: 'glass3d',  label: 'Glass 3D',  icon: '💎' },
+      { id: 'cyberpunk',label: 'Cyberpunk', icon: '⚡' },
+      { id: 'space',    label: 'Space',     icon: '🚀' },
+    ],
+  };
+
+  const MAX_UNDO = 20;
+  const AUTOSAVE_DEBOUNCE = 600; // ms
+
+  /* ═══════════════════════════════════════════════════════════════
+     HMAC CODE SYSTEM
+     ────────────────────────────────────────────────────────────
+     كل كود بيتكون من 3 أجزاء:
+       GPORT  +  HMAC_PREFIX  +  RANDOM_SUFFIX
+       4 chars    4 chars         بيتحدد بالطول الكلي
+
+     الطول الكلي بيحدد نوع الكود:
+       16 chars → Pro Full  (100%)
+       14 chars → Ref 60%
+       12 chars → Ref 40%
+       10 chars → Ref 20%
+
+     الـ HMAC_PREFIX بيتحسب من:
+       HMAC-SHA256(GPORT_SECRET, floor(timestamp / WINDOW_MS))
+       → أول 4 chars من النتيجة بالـ HEX
+
+     الـ WINDOW_MS = 48 ساعة
+     الموقع بيقبل الـ window الحالية والـ window اللي قبلها
+     (عشان الكود ما ينتهيش فجأة لو الـ window اتقلبت)
+  ═══════════════════════════════════════════════════════════════ */
+
+  // ⚠️ غيّر الـ SECRET ده بقيمة سرية ثابتة — نفس القيمة في البوت
+  const GPORT_SECRET  = '65c021d4717e612a0af42b1feed99e8b11424314ee28f23c8d949b7b51cff70c';
+  const GPORT_PREFIX  = 'GPORT';
+  const WINDOW_MS     = 48 * 60 * 60 * 1000; // 48 ساعة
+
+  const CODE_TYPES = {
+    16: { type: 'pro_full', discount: 100, label: 'Pro Full'   },
+    14: { type: 'ref_60',   discount: 60,  label: '60% Discount' },
+    12: { type: 'ref_40',   discount: 40,  label: '40% Discount' },
+    10: { type: 'ref_20',   discount: 20,  label: '20% Discount' },
+  };
+
+  /**
+   * حساب الـ HMAC prefix لـ time window معين
+   * @param {number} windowIndex - رقم الـ window (floor(Date.now() / WINDOW_MS))
+   * @returns {Promise<string>} 4-char hex prefix
+   */
+  async function _computeHmacPrefix(windowIndex) {
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(GPORT_SECRET);
+    const message = encoder.encode(String(windowIndex));
+
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw', keyData,
+      { name: 'HMAC', hash: 'SHA-256' },
+      false, ['sign']
+    );
+
+    const signature = await crypto.subtle.sign('HMAC', cryptoKey, message);
+    const hexArray  = Array.from(new Uint8Array(signature));
+    const hexString = hexArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+    return hexString.slice(0, 4).toUpperCase();
+  }
+
+  /**
+   * التحقق من صحة الكود
+   * @param {string} code - الكود المدخل من المستخدم
+   * @returns {Promise<{valid: boolean, type?: string, discount?: number, label?: string, error?: string}>}
+   */
+  async function _verifyCode(code) {
+    const clean = code.trim().toUpperCase();
+
+    // تحقق من الـ prefix الثابت
+    if (!clean.startsWith(GPORT_PREFIX)) {
+      return { valid: false, error: 'Invalid code format' };
+    }
+
+    // تحديد النوع من الطول
+    const codeType = CODE_TYPES[clean.length];
+    if (!codeType) {
+      return { valid: false, error: 'Invalid code length' };
+    }
+
+    // استخراج الـ HMAC prefix من الكود (الـ 4 chars بعد GPORT)
+    const codeHmacPart = clean.slice(GPORT_PREFIX.length, GPORT_PREFIX.length + 4);
+
+    // حساب الـ window الحالية والسابقة
+    const currentWindow = Math.floor(Date.now() / WINDOW_MS);
+    const windows       = [currentWindow, currentWindow - 1]; // نقبل الاتنين
+
+    for (const w of windows) {
+      const expectedPrefix = await _computeHmacPrefix(w);
+      if (codeHmacPart === expectedPrefix) {
+        return {
+          valid:    true,
+          code:     clean,
+          type:     codeType.type,
+          discount: codeType.discount,
+          label:    codeType.label,
+        };
+      }
+    }
+
+    return { valid: false, error: 'Code expired or invalid' };
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     STATE
+  ═══════════════════════════════════════════════════════════════ */
+
+  let _draft      = null;
+  let _undoStack  = [];
+  let _redoStack  = [];
+  let _isPro      = false;  // يتحدد من Supabase في init()
+  let _isSaving   = false;
+  let _isPublished = false;
+
+  /* ═══════════════════════════════════════════════════════════════
+     HELPERS
+  ═══════════════════════════════════════════════════════════════ */
+
+  const $ = (sel, ctx = document) => ctx.querySelector(sel);
+  const $$ = (sel, ctx = document) => [...ctx.querySelectorAll(sel)];
+  const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+
+  function snapshot() { return JSON.stringify(_draft); }
+
+  function pushUndo(before) {
+    _undoStack.push(before);
+    if (_undoStack.length > MAX_UNDO) _undoStack.shift();
+    _redoStack = [];
+    _updateUndoButtons();
+  }
+
+  function _updateUndoButtons() {
+    const undoBtn = $('#toolbar-undo');
+    const redoBtn = $('#toolbar-redo');
+    if (undoBtn) undoBtn.disabled = _undoStack.length === 0;
+    if (redoBtn) redoBtn.disabled = _redoStack.length === 0;
+  }
+
+  function applyDraftToDom(draft) {
+    const bioEl = $('[data-edit="bio"]');
+    if (bioEl) bioEl.textContent = draft.bio || '';
+    _renderSkillTags(draft.skills || []);
+    _renderProjects(draft.projects || []);
+    const titleEl = $('[data-edit="jobTitle"]');
+    if (titleEl) titleEl.textContent = draft.jobTitle || '';
+    const nameEl = $('[data-edit="name"]');
+    if (nameEl) nameEl.textContent = draft.name || '';
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     PRO STATUS — من Supabase
+  ═══════════════════════════════════════════════════════════════ */
+
+  /**
+   * يجيب الـ Pro status من Supabase
+   * بيتنادى في init() قبل ما يبني الـ toolbar
+   */
+  async function _loadProStatus() {
+    try {
+      const sb = window._supabaseClient;
+      if (!sb) return false;
+
+      const { data: authData } = await sb.auth.getUser();
+      const userId = authData?.user?.id;
+      if (!userId) return false;
+
+      const { data, error } = await sb
+        .from('users')
+        .select('is_pro')
+        .eq('id', userId)
+        .single();
+
+      if (error || !data) return false;
+      return data.is_pro === true;
+
+    } catch (err) {
+      console.warn('[Portfolio] Could not load Pro status:', err);
+      return false;
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     SKILLS RENDERING & EDITING
+  ═══════════════════════════════════════════════════════════════ */
+
+  function _renderSkillTags(skills) {
+    const container = $('[data-skills-container]');
+    if (!container) return;
+    container.innerHTML = '';
+
+    skills.forEach((skill, i) => {
+      const tag = document.createElement('span');
+      tag.className = 'skill-tag editable-tag';
+      tag.setAttribute('data-skill-index', i);
+      tag.setAttribute('contenteditable', 'true');
+      tag.setAttribute('spellcheck', 'false');
+      tag.setAttribute('aria-label', `Edit skill: ${skill}`);
+      tag.textContent = skill;
+
+      tag.addEventListener('blur', () => _onSkillBlur(tag, i));
+      tag.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); tag.blur(); }
+        if (e.key === 'Backspace' && tag.textContent.trim() === '') {
+          e.preventDefault(); _removeSkill(i);
+        }
+      });
+
+      const del = document.createElement('button');
+      del.className = 'skill-tag__delete';
+      del.setAttribute('aria-label', `Remove skill: ${skill}`);
+      del.innerHTML = '×';
+      del.addEventListener('click', () => _removeSkill(i));
+      tag.appendChild(del);
+      container.appendChild(tag);
+    });
+
+    const addBtn = document.createElement('button');
+    addBtn.className = 'skill-tag skill-tag--add';
+    addBtn.setAttribute('aria-label', 'Add new skill');
+    addBtn.innerHTML = '<span>+</span> Add skill';
+    addBtn.addEventListener('click', _addSkill);
+    container.appendChild(addBtn);
+  }
+
+  function _onSkillBlur(el, index) {
+    const before = snapshot();
+    const val = el.textContent.replace('×', '').trim();
+    if (!val) { _removeSkill(index); return; }
+    pushUndo(before);
+    _draft.skills[index] = val;
+    _scheduleAutosave();
+  }
+
+  function _removeSkill(index) {
+    const before = snapshot();
+    pushUndo(before);
+    _draft.skills.splice(index, 1);
+    _renderSkillTags(_draft.skills);
+    _scheduleAutosave();
+  }
+
+  function _addSkill() {
+    const before = snapshot();
+    pushUndo(before);
+    _draft.skills.push('New Skill');
+    _renderSkillTags(_draft.skills);
+    _scheduleAutosave();
+    setTimeout(() => {
+      const allTags = $$('.skill-tag.editable-tag');
+      const lastTag = allTags[allTags.length - 1];
+      if (lastTag) {
+        lastTag.focus();
+        const range = document.createRange();
+        range.selectNodeContents(lastTag.firstChild || lastTag);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    }, 50);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     PROJECTS RENDERING & EDITING
+  ═══════════════════════════════════════════════════════════════ */
+
+  function _renderProjects(projects) {
+    const grid = $('[data-projects-grid]');
+    if (!grid) return;
+    grid.innerHTML = '';
+    projects.forEach((proj, i) => grid.appendChild(_buildProjectCard(proj, i)));
+  }
+
+  function _buildProjectCard(proj, index) {
+    const card = document.createElement('article');
+    card.className = `project-card${index === 0 ? ' project-card--featured' : ''}`;
+    card.setAttribute('data-project-index', index);
+
+    const langColor = _getLangColor(proj.language);
+
+    card.innerHTML = `
+      <div class="project-card__header">
+        <div class="project-card__meta">
+          ${proj.language ? `<span class="lang-dot" style="background:${langColor}" aria-label="${proj.language}"></span>
+          <span class="project-card__lang">${proj.language}</span>` : ''}
+          ${index === 0 ? '<span class="featured-badge">Featured</span>' : ''}
+        </div>
+        <div class="project-card__actions">
+          <button class="icon-btn move-up-btn" data-index="${index}" title="Move up" aria-label="Move project up" ${index === 0 ? 'disabled' : ''}>↑</button>
+          <button class="icon-btn move-down-btn" data-index="${index}" title="Move down" aria-label="Move project down">↓</button>
+          <a href="${proj.repo_url || '#'}" target="_blank" rel="noopener" class="icon-btn ext-link" aria-label="Open on GitHub">↗</a>
+        </div>
+      </div>
+
+      <h3 class="project-card__name" contenteditable="true" spellcheck="false"
+          data-edit="projectName" data-project-index="${index}"
+          aria-label="Edit project name">${proj.github_repo_name || proj.name || ''}</h3>
+
+      <p class="project-card__desc" contenteditable="true" spellcheck="false"
+         data-edit="projectDesc" data-project-index="${index}"
+         aria-label="Edit project description">${proj.ai_description || proj.description || ''}</p>
+
+      <div class="project-card__footer">
+        ${proj.stars ? `<span class="project-stat">⭐ ${proj.stars}</span>` : ''}
+        ${(proj.topics || []).slice(0, 3).map(t => `<span class="topic-chip">${t}</span>`).join('')}
+      </div>
+    `;
+
+    const nameEl = card.querySelector('[data-edit="projectName"]');
+    nameEl.addEventListener('blur', () => {
+      const before = snapshot(); pushUndo(before);
+      _draft.projects[index].github_repo_name = nameEl.textContent.trim();
+      _draft.projects[index].name = nameEl.textContent.trim();
+      _scheduleAutosave();
+    });
+    nameEl.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); nameEl.blur(); } });
+
+    const descEl = card.querySelector('[data-edit="projectDesc"]');
+    descEl.addEventListener('blur', () => {
+      const before = snapshot(); pushUndo(before);
+      _draft.projects[index].ai_description = descEl.textContent.trim();
+      _draft.projects[index].description = descEl.textContent.trim();
+      _scheduleAutosave();
+    });
+
+    card.querySelector('.move-up-btn').addEventListener('click', () => _moveProject(index, -1));
+    card.querySelector('.move-down-btn').addEventListener('click', () => _moveProject(index, 1));
+
+    return card;
+  }
+
+  function _moveProject(index, direction) {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= _draft.projects.length) return;
+    const before = snapshot(); pushUndo(before);
+    const temp = _draft.projects[index];
+    _draft.projects[index] = _draft.projects[newIndex];
+    _draft.projects[newIndex] = temp;
+    _renderProjects(_draft.projects);
+    _scheduleAutosave();
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     CONTENTEDITABLE FIELDS
+  ═══════════════════════════════════════════════════════════════ */
+
+  function _initEditableFields() {
+    $$('[data-edit]').forEach(el => {
+      const field = el.getAttribute('data-edit');
+      if (field === 'projectName' || field === 'projectDesc') return;
+
+      el.setAttribute('contenteditable', 'true');
+      el.setAttribute('spellcheck', 'false');
+      el.classList.add('is-editable');
+
+      el.addEventListener('focus', () => el.classList.add('is-editing'));
+      el.addEventListener('blur', () => {
+        el.classList.remove('is-editing');
+        const before = snapshot(); pushUndo(before);
+        _draft[field] = el.textContent.trim();
+        _scheduleAutosave();
+      });
+      el.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && field !== 'bio') { e.preventDefault(); el.blur(); }
+      });
+    });
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     AUTO-SAVE
+  ═══════════════════════════════════════════════════════════════ */
+
+  const _scheduleAutosave = debounce(() => {
+    window.AI?.saveDraft?.(_draft);
+    _showSaveIndicator('draft');
+  }, AUTOSAVE_DEBOUNCE);
+
+  function _showSaveIndicator(state) {
+    const indicator = $('#save-indicator');
+    if (!indicator) return;
+    const messages = {
+      draft: '✓ Draft saved', saving: '⟳ Saving...',
+      published: '✓ Published!', error: '✗ Save failed',
+    };
+    indicator.textContent = messages[state] || '';
+    indicator.className = `save-indicator save-indicator--${state}`;
+    if (state === 'draft' || state === 'published') {
+      setTimeout(() => { indicator.textContent = ''; indicator.className = 'save-indicator'; }, 2500);
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     UNDO / REDO
+  ═══════════════════════════════════════════════════════════════ */
+
+  function undo() {
+    if (_undoStack.length === 0) return;
+    _redoStack.push(snapshot());
+    _draft = JSON.parse(_undoStack.pop());
+    applyDraftToDom(_draft);
+    _scheduleAutosave();
+    _updateUndoButtons();
+  }
+
+  function redo() {
+    if (_redoStack.length === 0) return;
+    _undoStack.push(snapshot());
+    _draft = JSON.parse(_redoStack.pop());
+    applyDraftToDom(_draft);
+    _scheduleAutosave();
+    _updateUndoButtons();
+  }
+
+  document.addEventListener('keydown', e => {
+    const mod = e.ctrlKey || e.metaKey;
+    if (!mod) return;
+    if (e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+    if (e.key === 'z' && e.shiftKey)  { e.preventDefault(); redo(); }
+    if (e.key === 'y')                { e.preventDefault(); redo(); }
+    if (e.key === 's')                { e.preventDefault(); saveDraft(); }
+  });
+
+  /* ═══════════════════════════════════════════════════════════════
+     THEME SWITCHER
+  ═══════════════════════════════════════════════════════════════ */
+
+  function _buildThemePanel() {
+    $('#theme-panel')?.remove();
+
+    const panel = document.createElement('div');
+    panel.id = 'theme-panel';
+    panel.className = 'theme-panel';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-label', 'Theme switcher');
+    panel.setAttribute('aria-hidden', 'true');
+
+    const currentTheme = _draft.theme || 'light';
+
+    panel.innerHTML = `
+      <div class="theme-panel__header">
+        <span class="theme-panel__title">Choose Theme</span>
+        <button class="theme-panel__close icon-btn" id="theme-panel-close" aria-label="Close theme panel">✕</button>
+      </div>
+
+      <div class="theme-panel__section">
+        <span class="theme-panel__label">Free</span>
+        <div class="theme-grid">
+          ${THEMES.free.map(t => `
+            <button class="theme-swatch ${t.id === currentTheme ? 'is-active' : ''}"
+                    data-theme="${t.id}" aria-label="Select ${t.label} theme"
+                    aria-pressed="${t.id === currentTheme}">
+              <span class="theme-swatch__preview theme-swatch__preview--${t.id}"></span>
+              <span class="theme-swatch__icon">${t.icon}</span>
+              <span class="theme-swatch__label">${t.label}</span>
+            </button>
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="theme-panel__section">
+        <span class="theme-panel__label">Pro ${_isPro ? '' : '<span class="pro-badge">PRO</span>'}</span>
+        <div class="theme-grid">
+          ${THEMES.pro.map(t => `
+            <button class="theme-swatch ${t.id === currentTheme ? 'is-active' : ''}"
+                    data-theme="${t.id}" data-is-pro="true"
+                    aria-label="${t.label} theme — Pro preview"
+                    aria-pressed="${t.id === currentTheme}">
+              <span class="theme-swatch__preview theme-swatch__preview--${t.id}"></span>
+              <span class="theme-swatch__icon">${t.icon}</span>
+              <span class="theme-swatch__label">${t.label}</span>
+              ${_isPro ? '' : '<span class="lock-icon" title="Preview free — Publish requires Pro" aria-hidden="true">👁</span>'}
+            </button>
+          `).join('')}
+        </div>
+      </div>
+
+      ${!_isPro ? `
+        <div class="theme-panel__upsell">
+          <p>Unlock stunning 3D themes & more</p>
+          <button class="btn btn--primary btn--sm" id="upgrade-btn">Upgrade to Pro →</button>
+        </div>
+      ` : ''}
+    `;
+
+    document.body.appendChild(panel);
+
+    panel.querySelector('#theme-panel-close').addEventListener('click', closeThemePanel);
+
+    $$('.theme-swatch', panel).forEach(btn => {
+      btn.addEventListener('click', () => {
+        applyTheme(btn.getAttribute('data-theme'));
+        closeThemePanel();
+      });
+    });
+
+    panel.querySelector('#upgrade-btn')?.addEventListener('click', () => {
+      closeThemePanel();
+      _showProPaywall('upgrade');
+    });
+
+    panel.addEventListener('click', e => { if (e.target === panel) closeThemePanel(); });
+  }
+
+  function openThemePanel() {
+    _buildThemePanel();
+    const panel = $('#theme-panel');
+    if (!panel) return;
+    requestAnimationFrame(() => {
+      panel.classList.add('is-open');
+      panel.setAttribute('aria-hidden', 'false');
+      panel.querySelector('#theme-panel-close')?.focus();
+    });
+  }
+
+  function closeThemePanel() {
+    const panel = $('#theme-panel');
+    if (!panel) return;
+    panel.classList.remove('is-open');
+    panel.setAttribute('aria-hidden', 'true');
+    setTimeout(() => panel.remove(), 300);
+    $('#toolbar-theme-btn')?.focus();
+  }
+
+  function applyTheme(themeId) {
+    if (!_draft) return;
+    const before = snapshot(); pushUndo(before);
+    _draft.theme = themeId;
+
+    let link = $('#active-theme-css');
+    if (!link) {
+      link = document.createElement('link');
+      link.id = 'active-theme-css';
+      link.rel = 'stylesheet';
+      document.head.appendChild(link);
+    }
+    link.href = `css/themes/${themeId}.css`;
+
+    document.body.className = document.body.className.replace(/\btheme-\S+/g, '').trim();
+    document.body.classList.add(`theme-${themeId}`);
+    document.documentElement.setAttribute('data-theme', themeId);
+    document.body.setAttribute('data-theme', themeId);
+
+    _setupProThemeElements(themeId);
+    _scheduleAutosave();
+    handleThemeScriptLifecycle(themeId);
+    window.toast?.(`Theme changed to ${themeId}`, 'success');
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     EDIT TOOLBAR
+  ═══════════════════════════════════════════════════════════════ */
+
+  function _buildToolbar() {
+    $('#edit-toolbar')?.remove();
+
+    const toolbar = document.createElement('div');
+    toolbar.id = 'edit-toolbar';
+    toolbar.className = 'edit-toolbar';
+    toolbar.setAttribute('role', 'toolbar');
+    toolbar.setAttribute('aria-label', 'Portfolio editor toolbar');
+
+    toolbar.innerHTML = `
+      <div class="edit-toolbar__left">
+        <div class="edit-toolbar__brand">
+          <span class="edit-toolbar__logo">PG</span>
+          <span class="edit-toolbar__label">Edit Mode</span>
+        </div>
+        <div class="edit-toolbar__history" role="group" aria-label="History">
+          <button id="toolbar-undo" class="icon-btn" title="Undo (Ctrl+Z)" aria-label="Undo" disabled>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13"/></svg>
+          </button>
+          <button id="toolbar-redo" class="icon-btn" title="Redo (Ctrl+Y)" aria-label="Redo" disabled>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 019-9 9 9 0 016 2.3l3 2.7"/></svg>
+          </button>
+        </div>
+        <span id="save-indicator" class="save-indicator" aria-live="polite"></span>
+      </div>
+
+      <div class="edit-toolbar__right">
+        ${!_isPro ? `<span class="pro-status-badge pro-status-badge--free">Free Plan</span>` : `<span class="pro-status-badge pro-status-badge--pro">⚡ Pro</span>`}
+        <button id="toolbar-theme-btn" class="btn btn--ghost btn--sm" aria-label="Change theme">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          Theme
+        </button>
+        <button id="toolbar-copylink-btn" class="btn btn--ghost btn--sm" aria-label="Copy portfolio link">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          Copy Link
+        </button>
+        <button id="toolbar-save-btn" class="btn btn--ghost btn--sm" aria-label="Save draft">Save Draft</button>
+        <button id="toolbar-publish-btn" class="btn btn--primary btn--sm" aria-label="Publish portfolio">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>
+          Publish
+        </button>
+      </div>
+    `;
+
+    document.body.prepend(toolbar);
+
+    toolbar.querySelector('#toolbar-undo').addEventListener('click', undo);
+    toolbar.querySelector('#toolbar-redo').addEventListener('click', redo);
+    toolbar.querySelector('#toolbar-theme-btn').addEventListener('click', openThemePanel);
+    toolbar.querySelector('#toolbar-save-btn').addEventListener('click', saveDraft);
+    toolbar.querySelector('#toolbar-publish-btn').addEventListener('click', publish);
+    toolbar.querySelector('#toolbar-copylink-btn').addEventListener('click', async () => {
+      const draft = window.AI?.getDraft?.() || _draft;
+      const slug  = draft?.githubUsername || draft?.githubUser?.login || '';
+      const url   = slug
+        ? `${window.location.origin}/portfolio.html?slug=${slug}`
+        : window.location.origin + '/portfolio.html';
+      try {
+        await navigator.clipboard.writeText(url);
+        const btn = document.getElementById('toolbar-copylink-btn');
+        const orig = btn.innerHTML;
+        btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Copied!`;
+        btn.style.color = 'var(--clr-accent)';
+        setTimeout(() => { btn.innerHTML = orig; btn.style.color = ''; }, 2000);
+      } catch {
+        window.toast?.('Could not copy — ' + url, 'warn');
+      }
+    });
+
+    _updateUndoButtons();
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     SAVE DRAFT & PUBLISH
+  ═══════════════════════════════════════════════════════════════ */
+
+  function saveDraft() {
+    const PRO_THEMES = new Set(['glass3d', 'cyberpunk', 'space']);
+    if (!_isPro && PRO_THEMES.has(_draft?.theme)) {
+      _showProPaywall('save');
+      return;
+    }
+    _showSaveIndicator('saving');
+    window.AI?.saveDraft?.(_draft);
+    setTimeout(() => _showSaveIndicator('draft'), 500);
+  }
+
+  async function publish() {
+    if (_isSaving) return;
+    _isSaving = true;
+
+    const btn = $('#toolbar-publish-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Publishing...'; }
+    _showSaveIndicator('saving');
+
+    const PRO_THEMES_SET = new Set(['glass3d', 'cyberpunk', 'space']);
+    if (!_isPro && PRO_THEMES_SET.has(_draft?.theme)) {
+      _showProPaywall('publish');
+      if (btn) { btn.disabled = false; btn.textContent = 'Publish'; }
+      _isSaving = false;
+      return;
+    }
+
+    try {
+      const draft = window.AI?.getDraft?.() || _draft;
+      const sb = window._supabaseClient || window.supabase;
+
+      if (sb?.auth && draft) {
+        const { data: authData } = await sb.auth.getUser();
+        const userId = authData?.user?.id;
+
+        if (userId) {
+          const slug = (draft.githubUsername || draft.githubUser?.login || userId.slice(0, 8))
+            .toLowerCase().replace(/[^a-z0-9-]/g, '-');
+
+          await sb.from('users').upsert({
+            id: userId, email: authData.user.email || '',
+            github_username: draft.githubUsername || '',
+            full_name: draft.fullName || draft.name || '',
+            job_title: draft.jobTitle || '',
+          }, { onConflict: 'id' });
+
+          const { error: portError } = await sb.from('portfolios').upsert({
+            user_id: userId, bio: draft.bio,
+            skills: draft.skills || [], theme: draft.theme || 'dark',
+            slug, is_published: true, updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id' });
+
+          if (portError) throw portError;
+
+          const { data: portData } = await sb
+            .from('portfolios').select('id').eq('user_id', userId).single();
+
+          if (portData?.id) {
+            const projectsPayload = (draft.projects || []).map((p, i) => ({
+              portfolio_id: portData.id,
+              github_repo_name: p.github_repo_name || p.name || '',
+              repo_url: p.repo_url || '',
+              ai_description: p.ai_description || p.description || '',
+              stars: p.stars || 0, language: p.language || null,
+              topics: p.topics || [], sort_order: i, is_featured: i === 0,
+            }));
+            await sb.from('projects').delete().eq('portfolio_id', portData.id);
+            await sb.from('projects').insert(projectsPayload);
+          }
+
+        } else {
+          window.AI?.saveDraft?.(draft);
+          window.toast?.('Draft saved locally. Sign in to publish online.', 'warn');
+          _isPublished = false;
+          _showSaveIndicator('draft');
+          if (btn) { btn.disabled = false; btn.textContent = 'Publish'; }
+          _isSaving = false;
+          return;
+        }
+      } else {
+        window.AI?.saveDraft?.(draft);
+      }
+
+      _isPublished = true;
+      _showSaveIndicator('published');
+      window.toast?.('Portfolio published! 🎉 Redirecting to dashboard…', 'success');
+      if (btn) { btn.textContent = '✓ Published'; btn.classList.add('is-published'); }
+
+      setTimeout(() => {
+        const dashUrl = window.location.origin
+          + window.location.pathname.replace(/\/[^/]*$/, '/dashboard.html');
+        window.location.href = dashUrl;
+      }, 2000);
+
+    } catch (err) {
+      console.error('[Portfolio] publish error:', err);
+      _showSaveIndicator('error');
+      window.toast?.(`Publish failed: ${err.message}`, 'error');
+      if (btn) { btn.disabled = false; btn.textContent = 'Publish'; }
+    } finally {
+      _isSaving = false;
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     PRO PAYWALL MODAL
+  ═══════════════════════════════════════════════════════════════ */
+
+  function _showProPaywall(action) {
+    document.getElementById('pro-paywall-modal')?.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'pro-paywall-modal';
+    modal.style.cssText = `
+      position: fixed; inset: 0; z-index: 9999;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.75); backdrop-filter: blur(6px);
+      animation: toast-in 0.25s ease;
+    `;
+
+    const themeName = _draft?.theme
+      ? _draft.theme.charAt(0).toUpperCase() + _draft.theme.slice(1)
+      : 'Pro';
+
+    // نص تعليمات الدفع بناءً على الـ action
+    const isUpgrade = action === 'upgrade';
+    const actionText = action === 'publish' ? 'publish' : action === 'save' ? 'save' : 'upgrade';
+
+    modal.innerHTML = `
+      <div style="
+        background: #0D1410; border: 1px solid rgba(0,255,136,0.2);
+        border-radius: 20px; overflow: hidden;
+        width: min(520px, 92vw); max-height: 90vh; overflow-y: auto;
+        box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+        font-family: 'DM Mono', monospace;
+      ">
+        <!-- Preview strip -->
+        <div style="
+          height: 120px; position: relative; overflow: hidden;
+          background: ${_draft?.theme === 'glass3d'
+            ? 'linear-gradient(135deg, #070b14, #1a4aff44, #b088ff33)'
+            : _draft?.theme === 'cyberpunk'
+            ? 'linear-gradient(135deg, #020408, #00ffaa11)'
+            : 'linear-gradient(135deg, #04040c, #a078ff22)'};
+        ">
+          <div style="position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 30px,rgba(255,255,255,0.015) 30px,rgba(255,255,255,0.015) 31px),repeating-linear-gradient(90deg,transparent,transparent 30px,rgba(255,255,255,0.015) 30px,rgba(255,255,255,0.015) 31px);"></div>
+          <div style="position:absolute;bottom:16px;left:24px;font-family:'Syne',sans-serif;font-weight:800;font-size:1.4rem;color:rgba(255,255,255,0.12);letter-spacing:-0.03em;">${isUpgrade ? 'Portfolio Generator Pro' : themeName + ' Theme'}</div>
+          <span style="position:absolute;top:16px;left:24px;background:linear-gradient(135deg,#00FF88,#00ccff);color:#080C0A;font-size:0.6rem;font-weight:700;letter-spacing:0.1em;padding:3px 10px;border-radius:4px;">PRO</span>
+        </div>
+
+        <!-- Body -->
+        <div style="padding: 1.5rem;">
+          <h3 style="font-family:'Syne',sans-serif;font-size:1.15rem;font-weight:700;color:#E8F0EB;margin:0 0 0.4rem;">
+            ${isUpgrade ? 'Upgrade to Pro' : 'Unlock ' + themeName + ' Theme'}
+          </h3>
+          <p style="font-size:0.82rem;color:#8A9E90;line-height:1.6;margin:0 0 1.25rem;">
+            ${isUpgrade
+              ? 'Unlock all Pro themes and future features.'
+              : `You're previewing a Pro theme. To ${actionText} with <strong style="color:#E8F0EB;">${themeName}</strong>, upgrade to Pro.`}
+          </p>
+
+          <!-- Payment Instructions -->
+          <div style="background:rgba(0,255,136,0.04);border:1px solid rgba(0,255,136,0.12);border-radius:10px;padding:1rem;margin-bottom:1rem;">
+            <p style="font-size:0.7rem;color:#4A5E52;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 0.75rem;">كيفية الترقية — خطوات بسيطة</p>
+
+            <div style="display:flex;flex-direction:column;gap:0.6rem;">
+              <div style="display:flex;gap:0.75rem;align-items:flex-start;">
+                <span style="background:rgba(0,255,136,0.15);color:#00FF88;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:700;flex-shrink:0;margin-top:1px;">1</span>
+                <span style="font-size:0.8rem;color:#A8C0B0;line-height:1.5;">
+                  حوّل <strong style="color:#E8F0EB;">99 جنيه</strong> على InstaPay أو فودافون كاش
+                  <br><span style="color:#00FF88;font-size:0.78rem;">📱 01xxxxxxxxx</span>
+                </span>
+              </div>
+              <div style="display:flex;gap:0.75rem;align-items:flex-start;">
+                <span style="background:rgba(0,255,136,0.15);color:#00FF88;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:700;flex-shrink:0;margin-top:1px;">2</span>
+                <span style="font-size:0.8rem;color:#A8C0B0;line-height:1.5;">
+                  ابعت الـ screenshot على Telegram
+                  <br><a href="https://t.me/YOUR_BOT_USERNAME" target="_blank" rel="noopener" style="color:#00FF88;font-size:0.78rem;text-decoration:none;">@GPortBot →</a>
+                </span>
+              </div>
+              <div style="display:flex;gap:0.75rem;align-items:flex-start;">
+                <span style="background:rgba(0,255,136,0.15);color:#00FF88;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:700;flex-shrink:0;margin-top:1px;">3</span>
+                <span style="font-size:0.8rem;color:#A8C0B0;line-height:1.5;">
+                  هيوصلك كود التفعيل — ادخله هنا وانت Pro! ⚡
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Activation Code Input -->
+          <div style="background:rgba(0,255,136,0.03);border:1px solid rgba(0,255,136,0.1);border-radius:10px;padding:1rem;margin-bottom:1.25rem;">
+            <label style="font-size:0.7rem;color:#4A5E52;letter-spacing:0.1em;text-transform:uppercase;display:block;margin-bottom:0.5rem;">
+              كود التفعيل
+            </label>
+            <div style="display:flex;gap:8px;">
+              <input id="paywall-code-input" type="text"
+                placeholder="GPORT..."
+                autocomplete="off" autocapitalize="characters" spellcheck="false"
+                style="
+                  flex:1;background:rgba(0,0,0,0.3);border:1px solid rgba(0,255,136,0.15);
+                  border-radius:6px;padding:10px 12px;color:#E8F0EB;
+                  font-family:'DM Mono',monospace;font-size:0.85rem;outline:none;
+                  letter-spacing:0.05em;transition:border-color 0.2s;
+                "
+              />
+              <button id="paywall-apply-btn" style="
+                background:rgba(0,255,136,0.1);border:1px solid rgba(0,255,136,0.25);
+                color:#00FF88;border-radius:6px;padding:10px 18px;
+                font-family:'DM Mono',monospace;font-size:0.8rem;
+                cursor:pointer;transition:all 0.2s;white-space:nowrap;
+              ">Activate</button>
+            </div>
+            <p id="paywall-code-msg" style="font-size:0.72rem;margin:0.5rem 0 0;min-height:1.2em;line-height:1.4;"></p>
+          </div>
+
+          <!-- Close -->
+          <button id="paywall-close-btn" style="
+            width:100%;background:transparent;border:1px solid rgba(255,255,255,0.08);
+            color:#4A5E52;border-radius:8px;padding:10px;
+            font-family:'DM Mono',monospace;font-size:0.82rem;
+            cursor:pointer;transition:border-color 0.2s;
+          ">Maybe later — keep Free</button>
+
+          ${action !== 'upgrade' ? `
+          <p style="font-size:0.7rem;color:#3A4E42;text-align:center;margin:0.75rem 0 0;">
+            Or switch to a free theme to ${actionText} without upgrading
+          </p>` : ''}
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Close
+    const closeModal = () => modal.remove();
+    modal.querySelector('#paywall-close-btn').addEventListener('click', closeModal);
+    modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+
+    // Code input UX
+    const codeInput = modal.querySelector('#paywall-code-input');
+    const codeMsg   = modal.querySelector('#paywall-code-msg');
+    const applyBtn  = modal.querySelector('#paywall-apply-btn');
+
+    // Auto-uppercase أثناء الكتابة
+    codeInput.addEventListener('input', () => {
+      const pos = codeInput.selectionStart;
+      codeInput.value = codeInput.value.toUpperCase();
+      codeInput.setSelectionRange(pos, pos);
+    });
+
+    codeInput.addEventListener('focus', () => {
+      codeInput.style.borderColor = 'rgba(0,255,136,0.4)';
+    });
+    codeInput.addEventListener('blur', () => {
+      codeInput.style.borderColor = 'rgba(0,255,136,0.15)';
+    });
+
+    applyBtn.addEventListener('click', () => {
+      _validateDiscountCode(codeInput.value, action, modal, codeMsg, applyBtn);
+    });
+
+    codeInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') applyBtn.click();
+    });
+
+    // Focus الـ input
+    setTimeout(() => codeInput.focus(), 100);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     VALIDATE DISCOUNT CODE — HMAC + Supabase
+  ═══════════════════════════════════════════════════════════════ */
+
+  async function _validateDiscountCode(code, action, modal, msgEl, applyBtn) {
+    if (!code || code.trim().length < 10) {
+      _setCodeMsg(msgEl, 'error', 'Please enter your activation code.');
+      return;
+    }
+
+    // Loading state
+    applyBtn.disabled = true;
+    applyBtn.textContent = '...';
+    _setCodeMsg(msgEl, 'loading', 'Verifying code…');
+
+    // 1. HMAC verification (offline — no server needed)
+    const result = await _verifyCode(code);
+
+    if (!result.valid) {
+      applyBtn.disabled = false;
+      applyBtn.textContent = 'Activate';
+      _setCodeMsg(msgEl, 'error', result.error || 'Invalid or expired code. Please try again.');
+      _shakeInput(modal);
+      return;
+    }
+
+    // 2. Supabase — تسجيل الكود وتفعيل Pro (يمنع إعادة الاستخدام)
+    try {
+      const sb = window._supabaseClient;
+      if (!sb) throw new Error('Not connected');
+
+      const { data, error } = await sb.rpc('activate_pro', {
+        p_code:      result.code,
+        p_code_type: result.type,
+        p_discount:  result.discount,
+      });
+
+      if (error) throw error;
+
+      const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+
+      if (!parsed?.success) {
+        applyBtn.disabled = false;
+        applyBtn.textContent = 'Activate';
+        const errMsg = parsed?.error === 'Code already used'
+          ? 'This code has already been used.'
+          : parsed?.error === 'Already Pro'
+          ? 'Your account is already Pro! 🎉'
+          : parsed?.error || 'Activation failed. Please try again.';
+        _setCodeMsg(msgEl, 'error', errMsg);
+        return;
+      }
+
+      // ✅ نجاح
+      _isPro = true;
+
+      // تحديث الـ UI
+      _setCodeMsg(msgEl, 'success',
+        result.discount === 100
+          ? '🎉 Code accepted! You\'re now Pro!'
+          : `✓ ${result.discount}% discount applied! You're now Pro!`
+      );
+
+      applyBtn.textContent = '✓ Activated!';
+      applyBtn.style.background = 'rgba(0,255,136,0.2)';
+      applyBtn.style.color = '#00FF88';
+
+      // بعد لحظة: اغلق الـ modal وكمّل العملية
+      setTimeout(async () => {
+        modal.remove();
+        window.toast?.('⚡ Pro activated! Continuing…', 'success');
+
+        // أعد بناء الـ toolbar عشان يظهر Pro badge
+        _buildToolbar();
+
+        // كمّل الـ action الأصلي
+        if (action === 'save')    saveDraft();
+        if (action === 'publish') publish();
+
+      }, 1500);
+
+    } catch (err) {
+      console.error('[Portfolio] activate_pro error:', err);
+      applyBtn.disabled = false;
+      applyBtn.textContent = 'Activate';
+      _setCodeMsg(msgEl, 'error', 'Connection error. Please try again.');
+    }
+  }
+
+  function _setCodeMsg(el, type, text) {
+    const colors = {
+      error:   '#FF4F4F',
+      success: '#00FF88',
+      loading: '#8A9E90',
+    };
+    el.style.color = colors[type] || '#8A9E90';
+    el.textContent = text;
+  }
+
+  function _shakeInput(modal) {
+    const input = modal.querySelector('#paywall-code-input');
+    if (!input) return;
+    input.style.borderColor = 'rgba(255,79,79,0.5)';
+    input.animate([
+      { transform: 'translateX(0)' },
+      { transform: 'translateX(-6px)' },
+      { transform: 'translateX(6px)' },
+      { transform: 'translateX(-4px)' },
+      { transform: 'translateX(4px)' },
+      { transform: 'translateX(0)' },
+    ], { duration: 350, easing: 'ease-out' });
+    setTimeout(() => { input.style.borderColor = 'rgba(0,255,136,0.15)'; }, 1000);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     PRO THEME ELEMENT SETUP
+  ═══════════════════════════════════════════════════════════════ */
+
+  function _setupProThemeElements(themeId) {
+    document.getElementById('glass-orb-3')?.remove();
+    document.querySelector('.glass-particles')?.remove();
+    document.querySelector('.space-nebula-layer')?.remove();
+
+    if (themeId === 'glass3d') {
+      const orb = document.createElement('div');
+      orb.id = 'glass-orb-3';
+      document.body.appendChild(orb);
+      const particles = document.createElement('div');
+      particles.className = 'glass-particles';
+      document.body.appendChild(particles);
+    }
+
+    if (themeId === 'space') {
+      const nebula = document.createElement('div');
+      nebula.className = 'space-nebula-layer';
+      document.body.appendChild(nebula);
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     LANG COLORS
+  ═══════════════════════════════════════════════════════════════ */
+
+  const LANG_COLORS = {
+    JavaScript: '#f1e05a', TypeScript: '#3178c6', Python: '#3572A5',
+    Java: '#b07219', Rust: '#dea584', Go: '#00ADD8', Ruby: '#701516',
+    PHP: '#4F5D95', C: '#555555', 'C++': '#f34b7d', 'C#': '#178600',
+    Swift: '#ffac45', Kotlin: '#A97BFF', Dart: '#00B4AB',
+    HTML: '#e34c26', CSS: '#563d7c', Shell: '#89e051',
+    Vue: '#41b883', Svelte: '#ff3e00',
+  };
+
+  function _getLangColor(lang) { return LANG_COLORS[lang] || '#6b7280'; }
+
+  /* ═══════════════════════════════════════════════════════════════
+     EDITABLE HINTS
+  ═══════════════════════════════════════════════════════════════ */
+
+  function _addEditableHints() {
+    $$('[contenteditable="true"]').forEach(el => {
+      if (!el.getAttribute('data-hint-added')) {
+        el.setAttribute('data-hint-added', 'true');
+        el.setAttribute('title', 'Click to edit');
+        const hint = document.createElement('span');
+        hint.className = 'edit-hint';
+        hint.setAttribute('aria-hidden', 'true');
+        hint.textContent = 'Click to edit';
+        el.parentElement?.appendChild(hint);
+      }
+    });
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     INIT
+  ═══════════════════════════════════════════════════════════════ */
+
+  async function init(options = {}) {
+    // جلب الـ Pro status من Supabase أولاً
+    _isPro = options.isPro ?? (await _loadProStatus());
+
+    // Load draft
+    _draft = window.AI?.getDraft?.() || options.draft || null;
+
+    if (!_draft) {
+      console.warn('[Portfolio] No draft found. Waiting for AI.generate()...');
+      window.addEventListener('portfolio:draft-ready', (e) => {
+        _draft = e.detail;
+        _start();
+      });
+      return;
+    }
+
+    _start();
+  }
+
+  function _start() {
+    if (_draft.theme) applyTheme(_draft.theme);
+    applyDraftToDom(_draft);
+    _buildToolbar();
+    _initEditableFields();
+    _addEditableHints();
+    document.body.style.paddingTop = 'var(--toolbar-height, 56px)';
+    console.log('[Portfolio] Edit mode initialized. Theme:', _draft.theme, '| Pro:', _isPro);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     PRO THEME JS LIFECYCLE
+  ═══════════════════════════════════════════════════════════════ */
+
+  const PRO_THEME_SCRIPTS = {
+    cyberpunk: { src: 'js/themes/cyberpunk.js', global: 'CyberpunkFX', loaded: false },
+    space:     { src: 'js/themes/three-scene.js', global: 'SpaceFX', loaded: false },
+    glass3d:   { src: null, global: null, loaded: true },
+  };
+
+  let _currentProFX = null;
+
+  function loadThemeScript(themeName) {
+    const config = PRO_THEME_SCRIPTS[themeName];
+    if (!config || !config.src) return Promise.resolve(null);
+    if (config.loaded && window[config.global]) return Promise.resolve(window[config.global]);
+
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = config.src; script.async = true; script.defer = true;
+      script.onload = () => {
+        config.loaded = true;
+        const api = window[config.global];
+        if (!api) { reject(new Error(`${config.global} not found`)); return; }
+        resolve(api);
+      };
+      script.onerror = () => reject(new Error(`Failed to load ${config.src}`));
+      document.head.appendChild(script);
+    });
+  }
+
+  function deactivateCurrentProTheme() {
+    if (!_currentProFX) return;
+    try { _currentProFX.api?.destroy?.(); } catch (e) { console.warn(e); }
+    _currentProFX = null;
+  }
+
+  async function activateProTheme(themeName) {
+    deactivateCurrentProTheme();
+    const config = PRO_THEME_SCRIPTS[themeName];
+    if (!config || !config.src) return;
+    try {
+      const api = await loadThemeScript(themeName);
+      if (!api) return;
+      api.init();
+      _currentProFX = { name: themeName, api };
+    } catch (err) {
+      console.error('[Portfolio] Error loading Pro theme:', err);
+      window.toast?.('Could not load theme effects', 'error');
+    }
+  }
+
+  const FREE_THEMES = new Set(['light', 'dark', 'minimal']);
+  const PRO_THEMES  = new Set(['glass3d', 'cyberpunk', 'space']);
+
+  async function handleThemeScriptLifecycle(themeName) {
+    if (FREE_THEMES.has(themeName)) { deactivateCurrentProTheme(); return; }
+    if (PRO_THEMES.has(themeName))  { await activateProTheme(themeName); return; }
+    console.warn('[Portfolio] Unknown theme:', themeName);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     PUBLIC API
+  ═══════════════════════════════════════════════════════════════ */
+
+  window.Portfolio = {
+    init,
+    applyTheme,
+    openThemePanel,
+    closeThemePanel,
+    saveDraft,
+    publish,
+    undo,
+    redo,
+    getDraft:   () => _draft,
+    isPro:      () => _isPro,
+    loadThemeScript,
+    activateProTheme,
+    deactivateCurrentProTheme,
+    handleThemeScriptLifecycle,
+  };
+
+})();
