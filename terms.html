@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Terms of Service — Portfolio Generator</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Newsreader:ital,wght@1,300;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/main.css" />
+
+  <style>
+    body { background: var(--clr-bg, #080C0A); color: var(--clr-text, #E8F0EB); }
+
+    .legal-header {
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      padding: 1.5rem 0;
+      margin-bottom: 3rem;
+    }
+    .legal-header__inner {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .legal-header__logo {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 1rem;
+      color: var(--clr-text, #E8F0EB);
+      text-decoration: none;
+      letter-spacing: -0.02em;
+    }
+    .legal-header__logo span { color: #00FF88; }
+    .legal-header__back {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.75rem;
+      color: #8A9E90;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .legal-header__back:hover { color: #E8F0EB; }
+
+    .legal-body {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 0 1.5rem 5rem;
+    }
+
+    .legal-hero {
+      margin-bottom: 3rem;
+    }
+    .legal-hero__tag {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      color: #00FF88;
+      text-transform: uppercase;
+      margin-bottom: 0.75rem;
+    }
+    .legal-hero__title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 2.2rem;
+      letter-spacing: -0.03em;
+      margin-bottom: 0.75rem;
+    }
+    .legal-hero__meta {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.75rem;
+      color: #4A5E52;
+    }
+
+    .legal-section {
+      margin-bottom: 2.5rem;
+      padding-bottom: 2.5rem;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .legal-section:last-child { border-bottom: none; }
+
+    .legal-section h2 {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: #E8F0EB;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .legal-section h2::before {
+      content: '';
+      display: inline-block;
+      width: 3px;
+      height: 16px;
+      background: #00FF88;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    .legal-section p,
+    .legal-section li {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.82rem;
+      color: #8A9E90;
+      line-height: 1.8;
+      margin-bottom: 0.75rem;
+    }
+
+    .legal-section ul {
+      padding-left: 1.25rem;
+      margin-bottom: 0.75rem;
+    }
+    .legal-section li { margin-bottom: 0.4rem; }
+    .legal-section li::marker { color: #00FF88; }
+
+    .legal-section a {
+      color: #00FF88;
+      text-decoration: none;
+    }
+    .legal-section a:hover { text-decoration: underline; }
+
+    .highlight-box {
+      background: rgba(0,255,136,0.04);
+      border: 1px solid rgba(0,255,136,0.12);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .highlight-box p {
+      margin-bottom: 0;
+      color: #A8C0B0 !important;
+    }
+
+    .warning-box {
+      background: rgba(255,165,0,0.04);
+      border: 1px solid rgba(255,165,0,0.15);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .warning-box p {
+      margin-bottom: 0;
+      color: #C8A870 !important;
+    }
+
+    .contact-box {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-top: 1rem;
+    }
+    .contact-box p { margin-bottom: 0.25rem; }
+    .contact-box a { color: #00FF88; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="legal-header">
+    <div class="legal-header__inner">
+      <a href="index.html" class="legal-header__logo">
+        port<span>folio</span>.dev
+      </a>
+      <a href="index.html" class="legal-header__back">← Back to Home</a>
+    </div>
+  </header>
+
+  <!-- Body -->
+  <main class="legal-body">
+
+    <div class="legal-hero">
+      <p class="legal-hero__tag">Legal</p>
+      <h1 class="legal-hero__title">Terms of Service</h1>
+      <p class="legal-hero__meta">Last updated: April 2026 &nbsp;·&nbsp; Portfolio Generator</p>
+    </div>
+
+    <div class="highlight-box">
+      <p>
+        By using Portfolio Generator, you agree to these terms. Please read them carefully.
+        If you have any questions, contact us at
+        <a href="mailto:edumatesupport@gmail.com">edumatesupport@gmail.com</a>.
+      </p>
+    </div>
+
+    <!-- 1 -->
+    <div class="legal-section">
+      <h2>Acceptance of Terms</h2>
+      <p>
+        By accessing or using Portfolio Generator ("the Service"), you agree to be bound
+        by these Terms of Service. If you do not agree to these terms, please do not use
+        the Service.
+      </p>
+    </div>
+
+    <!-- 2 -->
+    <div class="legal-section">
+      <h2>Description of Service</h2>
+      <p>
+        Portfolio Generator is an AI-powered tool that generates professional developer
+        portfolio websites from your public GitHub profile. The Service includes:
+      </p>
+      <ul>
+        <li>Automated portfolio generation from GitHub repositories.</li>
+        <li>An inline editor for customising your portfolio content.</li>
+        <li>A public portfolio URL you can share.</li>
+        <li>A CV Builder tool.</li>
+        <li>Pro subscription plans with access to additional themes.</li>
+      </ul>
+    </div>
+
+    <!-- 3 -->
+    <div class="legal-section">
+      <h2>Free and Pro Plans</h2>
+      <p>
+        The Service offers a <strong style="color:#E8F0EB;">Free plan</strong> with access
+        to core features and three themes, and a
+        <strong style="color:#E8F0EB;">Pro plan</strong> with additional themes and features.
+      </p>
+      <p>
+        Pro plans are available as monthly or yearly subscriptions. Pricing is displayed
+        on the <a href="pricing.html">Pricing page</a>.
+      </p>
+      <p>
+        Pro subscriptions are <strong style="color:#E8F0EB;">not automatically renewed</strong>.
+        When your subscription expires, your account reverts to the Free plan. You can renew
+        at any time by purchasing a new activation code.
+      </p>
+    </div>
+
+    <!-- 4 -->
+    <div class="legal-section">
+      <h2>Payments and Refunds</h2>
+      <p>
+        Payments are processed manually via InstaPay or Vodafone Cash. Upon confirming your
+        payment, we will send you an activation code via our Telegram bot within a reasonable
+        timeframe (typically within a few hours).
+      </p>
+      <div class="warning-box">
+        <p>
+          ⚠️ Activation codes are valid for 48 hours from the time of issue.
+          Please activate your code promptly after receiving it.
+        </p>
+      </div>
+      <p>
+        <strong style="color:#E8F0EB;">Refund Policy:</strong> Due to the digital nature
+        of the Service, we generally do not offer refunds once an activation code has been
+        issued and used. If you have not yet used your code, or if you experience a technical
+        issue preventing activation, please contact us at
+        <a href="mailto:edumatesupport@gmail.com">edumatesupport@gmail.com</a> within 7 days.
+      </p>
+      <p>
+        Referral discounts are applied at the time of purchase and cannot be applied
+        retroactively.
+      </p>
+    </div>
+
+    <!-- 5 -->
+    <div class="legal-section">
+      <h2>User Accounts</h2>
+      <p>
+        You must sign in with a valid GitHub account to use the Service. You are responsible
+        for maintaining the security of your GitHub account. We are not liable for any loss
+        or damage resulting from unauthorised access to your account.
+      </p>
+      <p>
+        You may delete your account at any time. Upon deletion, all your portfolios and
+        personal data will be permanently removed within 30 days.
+      </p>
+    </div>
+
+    <!-- 6 -->
+    <div class="legal-section">
+      <h2>Your Content</h2>
+      <p>
+        You retain ownership of all content you create using the Service, including your
+        portfolio text, project descriptions, and CV content.
+      </p>
+      <p>
+        By using the Service, you grant us a limited, non-exclusive licence to store and
+        display your content solely for the purpose of providing the Service (e.g., serving
+        your public portfolio page).
+      </p>
+      <p>You are responsible for ensuring your content:</p>
+      <ul>
+        <li>Does not infringe any third-party intellectual property rights.</li>
+        <li>Does not contain illegal, harmful, or offensive material.</li>
+        <li>Accurately represents your own work.</li>
+      </ul>
+    </div>
+
+    <!-- 7 -->
+    <div class="legal-section">
+      <h2>Acceptable Use</h2>
+      <p>You agree not to:</p>
+      <ul>
+        <li>Use the Service for any unlawful purpose.</li>
+        <li>Attempt to reverse-engineer, copy, or resell the Service.</li>
+        <li>Share or distribute activation codes.</li>
+        <li>Use the Service to generate portfolios for other people without their consent.</li>
+        <li>Abuse the referral system (e.g., creating fake accounts to generate referrals).</li>
+        <li>Attempt to bypass the Pro paywall through technical means.</li>
+      </ul>
+      <p>
+        We reserve the right to suspend or terminate accounts that violate these terms
+        without prior notice.
+      </p>
+    </div>
+
+    <!-- 8 -->
+    <div class="legal-section">
+      <h2>Intellectual Property</h2>
+      <p>
+        All code, design, and content of Portfolio Generator (excluding your personal
+        content) is owned by Portfolio Generator. You may not copy, modify, or distribute
+        any part of the Service without explicit written permission.
+      </p>
+      <p>
+        The AI-generated portfolio descriptions are produced using your public GitHub data
+        and are considered your content once generated and edited by you.
+      </p>
+    </div>
+
+    <!-- 9 -->
+    <div class="legal-section">
+      <h2>Disclaimer of Warranties</h2>
+      <p>
+        The Service is provided "as is" without warranties of any kind, either express or
+        implied. We do not guarantee that the Service will be uninterrupted, error-free,
+        or that AI-generated content will be accurate or suitable for any specific purpose.
+      </p>
+      <p>
+        We are not responsible for the content of any portfolio generated by the Service,
+        or for how that portfolio is received by potential employers or clients.
+      </p>
+    </div>
+
+    <!-- 10 -->
+    <div class="legal-section">
+      <h2>Limitation of Liability</h2>
+      <p>
+        To the maximum extent permitted by law, Portfolio Generator shall not be liable
+        for any indirect, incidental, special, or consequential damages arising from your
+        use of the Service, including but not limited to loss of data, loss of revenue,
+        or loss of opportunity.
+      </p>
+    </div>
+
+    <!-- 11 -->
+    <div class="legal-section">
+      <h2>Changes to the Service</h2>
+      <p>
+        We reserve the right to modify, suspend, or discontinue any part of the Service
+        at any time. We will endeavour to provide reasonable notice of significant changes.
+        Continued use of the Service after changes constitutes acceptance of the new terms.
+      </p>
+    </div>
+
+    <!-- 12 -->
+    <div class="legal-section">
+      <h2>Governing Law</h2>
+      <p>
+        These Terms shall be governed by and construed in accordance with applicable law.
+        Any disputes shall be resolved through good-faith negotiation. If resolution cannot
+        be reached, disputes shall be referred to the competent courts.
+      </p>
+    </div>
+
+    <!-- 13 -->
+    <div class="legal-section">
+      <h2>Contact Us</h2>
+      <p>If you have any questions about these Terms, please contact us:</p>
+      <div class="contact-box">
+        <p style="color:#E8F0EB;font-family:'Syne',sans-serif;font-weight:700;margin-bottom:0.75rem;">
+          Portfolio Generator
+        </p>
+        <p><a href="mailto:edumatesupport@gmail.com">edumatesupport@gmail.com</a></p>
+        <p style="margin-top:0.5rem;">
+          <a href="privacy.html">Privacy Policy</a>
+        </p>
+      </div>
+    </div>
+
+  </main>
+
+</body>
+</html>

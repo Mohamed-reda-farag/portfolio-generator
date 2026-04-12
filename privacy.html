@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy — Portfolio Generator</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Newsreader:ital,wght@1,300;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/main.css" />
+
+  <style>
+    body { background: var(--clr-bg, #080C0A); color: var(--clr-text, #E8F0EB); }
+
+    .legal-header {
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      padding: 1.5rem 0;
+      margin-bottom: 3rem;
+    }
+    .legal-header__inner {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .legal-header__logo {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 1rem;
+      color: var(--clr-text, #E8F0EB);
+      text-decoration: none;
+      letter-spacing: -0.02em;
+    }
+    .legal-header__logo span { color: #00FF88; }
+    .legal-header__back {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.75rem;
+      color: #8A9E90;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .legal-header__back:hover { color: #E8F0EB; }
+
+    .legal-body {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 0 1.5rem 5rem;
+    }
+
+    .legal-hero {
+      margin-bottom: 3rem;
+    }
+    .legal-hero__tag {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      color: #00FF88;
+      text-transform: uppercase;
+      margin-bottom: 0.75rem;
+    }
+    .legal-hero__title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 2.2rem;
+      letter-spacing: -0.03em;
+      margin-bottom: 0.75rem;
+    }
+    .legal-hero__meta {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.75rem;
+      color: #4A5E52;
+    }
+
+    .legal-section {
+      margin-bottom: 2.5rem;
+      padding-bottom: 2.5rem;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .legal-section:last-child { border-bottom: none; }
+
+    .legal-section h2 {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: #E8F0EB;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .legal-section h2::before {
+      content: '';
+      display: inline-block;
+      width: 3px;
+      height: 16px;
+      background: #00FF88;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    .legal-section p,
+    .legal-section li {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.82rem;
+      color: #8A9E90;
+      line-height: 1.8;
+      margin-bottom: 0.75rem;
+    }
+
+    .legal-section ul {
+      padding-left: 1.25rem;
+      margin-bottom: 0.75rem;
+    }
+    .legal-section li { margin-bottom: 0.4rem; }
+    .legal-section li::marker { color: #00FF88; }
+
+    .legal-section a {
+      color: #00FF88;
+      text-decoration: none;
+    }
+    .legal-section a:hover { text-decoration: underline; }
+
+    .highlight-box {
+      background: rgba(0,255,136,0.04);
+      border: 1px solid rgba(0,255,136,0.12);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .highlight-box p {
+      margin-bottom: 0;
+      color: #A8C0B0 !important;
+    }
+
+    .contact-box {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-top: 1rem;
+    }
+    .contact-box p { margin-bottom: 0.25rem; }
+    .contact-box a { color: #00FF88; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="legal-header">
+    <div class="legal-header__inner">
+      <a href="index.html" class="legal-header__logo">
+        port<span>folio</span>.dev
+      </a>
+      <a href="index.html" class="legal-header__back">← Back to Home</a>
+    </div>
+  </header>
+
+  <!-- Body -->
+  <main class="legal-body">
+
+    <div class="legal-hero">
+      <p class="legal-hero__tag">Legal</p>
+      <h1 class="legal-hero__title">Privacy Policy</h1>
+      <p class="legal-hero__meta">Last updated: April 2026 &nbsp;·&nbsp; Portfolio Generator</p>
+    </div>
+
+    <div class="highlight-box">
+      <p>
+        We built Portfolio Generator to be as privacy-friendly as possible.
+        We collect only what's necessary to run the service, we don't sell your data,
+        and you can delete everything at any time.
+      </p>
+    </div>
+
+    <!-- 1 -->
+    <div class="legal-section">
+      <h2>Who We Are</h2>
+      <p>
+        Portfolio Generator ("we", "us", "our") is an AI-powered service that turns your
+        GitHub profile into a professional portfolio website. We are operated independently
+        and can be reached at
+        <a href="mailto:edumatesupport@gmail.com">edumatesupport@gmail.com</a>.
+      </p>
+    </div>
+
+    <!-- 2 -->
+    <div class="legal-section">
+      <h2>Information We Collect</h2>
+      <p>We collect the following information when you use our service:</p>
+      <ul>
+        <li>
+          <strong style="color:#E8F0EB;">GitHub OAuth data</strong> — your GitHub username,
+          display name, email address, and avatar. This is provided by GitHub when you
+          sign in and is used to personalise your portfolio.
+        </li>
+        <li>
+          <strong style="color:#E8F0EB;">Public GitHub repository data</strong> — names,
+          descriptions, stars, languages, and topics of your public repos. We only access
+          public data; we never read private repositories.
+        </li>
+        <li>
+          <strong style="color:#E8F0EB;">Portfolio content</strong> — the bio, skills,
+          and project descriptions you create or edit in the editor.
+        </li>
+        <li>
+          <strong style="color:#E8F0EB;">Subscription information</strong> — your
+          subscription plan and expiry date. We do not store credit card or payment
+          details; payments are handled manually via third-party transfer.
+        </li>
+        <li>
+          <strong style="color:#E8F0EB;">Telegram ID</strong> — if you link your Telegram
+          account, we store your Telegram user ID to identify you in our payment bot.
+        </li>
+        <li>
+          <strong style="color:#E8F0EB;">Usage data</strong> — basic logs such as which
+          pages you visit, used solely to diagnose errors.
+        </li>
+      </ul>
+    </div>
+
+    <!-- 3 -->
+    <div class="legal-section">
+      <h2>How We Use Your Information</h2>
+      <ul>
+        <li>To generate and display your portfolio.</li>
+        <li>To authenticate you via GitHub OAuth.</li>
+        <li>To manage your subscription status.</li>
+        <li>To send you your activation code via Telegram (if applicable).</li>
+        <li>To improve the service and fix bugs.</li>
+      </ul>
+      <p>We do <strong style="color:#E8F0EB;">not</strong> use your data for advertising,
+      profiling, or sell it to any third party.</p>
+    </div>
+
+    <!-- 4 -->
+    <div class="legal-section">
+      <h2>Third-Party Services</h2>
+      <p>We use the following third-party services to operate:</p>
+      <ul>
+        <li>
+          <strong style="color:#E8F0EB;">Supabase</strong> — database and authentication
+          hosting. Your data is stored on Supabase servers.
+          <a href="https://supabase.com/privacy" target="_blank" rel="noopener">Supabase Privacy Policy →</a>
+        </li>
+        <li>
+          <strong style="color:#E8F0EB;">GitHub API</strong> — to fetch your public
+          repository data.
+          <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub Privacy Statement →</a>
+        </li>
+        <li>
+          <strong style="color:#E8F0EB;">Groq / Llama 4</strong> — AI model used to
+          generate portfolio descriptions. Only your public GitHub data is sent to Groq.
+          <a href="https://groq.com/privacy-policy/" target="_blank" rel="noopener">Groq Privacy Policy →</a>
+        </li>
+        <li>
+          <strong style="color:#E8F0EB;">Vercel</strong> — website hosting.
+          <a href="https://vercel.com/legal/privacy-policy" target="_blank" rel="noopener">Vercel Privacy Policy →</a>
+        </li>
+        <li>
+          <strong style="color:#E8F0EB;">Telegram</strong> — used by our payment bot to
+          deliver activation codes.
+          <a href="https://telegram.org/privacy" target="_blank" rel="noopener">Telegram Privacy Policy →</a>
+        </li>
+      </ul>
+    </div>
+
+    <!-- 5 -->
+    <div class="legal-section">
+      <h2>Data Retention</h2>
+      <p>
+        We retain your data for as long as your account is active. If you delete your
+        portfolio or request account deletion, we will remove your personal data from
+        our systems within 30 days.
+      </p>
+    </div>
+
+    <!-- 6 -->
+    <div class="legal-section">
+      <h2>Your Rights</h2>
+      <p>You have the right to:</p>
+      <ul>
+        <li>Access the personal data we hold about you.</li>
+        <li>Request correction of inaccurate data.</li>
+        <li>Request deletion of your account and all associated data.</li>
+        <li>Withdraw consent at any time by deleting your account.</li>
+      </ul>
+      <p>
+        To exercise any of these rights, email us at
+        <a href="mailto:edumatesupport@gmail.com">edumatesupport@gmail.com</a>.
+      </p>
+    </div>
+
+    <!-- 7 -->
+    <div class="legal-section">
+      <h2>Cookies</h2>
+      <p>
+        We use only essential session cookies required for authentication (via Supabase).
+        We do not use advertising cookies or third-party tracking cookies.
+      </p>
+    </div>
+
+    <!-- 8 -->
+    <div class="legal-section">
+      <h2>Children's Privacy</h2>
+      <p>
+        Portfolio Generator is not directed at children under the age of 13. We do not
+        knowingly collect personal information from children.
+      </p>
+    </div>
+
+    <!-- 9 -->
+    <div class="legal-section">
+      <h2>Changes to This Policy</h2>
+      <p>
+        We may update this Privacy Policy from time to time. We will notify users of
+        significant changes by updating the "Last updated" date at the top of this page.
+        Continued use of the service after changes constitutes acceptance of the updated policy.
+      </p>
+    </div>
+
+    <!-- 10 -->
+    <div class="legal-section">
+      <h2>Contact Us</h2>
+      <div class="contact-box">
+        <p style="color:#E8F0EB;font-family:'Syne',sans-serif;font-weight:700;margin-bottom:0.75rem;">
+          Portfolio Generator
+        </p>
+        <p>For privacy-related questions or requests:</p>
+        <p><a href="mailto:edumatesupport@gmail.com">edumatesupport@gmail.com</a></p>
+      </div>
+    </div>
+
+  </main>
+
+</body>
+</html>
