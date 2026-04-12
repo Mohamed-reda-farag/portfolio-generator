@@ -479,7 +479,7 @@
       document.body.classList.add(`theme-${initialTheme}`);
 
       // 6. Init Portfolio editor with normalised draft
-      window.Portfolio?.init({ isPro: false, draft });
+      window.Portfolio?.init({ draft });
 
       // Re-trigger app.js animations if GSAP loaded after window.load
       if (typeof gsap !== 'undefined' && typeof ScrollTrigger === 'undefined') {
