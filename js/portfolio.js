@@ -58,10 +58,8 @@
   const WINDOW_MS     = 48 * 60 * 60 * 1000; // 48 ساعة
 
   const CODE_TYPES = {
-    16: { type: 'pro_full', discount: 100, label: 'Pro Full'   },
-    14: { type: 'ref_60',   discount: 60,  label: '60% Discount' },
-    12: { type: 'ref_40',   discount: 40,  label: '40% Discount' },
-    10: { type: 'ref_20',   discount: 20,  label: '20% Discount' },
+    16: { type: 'monthly', label: 'شهري (شهر كامل)'   },
+    14: { type: 'yearly',  label: 'سنوي (سنة كاملة)'  },
   };
 
   /**
@@ -117,11 +115,10 @@
       const expectedPrefix = await _computeHmacPrefix(w);
       if (codeHmacPart === expectedPrefix) {
         return {
-          valid:    true,
-          code:     clean,
-          type:     codeType.type,
-          discount: codeType.discount,
-          label:    codeType.label,
+          valid: true,
+          code:  clean,
+          type:  codeType.type,
+          label: codeType.label,
         };
       }
     }
@@ -188,18 +185,20 @@
       const sb = window._supabaseClient;
       if (!sb) return false;
 
-      const { data: authData } = await sb.auth.getUser();
-      const userId = authData?.user?.id;
-      if (!userId) return false;
-
-      const { data, error } = await sb
-        .from('users')
-        .select('is_pro')
-        .eq('id', userId)
-        .single();
-
+      // check_pro_status بتتحقق من الانتهاء تلقائياً
+      const { data, error } = await sb.rpc('check_pro_status');
       if (error || !data) return false;
-      return data.is_pro === true;
+
+      const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+
+      // لو انتهى الاشتراك — نعرض toast للمستخدم
+      if (parsed.expired) {
+        setTimeout(() => {
+          window.toast?.('Your Pro subscription has expired. Renew to continue using Pro themes.', 'warn');
+        }, 2000);
+      }
+
+      return parsed.is_pro === true;
 
     } catch (err) {
       console.warn('[Portfolio] Could not load Pro status:', err);
@@ -980,7 +979,7 @@
       const { data, error } = await sb.rpc('activate_pro', {
         p_code:      result.code,
         p_code_type: result.type,
-        p_discount:  result.discount,
+        p_discount:  0,
       });
 
       if (error) throw error;
@@ -1004,9 +1003,9 @@
 
       // تحديث الـ UI
       _setCodeMsg(msgEl, 'success',
-        result.discount === 100
-          ? '🎉 Code accepted! You\'re now Pro!'
-          : `✓ ${result.discount}% discount applied! You're now Pro!`
+        result.type === 'yearly'
+          ? '🎉 Code accepted! You\'re now Pro for a full year!'
+          : '🎉 Code accepted! You\'re now Pro for a month!'
       );
 
       applyBtn.textContent = '✓ Activated!';

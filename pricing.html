@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pricing — Portfolio Generator</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/main.css" />
+
+  <style>
+    body { background: var(--clr-bg, #080C0A); color: var(--clr-text, #E8F0EB); }
+
+    .pricing-hero {
+      text-align: center;
+      padding: 5rem 1rem 3rem;
+    }
+    .pricing-hero__tag {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      color: #00FF88;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+    .pricing-hero__title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      margin-bottom: 1rem;
+    }
+    .pricing-hero__sub {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.9rem;
+      color: #8A9E90;
+      max-width: 480px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    /* Toggle */
+    .billing-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      margin: 2.5rem auto;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.82rem;
+    }
+    .billing-toggle__label { color: #8A9E90; cursor: pointer; transition: color 0.2s; }
+    .billing-toggle__label.is-active { color: #E8F0EB; }
+    .toggle-switch {
+      position: relative;
+      width: 44px; height: 24px;
+      background: rgba(0,255,136,0.15);
+      border: 1px solid rgba(0,255,136,0.3);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .toggle-switch__knob {
+      position: absolute;
+      top: 3px; left: 3px;
+      width: 16px; height: 16px;
+      background: #00FF88;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    .toggle-switch.is-yearly .toggle-switch__knob { transform: translateX(20px); }
+    .save-badge {
+      background: rgba(0,255,136,0.12);
+      border: 1px solid rgba(0,255,136,0.25);
+      color: #00FF88;
+      font-size: 0.65rem;
+      padding: 2px 8px;
+      border-radius: 20px;
+      letter-spacing: 0.06em;
+    }
+
+    /* Cards */
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 1.5rem 5rem;
+    }
+
+    .pricing-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px;
+      padding: 2rem;
+      position: relative;
+      transition: border-color 0.2s;
+    }
+    .pricing-card:hover { border-color: rgba(255,255,255,0.15); }
+    .pricing-card--pro {
+      border-color: rgba(0,255,136,0.25);
+      background: linear-gradient(135deg, rgba(0,255,136,0.05), rgba(0,100,255,0.03));
+    }
+    .pricing-card--pro:hover { border-color: rgba(0,255,136,0.4); }
+
+    .pricing-card__badge {
+      position: absolute;
+      top: -12px; left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, #00FF88, #00ccff);
+      color: #080C0A;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      padding: 4px 14px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+
+    .pricing-card__name {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 1.1rem;
+      margin: 0 0 0.5rem;
+    }
+    .pricing-card__desc {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.75rem;
+      color: #8A9E90;
+      margin: 0 0 1.5rem;
+      line-height: 1.5;
+    }
+
+    .pricing-card__price {
+      margin-bottom: 1.5rem;
+    }
+    .price-amount {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 2.8rem;
+      line-height: 1;
+      letter-spacing: -0.03em;
+    }
+    .price-currency {
+      font-family: 'DM Mono', monospace;
+      font-size: 1rem;
+      color: #8A9E90;
+      margin-right: 0.25rem;
+    }
+    .price-period {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.75rem;
+      color: #8A9E90;
+      margin-top: 0.25rem;
+    }
+    .price-original {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.75rem;
+      color: #4A5E52;
+      text-decoration: line-through;
+      margin-top: 0.1rem;
+    }
+
+    .pricing-card__features {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+    .pricing-card__features li {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.78rem;
+      color: #A8C0B0;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+    .pricing-card__features li::before {
+      content: '✓';
+      color: #00FF88;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .pricing-card__features li.is-muted { color: #4A5E52; }
+    .pricing-card__features li.is-muted::before { content: '–'; color: #4A5E52; }
+
+    .pricing-card__cta {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      text-align: center;
+      text-decoration: none;
+      border: none;
+    }
+    .pricing-card__cta--primary {
+      background: #00FF88;
+      color: #080C0A;
+    }
+    .pricing-card__cta--primary:hover { opacity: 0.88; }
+    .pricing-card__cta--ghost {
+      background: transparent;
+      color: #8A9E90;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .pricing-card__cta--ghost:hover { border-color: rgba(255,255,255,0.2); color: #E8F0EB; }
+
+    /* Referral note */
+    .referral-note {
+      text-align: center;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.75rem;
+      color: #4A5E52;
+      max-width: 500px;
+      margin: 0 auto 2rem;
+      line-height: 1.6;
+      padding: 0 1rem;
+    }
+    .referral-note a { color: #00FF88; text-decoration: none; }
+    .referral-note a:hover { text-decoration: underline; }
+
+    /* FAQ */
+    .faq-section {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 0 1.5rem 5rem;
+    }
+    .faq-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 1.3rem;
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+    .faq-item {
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      padding: 1rem 0;
+    }
+    .faq-q {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.85rem;
+      color: #E8F0EB;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+    }
+    .faq-a {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.78rem;
+      color: #8A9E90;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="dashboard-header" style="position:sticky;top:0;z-index:100;">
+    <a href="index.html" class="dashboard-header__logo">Portfolio Generator</a>
+    <div class="dashboard-header__actions">
+      <a href="dashboard.html" class="btn btn--ghost btn--sm" style="text-decoration:none;">Dashboard</a>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="pricing-hero">
+    <p class="pricing-hero__tag">Pricing</p>
+    <h1 class="pricing-hero__title">بسيط وواضح</h1>
+    <p class="pricing-hero__sub">
+      ابدأ مجاناً. ترقّى لـ Pro لما تكون جاهز.
+      لا subscriptions مخفية، لا fees إضافية.
+    </p>
+
+    <!-- Billing Toggle -->
+    <div class="billing-toggle">
+      <span class="billing-toggle__label is-active" id="monthly-label">شهري</span>
+      <div class="toggle-switch" id="billing-toggle" onclick="toggleBilling()">
+        <div class="toggle-switch__knob"></div>
+      </div>
+      <span class="billing-toggle__label" id="yearly-label">
+        سنوي <span class="save-badge">وفّر 37%</span>
+      </span>
+    </div>
+  </section>
+
+  <!-- Cards -->
+  <div class="pricing-grid">
+
+    <!-- Free -->
+    <div class="pricing-card">
+      <p class="pricing-card__name">Free</p>
+      <p class="pricing-card__desc">كل حاجة تحتاجها تبدأ بيها.</p>
+      <div class="pricing-card__price">
+        <div>
+          <span class="price-currency">EGP</span>
+          <span class="price-amount">0</span>
+        </div>
+        <p class="price-period">مجاني للأبد</p>
+      </div>
+      <ul class="pricing-card__features">
+        <li>توليد portfolio من GitHub في 60 ثانية</li>
+        <li>3 themes مجانية (Light / Dark / Minimal)</li>
+        <li>CV Builder كامل</li>
+        <li>رابط portfolio عام</li>
+        <li>Inline editing للـ bio والـ skills</li>
+        <li class="is-muted">Pro themes (Glass 3D / Cyberpunk / Space)</li>
+        <li class="is-muted">Custom domain</li>
+      </ul>
+      <a href="index.html" class="pricing-card__cta pricing-card__cta--ghost">
+        ابدأ مجاناً →
+      </a>
+    </div>
+
+    <!-- Pro -->
+    <div class="pricing-card pricing-card--pro">
+      <div class="pricing-card__badge">الأكثر شعبية</div>
+      <p class="pricing-card__name">Pro ⚡</p>
+      <p class="pricing-card__desc">لما تريد portfolio يميّزك فعلاً.</p>
+
+      <div class="pricing-card__price">
+        <div>
+          <span class="price-currency">EGP</span>
+          <span class="price-amount" id="pro-price">200</span>
+        </div>
+        <p class="price-period" id="pro-period">/ شهر</p>
+        <p class="price-original" id="pro-original" style="display:none;">1500 EGP / سنة</p>
+      </div>
+
+      <ul class="pricing-card__features">
+        <li>كل مميزات Free</li>
+        <li>Glass 3D theme — مذهل</li>
+        <li>Cyberpunk theme — unique</li>
+        <li>Space theme — عالمي</li>
+        <li>جميع الـ themes الجديدة مستقبلاً</li>
+        <li>Priority support</li>
+      </ul>
+
+      <a href="https://t.me/GPORT_Payment_BOT" target="_blank" rel="noopener"
+         class="pricing-card__cta pricing-card__cta--primary" id="pro-cta">
+        اشترك الآن عبر Telegram →
+      </a>
+    </div>
+
+  </div>
+
+  <!-- Referral Note -->
+  <p class="referral-note">
+    🔗 شارك رابط الـ referral من <a href="dashboard.html">dashboard</a> بتاعك وادفع أقل —
+    1-4 referrals → خصم 20% · 5-14 → 40% · 15+ → 60%
+  </p>
+
+  <!-- FAQ -->
+  <section class="faq-section">
+    <h2 class="faq-title">أسئلة شائعة</h2>
+
+    <div class="faq-item">
+      <p class="faq-q">إزاي بدفع؟</p>
+      <p class="faq-a">
+        بتحوّل المبلغ على InstaPay أو فودافون كاش، وبتبعت screenshot للبوت على Telegram.
+        بيوصلك كود التفعيل في دقائق.
+      </p>
+    </div>
+
+    <div class="faq-item">
+      <p class="faq-q">الاشتراك بيتجدد تلقائياً؟</p>
+      <p class="faq-a">
+        لأ — الاشتراك مش بيتجدد تلقائياً. لما ينتهي بتدفع تاني وبتاخد كود جديد.
+      </p>
+    </div>
+
+    <div class="faq-item">
+      <p class="faq-q">الاشتراك السنوي بيوفّر قد إيه؟</p>
+      <p class="faq-a">
+        بدل 2400 جنيه (12 شهر × 200)، بتدفع 1500 جنيه بس — توفير 900 جنيه (37.5%).
+      </p>
+    </div>
+
+    <div class="faq-item">
+      <p class="faq-q">لو عندي referrals، الخصم بيطبق على السنوي كمان؟</p>
+      <p class="faq-a">
+        آه — الخصم بيطبق على كلا الاشتراكين. كل ما زاد عدد الـ referrals كل ما زاد الخصم.
+      </p>
+    </div>
+
+    <div class="faq-item">
+      <p class="faq-q">الكود بيشتغل على أكتر من portfolio؟</p>
+      <p class="faq-a">
+        الكود بيفعّل حسابك كله — مش portfolio بعينه.
+        تقدر تعمل edit وتغيير themes على أي portfolio في حسابك طول مدة الاشتراك.
+      </p>
+    </div>
+
+  </section>
+
+  <script>
+    let isYearly = false;
+    const PRICE_MONTHLY = 200;
+    const PRICE_YEARLY  = 1500;
+
+    function toggleBilling() {
+      isYearly = !isYearly;
+      const toggle  = document.getElementById('billing-toggle');
+      const mLabel  = document.getElementById('monthly-label');
+      const yLabel  = document.getElementById('yearly-label');
+      const price   = document.getElementById('pro-price');
+      const period  = document.getElementById('pro-period');
+      const orig    = document.getElementById('pro-original');
+      const cta     = document.getElementById('pro-cta');
+
+      toggle.classList.toggle('is-yearly', isYearly);
+      mLabel.classList.toggle('is-active', !isYearly);
+      yLabel.classList.toggle('is-active',  isYearly);
+
+      if (isYearly) {
+        price.textContent  = PRICE_YEARLY;
+        period.textContent = '/ سنة';
+        orig.style.display = 'block';
+        orig.textContent   = `بدل ${PRICE_MONTHLY * 12} EGP (وفّر ${PRICE_MONTHLY * 12 - PRICE_YEARLY} جنيه)`;
+        cta.textContent    = 'اشترك سنوياً عبر Telegram →';
+      } else {
+        price.textContent  = PRICE_MONTHLY;
+        period.textContent = '/ شهر';
+        orig.style.display = 'none';
+        cta.textContent    = 'اشترك الآن عبر Telegram →';
+      }
+    }
+  </script>
+
+</body>
+</html>
