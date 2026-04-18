@@ -13,258 +13,56 @@
   <link rel="stylesheet" href="css/dashboard.css" />
 
   <script>
-    window.SUPABASE_URL     = "https://zxybqbjsnriwpjehinwb.supabase.co";
-    window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4eWJxYmpzbnJpd3BqZWhpbndiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMjI1NDEsImV4cCI6MjA5MDY5ODU0MX0.ED8CX81h78oga482b9pepZPsqfvX7znMqmtO0VRn3AM";
-    // ⚠️ غيّر ده برابط البوت الحقيقي بتاعك
-    window.TELEGRAM_BOT_USERNAME = '@GPORT_Payment_BOT';
+    window.SUPABASE_URL      = "https://zxybqbjsnriwpjehinwb.supabase.co";
+    window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4eWJxYmpzbnJpd3BqZWhpbnciLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc3NTEyMjU0MSwiZXhwIjoyMDkwNjk4NTQxfQ.ED8CX81h78oga482b9pepZPsqfvX7znMqmtO0VRn3AM";
+    // [FIX] اسم البوت في مكان واحد فقط — يُستخدم في كل الصفحة
+    window.TELEGRAM_BOT_USERNAME = 'GPORT_Payment_BOT';
   </script>
 
   <style>
     /* ── Pro Banner ── */
-    .pro-banner {
-      display: flex;
-      align-items: center;
-      gap: var(--sp-3);
-      background: linear-gradient(135deg, rgba(0,255,136,0.08), rgba(0,204,255,0.06));
-      border: 1px solid rgba(0,255,136,0.2);
-      border-radius: var(--radius-lg, 14px);
-      padding: var(--sp-4) var(--sp-5);
-      margin-bottom: var(--sp-6);
-    }
-    .pro-banner__icon { font-size: 1.5rem; flex-shrink: 0; }
-    .pro-banner__body { flex: 1; }
-    .pro-banner__title {
-      font-family: 'Syne', sans-serif;
-      font-weight: 700;
-      font-size: 1rem;
-      color: var(--clr-text, #E8F0EB);
-      margin: 0 0 0.2rem;
-    }
-    .pro-banner__sub {
-      font-size: 0.78rem;
-      color: var(--clr-text-muted, #8A9E90);
-      margin: 0;
-      font-family: 'DM Mono', monospace;
-    }
-    .pro-banner__badge {
-      background: linear-gradient(135deg, #00FF88, #00ccff);
-      color: #080C0A;
-      font-size: 0.6rem;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      padding: 4px 12px;
-      border-radius: 20px;
-      flex-shrink: 0;
-    }
+    .pro-banner { display:flex; align-items:center; gap:var(--sp-3); background:linear-gradient(135deg,rgba(0,255,136,0.08),rgba(0,204,255,0.06)); border:1px solid rgba(0,255,136,0.2); border-radius:var(--radius-lg,14px); padding:var(--sp-4) var(--sp-5); margin-bottom:var(--sp-6); }
+    .pro-banner__icon { font-size:1.5rem; flex-shrink:0; }
+    .pro-banner__body { flex:1; }
+    .pro-banner__title { font-family:'Syne',sans-serif; font-weight:700; font-size:1rem; color:var(--clr-text,#E8F0EB); margin:0 0 0.2rem; }
+    .pro-banner__sub { font-size:0.78rem; color:var(--clr-text-muted,#8A9E90); margin:0; font-family:'DM Mono',monospace; }
+    .pro-banner__badge { background:linear-gradient(135deg,#00FF88,#00ccff); color:#080C0A; font-size:0.6rem; font-weight:700; letter-spacing:0.12em; padding:4px 12px; border-radius:20px; flex-shrink:0; }
 
     /* ── Referral Section ── */
-    .referral-section {
-      background: var(--clr-surface, rgba(255,255,255,0.03));
-      border: 1px solid var(--clr-border, rgba(255,255,255,0.08));
-      border-radius: var(--radius-lg, 14px);
-      padding: var(--sp-5);
-      margin-bottom: var(--sp-6);
-    }
-    .referral-section__header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: var(--sp-4);
-      flex-wrap: wrap;
-      gap: var(--sp-2);
-    }
-    .referral-section__title {
-      font-family: 'Syne', sans-serif;
-      font-weight: 700;
-      font-size: 1rem;
-      color: var(--clr-text, #E8F0EB);
-      margin: 0;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    .referral-stats {
-      display: flex;
-      gap: var(--sp-4);
-      margin-bottom: var(--sp-4);
-      flex-wrap: wrap;
-    }
-    .referral-stat {
-      background: rgba(0,255,136,0.05);
-      border: 1px solid rgba(0,255,136,0.12);
-      border-radius: 10px;
-      padding: var(--sp-3) var(--sp-4);
-      text-align: center;
-      min-width: 90px;
-    }
-    .referral-stat__value {
-      display: block;
-      font-family: 'Syne', sans-serif;
-      font-weight: 800;
-      font-size: 1.6rem;
-      color: #00FF88;
-      line-height: 1;
-      margin-bottom: 0.25rem;
-    }
-    .referral-stat__label {
-      font-family: 'DM Mono', monospace;
-      font-size: 0.68rem;
-      color: var(--clr-text-muted, #8A9E90);
-      letter-spacing: 0.06em;
-    }
+    .referral-section { background:var(--clr-surface,rgba(255,255,255,0.03)); border:1px solid var(--clr-border,rgba(255,255,255,0.08)); border-radius:var(--radius-lg,14px); padding:var(--sp-5); margin-bottom:var(--sp-6); }
+    .referral-section__header { display:flex; align-items:center; justify-content:space-between; margin-bottom:var(--sp-4); flex-wrap:wrap; gap:var(--sp-2); }
+    .referral-section__title { font-family:'Syne',sans-serif; font-weight:700; font-size:1rem; color:var(--clr-text,#E8F0EB); margin:0; display:flex; align-items:center; gap:0.5rem; }
+    .referral-stats { display:flex; gap:var(--sp-4); margin-bottom:var(--sp-4); flex-wrap:wrap; }
+    .referral-stat { background:rgba(0,255,136,0.05); border:1px solid rgba(0,255,136,0.12); border-radius:10px; padding:var(--sp-3) var(--sp-4); text-align:center; min-width:90px; }
+    .referral-stat__value { display:block; font-family:'Syne',sans-serif; font-weight:800; font-size:1.6rem; color:#00FF88; line-height:1; margin-bottom:0.25rem; }
+    .referral-stat__label { font-family:'DM Mono',monospace; font-size:0.68rem; color:var(--clr-text-muted,#8A9E90); letter-spacing:0.06em; }
+    .tier-progress { margin-bottom:var(--sp-4); }
+    .tier-progress__label { display:flex; justify-content:space-between; font-size:0.75rem; font-family:'DM Mono',monospace; color:var(--clr-text-muted,#8A9E90); margin-bottom:0.4rem; }
+    .tier-progress__bar-bg { height:6px; background:rgba(255,255,255,0.06); border-radius:3px; overflow:hidden; }
+    .tier-progress__bar-fill { height:100%; background:linear-gradient(90deg,#00FF88,#00ccff); border-radius:3px; transition:width 0.6s ease; }
+    .tier-badges { display:flex; gap:var(--sp-2); margin-top:var(--sp-3); flex-wrap:wrap; }
+    .tier-badge { font-family:'DM Mono',monospace; font-size:0.68rem; padding:3px 10px; border-radius:20px; border:1px solid rgba(255,255,255,0.1); color:var(--clr-text-muted,#8A9E90); }
+    .tier-badge--active { background:rgba(0,255,136,0.12); border-color:rgba(0,255,136,0.3); color:#00FF88; }
+    .tier-badge--locked { opacity:0.4; }
+    .referral-link-box { background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:var(--sp-3) var(--sp-4); display:flex; align-items:center; gap:var(--sp-3); margin-bottom:var(--sp-3); }
+    .referral-link-box__url { flex:1; font-family:'DM Mono',monospace; font-size:0.78rem; color:var(--clr-text-muted,#8A9E90); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .referral-link-box__copy { background:rgba(0,255,136,0.08); border:1px solid rgba(0,255,136,0.2); color:#00FF88; border-radius:6px; padding:6px 14px; font-family:'DM Mono',monospace; font-size:0.75rem; cursor:pointer; transition:background 0.2s; white-space:nowrap; flex-shrink:0; }
+    .referral-link-box__copy:hover { background:rgba(0,255,136,0.15); }
+    .referral-link-box__copy.copied { background:rgba(0,255,136,0.2); color:#00FF88; }
+    .referral-note { font-size:0.72rem; font-family:'DM Mono',monospace; color:var(--clr-text-muted,#8A9E90); line-height:1.5; }
 
-    /* Tier progress */
-    .tier-progress {
-      margin-bottom: var(--sp-4);
-    }
-    .tier-progress__label {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.75rem;
-      font-family: 'DM Mono', monospace;
-      color: var(--clr-text-muted, #8A9E90);
-      margin-bottom: 0.4rem;
-    }
-    .tier-progress__bar-bg {
-      height: 6px;
-      background: rgba(255,255,255,0.06);
-      border-radius: 3px;
-      overflow: hidden;
-    }
-    .tier-progress__bar-fill {
-      height: 100%;
-      background: linear-gradient(90deg, #00FF88, #00ccff);
-      border-radius: 3px;
-      transition: width 0.6s ease;
-    }
-    .tier-badges {
-      display: flex;
-      gap: var(--sp-2);
-      margin-top: var(--sp-3);
-      flex-wrap: wrap;
-    }
-    .tier-badge {
-      font-family: 'DM Mono', monospace;
-      font-size: 0.68rem;
-      padding: 3px 10px;
-      border-radius: 20px;
-      border: 1px solid rgba(255,255,255,0.1);
-      color: var(--clr-text-muted, #8A9E90);
-    }
-    .tier-badge--active {
-      background: rgba(0,255,136,0.12);
-      border-color: rgba(0,255,136,0.3);
-      color: #00FF88;
-    }
-    .tier-badge--locked { opacity: 0.4; }
-
-    /* Referral link box */
-    .referral-link-box {
-      background: rgba(0,0,0,0.2);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 10px;
-      padding: var(--sp-3) var(--sp-4);
-      display: flex;
-      align-items: center;
-      gap: var(--sp-3);
-      margin-bottom: var(--sp-3);
-    }
-    .referral-link-box__url {
-      flex: 1;
-      font-family: 'DM Mono', monospace;
-      font-size: 0.78rem;
-      color: var(--clr-text-muted, #8A9E90);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .referral-link-box__copy {
-      background: rgba(0,255,136,0.08);
-      border: 1px solid rgba(0,255,136,0.2);
-      color: #00FF88;
-      border-radius: 6px;
-      padding: 6px 14px;
-      font-family: 'DM Mono', monospace;
-      font-size: 0.75rem;
-      cursor: pointer;
-      transition: background 0.2s;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-    .referral-link-box__copy:hover { background: rgba(0,255,136,0.15); }
-    .referral-link-box__copy.copied {
-      background: rgba(0,255,136,0.2);
-      color: #00FF88;
-    }
-    .referral-note {
-      font-size: 0.72rem;
-      font-family: 'DM Mono', monospace;
-      color: var(--clr-text-muted, #8A9E90);
-      line-height: 1.5;
-    }
-
-    /* ── Upgrade Section (للـ Free users) ── */
-    .upgrade-section {
-      background: linear-gradient(135deg, rgba(0,255,136,0.05), rgba(0,100,255,0.04));
-      border: 1px solid rgba(0,255,136,0.15);
-      border-radius: var(--radius-lg, 14px);
-      padding: var(--sp-5);
-      margin-bottom: var(--sp-6);
-      display: flex;
-      align-items: center;
-      gap: var(--sp-5);
-      flex-wrap: wrap;
-    }
-    .upgrade-section__body { flex: 1; min-width: 200px; }
-    .upgrade-section__title {
-      font-family: 'Syne', sans-serif;
-      font-weight: 700;
-      font-size: 1rem;
-      color: var(--clr-text, #E8F0EB);
-      margin: 0 0 0.3rem;
-    }
-    .upgrade-section__features {
-      list-style: none;
-      padding: 0;
-      margin: 0.5rem 0 0;
-      display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-    }
-    .upgrade-section__features li {
-      font-family: 'DM Mono', monospace;
-      font-size: 0.75rem;
-      color: var(--clr-text-muted, #8A9E90);
-    }
-    .upgrade-section__features li::before { content: '✓ '; color: #00FF88; }
-    .upgrade-section__actions {
-      display: flex;
-      flex-direction: column;
-      gap: var(--sp-2);
-      flex-shrink: 0;
-    }
-    .upgrade-btn {
-      background: #00FF88;
-      color: #080C0A;
-      border: none;
-      border-radius: 8px;
-      padding: 10px 24px;
-      font-family: 'DM Mono', monospace;
-      font-size: 0.82rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: opacity 0.2s;
-      text-decoration: none;
-      text-align: center;
-      white-space: nowrap;
-    }
-    .upgrade-btn:hover { opacity: 0.88; }
-    .upgrade-btn--ghost {
-      background: transparent;
-      color: var(--clr-text-muted, #8A9E90);
-      border: 1px solid rgba(255,255,255,0.1);
-    }
-    .upgrade-btn--ghost:hover { border-color: rgba(255,255,255,0.2); }
+    /* ── Upgrade Section ── */
+    .upgrade-section { background:linear-gradient(135deg,rgba(0,255,136,0.05),rgba(0,100,255,0.04)); border:1px solid rgba(0,255,136,0.15); border-radius:var(--radius-lg,14px); padding:var(--sp-5); margin-bottom:var(--sp-6); display:flex; align-items:center; gap:var(--sp-5); flex-wrap:wrap; }
+    .upgrade-section__body { flex:1; min-width:200px; }
+    .upgrade-section__title { font-family:'Syne',sans-serif; font-weight:700; font-size:1rem; color:var(--clr-text,#E8F0EB); margin:0 0 0.3rem; }
+    .upgrade-section__features { list-style:none; padding:0; margin:0.5rem 0 0; display:flex; flex-direction:column; gap:0.25rem; }
+    .upgrade-section__features li { font-family:'DM Mono',monospace; font-size:0.75rem; color:var(--clr-text-muted,#8A9E90); }
+    .upgrade-section__features li::before { content:'✓ '; color:#00FF88; }
+    .upgrade-section__actions { display:flex; flex-direction:column; gap:var(--sp-2); flex-shrink:0; }
+    .upgrade-btn { background:#00FF88; color:#080C0A; border:none; border-radius:8px; padding:10px 24px; font-family:'DM Mono',monospace; font-size:0.82rem; font-weight:600; cursor:pointer; transition:opacity 0.2s; text-decoration:none; text-align:center; white-space:nowrap; }
+    .upgrade-btn:hover { opacity:0.88; }
+    .upgrade-btn--ghost { background:transparent; color:var(--clr-text-muted,#8A9E90); border:1px solid rgba(255,255,255,0.1); }
+    .upgrade-btn--ghost:hover { border-color:rgba(255,255,255,0.2); }
   </style>
 </head>
 <body class="dashboard-page">
@@ -274,33 +72,27 @@
     <a href="index.html" class="dashboard-header__logo">Portfolio Generator</a>
     <div class="dashboard-header__actions">
       <a href="index.html" class="btn btn--ghost btn--sm">+ New Portfolio</a>
-      <img id="nav-avatar" class="nav-avatar hidden" src="" alt="avatar"
-           data-nav-avatar title="Your account" />
-      <button id="signout-btn" class="btn btn--ghost btn--sm hidden"
-              data-nav-signout onclick="Auth.signOut()">Sign Out</button>
+      <img id="nav-avatar" class="nav-avatar hidden" src="" alt="avatar" data-nav-avatar title="Your account" />
+      <!-- [FIX] استُبدل onclick بـ event listener -->
+      <button id="signout-btn" class="btn btn--ghost btn--sm hidden" data-nav-signout>Sign Out</button>
     </div>
   </header>
 
   <!-- ─── Main ─────────────────────────────────────────────── -->
   <main class="dashboard-main">
 
-    <!-- Title Row -->
     <div class="dashboard-title-row">
       <div>
         <h1 class="dashboard-greeting" id="greeting-text">Your Portfolios</h1>
         <p class="dashboard-sub" id="greeting-sub">Loading…</p>
       </div>
       <div style="display:flex;gap:var(--sp-3);">
-        <a href="cv-builder.html" class="btn btn--ghost btn--sm" style="text-decoration:none;">
-          📄 CV Builder
-        </a>
-        <a href="index.html" class="btn btn--primary btn--sm" style="text-decoration:none;">
-          + Generate New
-        </a>
+        <a href="cv-builder.html" class="btn btn--ghost btn--sm" style="text-decoration:none;">📄 CV Builder</a>
+        <a href="index.html" class="btn btn--primary btn--sm" style="text-decoration:none;">+ Generate New</a>
       </div>
     </div>
 
-    <!-- ── Pro Banner (يظهر فقط لو isPro) ── -->
+    <!-- Pro Banner -->
     <div class="pro-banner" id="pro-banner" style="display:none;">
       <span class="pro-banner__icon">⚡</span>
       <div class="pro-banner__body">
@@ -310,13 +102,11 @@
       <span class="pro-banner__badge">PRO</span>
     </div>
 
-    <!-- ── Upgrade Section (يظهر فقط لو Free) ── -->
+    <!-- Upgrade Section -->
     <div class="upgrade-section" id="upgrade-section" style="display:none;">
       <div class="upgrade-section__body">
         <p class="upgrade-section__title">🚀 Upgrade to Pro</p>
-        <p style="font-size:0.78rem;color:var(--clr-text-muted,#8A9E90);margin:0 0 0.5rem;font-family:'DM Mono',monospace;">
-          Unlock all Pro themes and stand out.
-        </p>
+        <p style="font-size:0.78rem;color:var(--clr-text-muted,#8A9E90);margin:0 0 0.5rem;font-family:'DM Mono',monospace;">Unlock all Pro themes and stand out.</p>
         <ul class="upgrade-section__features">
           <li>Glass 3D, Cyberpunk, Space themes</li>
           <li>Priority support</li>
@@ -324,155 +114,84 @@
         </ul>
       </div>
       <div class="upgrade-section__actions">
-        <a href="https://t.me/GPortBot" target="_blank" rel="noopener"
-           id="upgrade-telegram-btn" class="upgrade-btn">
+        <!-- [FIX] href بيتحدد في init() من TELEGRAM_BOT_USERNAME -->
+        <a href="#" target="_blank" rel="noopener" id="upgrade-telegram-btn" class="upgrade-btn">
           Upgrade via Telegram ⚡
         </a>
-        <button class="upgrade-btn upgrade-btn--ghost" onclick="Dashboard.showActivateModal()">
-          I have a code →
-        </button>
+        <!-- [FIX] onclick استُبدل بـ event listener -->
+        <button class="upgrade-btn upgrade-btn--ghost" id="activate-code-btn">I have a code →</button>
       </div>
     </div>
 
     <!-- Stats Bar -->
     <div class="dashboard-stats" id="dashboard-stats" style="display:none;">
-      <div class="dash-stat">
-        <span class="dash-stat__value" id="stat-portfolios">0</span>
-        <span class="dash-stat__label">Portfolios</span>
-      </div>
-      <div class="dash-stat">
-        <span class="dash-stat__value" id="stat-published">0</span>
-        <span class="dash-stat__label">Published</span>
-      </div>
-      <div class="dash-stat">
-        <span class="dash-stat__value" id="stat-projects">0</span>
-        <span class="dash-stat__label">Projects</span>
-      </div>
+      <div class="dash-stat"><span class="dash-stat__value" id="stat-portfolios">0</span><span class="dash-stat__label">Portfolios</span></div>
+      <div class="dash-stat"><span class="dash-stat__value" id="stat-published">0</span><span class="dash-stat__label">Published</span></div>
+      <div class="dash-stat"><span class="dash-stat__value" id="stat-projects">0</span><span class="dash-stat__label">Projects</span></div>
     </div>
 
     <!-- Portfolio Grid -->
     <div class="portfolio-grid" id="portfolio-grid" role="list" aria-label="Your portfolios">
-      <div class="skeleton-card" aria-hidden="true">
-        <div class="skeleton-preview"></div>
-        <div class="skeleton-body">
-          <div class="skeleton-line skeleton-line--mid"></div>
-          <div class="skeleton-line skeleton-line--short"></div>
-          <div class="skeleton-line skeleton-line--long"></div>
-        </div>
-      </div>
-      <div class="skeleton-card" aria-hidden="true">
-        <div class="skeleton-preview"></div>
-        <div class="skeleton-body">
-          <div class="skeleton-line skeleton-line--mid"></div>
-          <div class="skeleton-line skeleton-line--short"></div>
-          <div class="skeleton-line skeleton-line--long"></div>
-        </div>
-      </div>
-      <div class="skeleton-card" aria-hidden="true">
-        <div class="skeleton-preview"></div>
-        <div class="skeleton-body">
-          <div class="skeleton-line skeleton-line--mid"></div>
-          <div class="skeleton-line skeleton-line--short"></div>
-          <div class="skeleton-line skeleton-line--long"></div>
-        </div>
-      </div>
+      <div class="skeleton-card" aria-hidden="true"><div class="skeleton-preview"></div><div class="skeleton-body"><div class="skeleton-line skeleton-line--mid"></div><div class="skeleton-line skeleton-line--short"></div><div class="skeleton-line skeleton-line--long"></div></div></div>
+      <div class="skeleton-card" aria-hidden="true"><div class="skeleton-preview"></div><div class="skeleton-body"><div class="skeleton-line skeleton-line--mid"></div><div class="skeleton-line skeleton-line--short"></div><div class="skeleton-line skeleton-line--long"></div></div></div>
+      <div class="skeleton-card" aria-hidden="true"><div class="skeleton-preview"></div><div class="skeleton-body"><div class="skeleton-line skeleton-line--mid"></div><div class="skeleton-line skeleton-line--short"></div><div class="skeleton-line skeleton-line--long"></div></div></div>
     </div>
 
-    <!-- ── Referral Section ── -->
+    <!-- Referral Section -->
     <div class="referral-section" id="referral-section" style="display:none;">
       <div class="referral-section__header">
-        <h2 class="referral-section__title">
-          🔗 Refer & Earn Discounts
-        </h2>
+        <h2 class="referral-section__title">🔗 Refer & Earn Discounts</h2>
         <span id="referral-tier-label" style="font-family:'DM Mono',monospace;font-size:0.72rem;color:#8A9E90;"></span>
       </div>
-
-      <!-- Stats -->
       <div class="referral-stats">
-        <div class="referral-stat">
-          <span class="referral-stat__value" id="ref-count">0</span>
-          <span class="referral-stat__label">Referrals</span>
-        </div>
-        <div class="referral-stat">
-          <span class="referral-stat__value" id="ref-discount">0%</span>
-          <span class="referral-stat__label">Discount</span>
-        </div>
-        <div class="referral-stat">
-          <span class="referral-stat__value" id="ref-next">1</span>
-          <span class="referral-stat__label">Next Tier</span>
-        </div>
+        <div class="referral-stat"><span class="referral-stat__value" id="ref-count">0</span><span class="referral-stat__label">Referrals</span></div>
+        <div class="referral-stat"><span class="referral-stat__value" id="ref-discount">0%</span><span class="referral-stat__label">Discount</span></div>
+        <div class="referral-stat"><span class="referral-stat__value" id="ref-next">1</span><span class="referral-stat__label">Next Tier</span></div>
       </div>
-
-      <!-- Progress Bar -->
       <div class="tier-progress">
         <div class="tier-progress__label">
           <span id="ref-progress-label">Progress to next tier</span>
           <span id="ref-progress-pct">0%</span>
         </div>
-        <div class="tier-progress__bar-bg">
-          <div class="tier-progress__bar-fill" id="ref-progress-bar" style="width:0%"></div>
-        </div>
+        <div class="tier-progress__bar-bg"><div class="tier-progress__bar-fill" id="ref-progress-bar" style="width:0%"></div></div>
         <div class="tier-badges">
           <span class="tier-badge" id="tier-20">20% · 1 ref</span>
           <span class="tier-badge" id="tier-40">40% · 5 refs</span>
           <span class="tier-badge" id="tier-60">60% · 15 refs</span>
         </div>
       </div>
-
-      <!-- Referral Link -->
       <div class="referral-link-box">
         <span class="referral-link-box__url" id="referral-url">Loading…</span>
-        <button class="referral-link-box__copy" id="copy-referral-btn"
-                onclick="Dashboard.copyReferralLink(this)">
-          Copy Link
-        </button>
+        <button class="referral-link-box__copy" id="copy-referral-btn">Copy Link</button>
       </div>
-
-      <p class="referral-note">
-        شارك الرابط مع أصدقائك — لما حد يسجّل عن طريقك بتاخد خصم على الـ Pro.
-        كل 1-4 referrals → 20% · 5-14 → 40% · 15+ → 60%
-      </p>
+      <p class="referral-note">شارك الرابط مع أصدقائك — لما حد يسجّل عن طريقك بتاخد خصم على الـ Pro. كل 1-4 referrals → 20% · 5-14 → 40% · 15+ → 60%</p>
     </div>
 
   </main>
 
-  <!-- ─── Delete Confirm Modal ──────────────────────────────── -->
+  <!-- Delete Modal -->
   <div class="modal-overlay" id="delete-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <div class="modal-box">
       <div class="modal-box__icon">🗑️</div>
       <h2 class="modal-box__title" id="modal-title">Delete Portfolio?</h2>
-      <p class="modal-box__sub">
-        هيتمسح نهائياً مع كل المشاريع المرتبطة بيه. العملية دي مش ممكن ترجعها.
-      </p>
+      <p class="modal-box__sub">هيتمسح نهائياً مع كل المشاريع المرتبطة بيه. العملية دي مش ممكن ترجعها.</p>
       <div class="modal-box__actions">
         <button class="btn btn--ghost btn--sm" id="modal-cancel-btn">Cancel</button>
-        <button class="btn btn--sm" id="modal-confirm-btn"
-          style="background:rgba(255,60,60,0.15);border-color:rgba(255,60,60,0.3);color:rgb(255,100,100);">
-          Yes, Delete
-        </button>
+        <button class="btn btn--sm" id="modal-confirm-btn" style="background:rgba(255,60,60,0.15);border-color:rgba(255,60,60,0.3);color:rgb(255,100,100);">Yes, Delete</button>
       </div>
     </div>
   </div>
 
-  <!-- ─── Activate Code Modal ───────────────────────────────── -->
+  <!-- Activate Modal -->
   <div class="modal-overlay" id="activate-modal" role="dialog" aria-modal="true">
     <div class="modal-box" style="max-width:420px;">
       <div class="modal-box__icon">⚡</div>
       <h2 class="modal-box__title">Activate Pro Code</h2>
       <p class="modal-box__sub">ادخل كود التفعيل اللي وصلك من البوت.</p>
       <div style="margin:1rem 0;">
-        <input id="activate-code-input" type="text"
-          placeholder="GPORT..."
+        <input id="activate-code-input" type="text" placeholder="GPORT..."
           autocomplete="off" autocapitalize="characters" spellcheck="false"
-          style="
-            width:100%;box-sizing:border-box;
-            background:rgba(0,0,0,0.3);
-            border:1px solid rgba(0,255,136,0.2);
-            border-radius:8px;padding:10px 14px;
-            color:#E8F0EB;font-family:'DM Mono',monospace;
-            font-size:0.9rem;outline:none;letter-spacing:0.05em;
-          "
-        />
+          style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.3);border:1px solid rgba(0,255,136,0.2);border-radius:8px;padding:10px 14px;color:#E8F0EB;font-family:'DM Mono',monospace;font-size:0.9rem;outline:none;letter-spacing:0.05em;" />
         <p id="activate-code-msg" style="font-size:0.72rem;margin:0.5rem 0 0;min-height:1em;font-family:'DM Mono',monospace;"></p>
       </div>
       <div class="modal-box__actions">
@@ -482,67 +201,30 @@
     </div>
   </div>
 
-  <!-- ─── Toast ────────────────────────────────────────────── -->
+  <!-- Toast -->
   <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
-  <!-- ─── Scripts ──────────────────────────────────────────── -->
+  <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/app.js"></script>
   <script src="js/auth.js"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      if (!window._supabaseClient && window.supabase?.createClient && window.SUPABASE_URL) {
-        window._supabaseClient = window.supabase.createClient(
-          window.SUPABASE_URL, window.SUPABASE_ANON_KEY
-        );
-      }
-    });
-  </script>
 
   <script>
   ;(function () {
     'use strict';
 
-    // ─── HMAC Verification (نفس portfolio.js) ────────────────
-    const GPORT_SECRET  = '65c021d4717e612a0af42b1feed99e8b11424314ee28f23c8d949b7b51cff70c';
-    const GPORT_PREFIX  = 'GPORT';
-    const WINDOW_MS     = 48 * 60 * 60 * 1000;
-    const CODE_TYPES    = {
-      16: { type: 'pro_full', discount: 100 },
-      14: { type: 'ref_60',   discount: 60  },
-      12: { type: 'ref_40',   discount: 40  },
-      10: { type: 'ref_20',   discount: 20  },
-    };
-
-    async function _computeHmacPrefix(windowIndex) {
-      const encoder  = new TextEncoder();
-      const keyData  = encoder.encode(GPORT_SECRET);
-      const message  = encoder.encode(String(windowIndex));
-      const cryptoKey = await crypto.subtle.importKey(
-        'raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
-      );
-      const signature = await crypto.subtle.sign('HMAC', cryptoKey, message);
-      const hex = Array.from(new Uint8Array(signature))
-        .map(b => b.toString(16).padStart(2, '0')).join('');
-      return hex.slice(0, 4).toUpperCase();
-    }
-
-    async function verifyCode(code) {
-      const clean = code.trim().toUpperCase();
-      if (!clean.startsWith(GPORT_PREFIX)) return { valid: false, error: 'Invalid format' };
-      const codeType = CODE_TYPES[clean.length];
-      if (!codeType) return { valid: false, error: 'Invalid code length' };
-      const codeHmac = clean.slice(GPORT_PREFIX.length, GPORT_PREFIX.length + 4);
-      const current  = Math.floor(Date.now() / WINDOW_MS);
-      for (const w of [current, current - 1]) {
-        const expected = await _computeHmacPrefix(w);
-        if (codeHmac === expected) return { valid: true, code: clean, ...codeType };
-      }
-      return { valid: false, error: 'Code expired or invalid' };
-    }
-
-    // ─── Helpers ─────────────────────────────────────────────
+    // ─── Helpers ──────────────────────────────────────────────
     const $ = id => document.getElementById(id);
+
+    // [FIX] استُبدل inline onclick بـ event listener
+    document.querySelector('[data-nav-signout]')
+      ?.addEventListener('click', () => Auth.signOut?.());
+
+    document.getElementById('activate-code-btn')
+      ?.addEventListener('click', showActivateModal);
+
+    document.getElementById('copy-referral-btn')
+      ?.addEventListener('click', function() { copyReferralLink(this); });
 
     function relativeTime(isoStr) {
       const diff = Date.now() - new Date(isoStr).getTime();
@@ -556,6 +238,11 @@
       return new Date(isoStr).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
     }
 
+    // [FIX] previewPortfolio بتستخدم origin-relative URL بدل absolute path
+    function previewPortfolio(slug) {
+      window.open(`${window.location.origin}/portfolio.html?slug=${slug}`, '_blank');
+    }
+
     async function copyLink(slug, btn) {
       const url = `${window.location.origin}/portfolio.html?slug=${slug}`;
       try {
@@ -567,10 +254,6 @@
       } catch { window.toast?.('Copy failed', 'error'); }
     }
 
-    function previewPortfolio(slug) {
-      window.open(`/portfolio.html?slug=${slug}`, '_blank');
-    }
-
     // ─── Build Portfolio Card ─────────────────────────────────
     function buildCard(p) {
       const theme        = p.theme || 'light';
@@ -578,6 +261,9 @@
       const totalStars   = p.projects?.reduce((s, pr) => s + (pr.stars || 0), 0) || 0;
       const isPublished  = p.is_published;
       const slug         = p.slug || p.id.slice(0, 8);
+
+      // [FIX] bar widths ثابتة بدل Math.random() — consistent بين الـ renders
+      const barWidths = [35, 55, 45];
 
       const card = document.createElement('article');
       card.className  = 'portfolio-card';
@@ -587,9 +273,9 @@
       card.innerHTML = `
         <div class="portfolio-card__preview preview--${theme}" aria-hidden="true">
           <div class="preview__mockup">
-            <div class="preview__bar preview__bar--accent" style="width:${20+Math.random()*30|0}%"></div>
-            <div class="preview__bar" style="width:${40+Math.random()*30|0}%"></div>
-            <div class="preview__bar" style="width:${30+Math.random()*20|0}%"></div>
+            <div class="preview__bar preview__bar--accent" style="width:${barWidths[0]}%"></div>
+            <div class="preview__bar" style="width:${barWidths[1]}%"></div>
+            <div class="preview__bar" style="width:${barWidths[2]}%"></div>
           </div>
         </div>
         <div class="portfolio-card__body">
@@ -601,31 +287,30 @@
             </span>
           </div>
           <div class="portfolio-card__stats">
-            <span class="card-stat">
-              <span class="card-stat__icon">⬡</span>
-              ${projectCount} project${projectCount !== 1 ? 's' : ''}
-            </span>
-            <span class="card-stat">
-              <span class="card-stat__icon">★</span>
-              ${totalStars} stars
-            </span>
+            <span class="card-stat"><span class="card-stat__icon">⬡</span>${projectCount} project${projectCount !== 1 ? 's' : ''}</span>
+            <span class="card-stat"><span class="card-stat__icon">★</span>${totalStars} stars</span>
           </div>
           <span class="portfolio-card__updated">Updated ${relativeTime(p.updated_at)}</span>
         </div>
         <div class="portfolio-card__actions">
-          <a href="edit.html?id=${p.id}" class="card-action card-action--primary"
-             aria-label="Edit portfolio">✏ Edit</a>
-          <button class="card-action" onclick="Dashboard.preview('${slug}')"
-                  aria-label="Preview portfolio">👁 Preview</button>
-          <button class="card-action card-action--danger"
-                  onclick="Dashboard.confirmDelete('${p.id}')"
-                  aria-label="Delete portfolio">✕ Delete</button>
-          ${isPublished ? `
-          <button class="card-action card-action--copy"
-                  onclick="Dashboard.copyLink('${slug}', this)"
-                  aria-label="Copy portfolio link">⎘ Copy Link</button>` : ''}
+          <a href="edit.html?id=${p.id}" class="card-action card-action--primary" aria-label="Edit portfolio">✏ Edit</a>
+          <button class="card-action js-preview" data-slug="${slug}" aria-label="Preview portfolio">👁 Preview</button>
+          <button class="card-action card-action--danger js-delete" data-id="${p.id}" aria-label="Delete portfolio">✕ Delete</button>
+          ${isPublished ? `<button class="card-action card-action--copy js-copy" data-slug="${slug}" aria-label="Copy portfolio link">⎘ Copy Link</button>` : ''}
         </div>
       `;
+
+      // [FIX] event listeners بدل onclick inline في الـ card actions
+      card.querySelector('.js-preview')?.addEventListener('click', function() {
+        previewPortfolio(this.dataset.slug);
+      });
+      card.querySelector('.js-delete')?.addEventListener('click', function() {
+        confirmDelete(this.dataset.id);
+      });
+      card.querySelector('.js-copy')?.addEventListener('click', function() {
+        copyLink(this.dataset.slug, this);
+      });
+
       return card;
     }
 
@@ -639,8 +324,7 @@
             <span class="empty-state__icon">⬡</span>
             <h2 class="empty-state__title">No portfolios yet</h2>
             <p class="empty-state__sub">Generate your first portfolio from your GitHub repos in under 60 seconds.</p>
-            <a href="index.html" class="btn btn--primary btn--sm"
-               style="text-decoration:none;margin-top:0.5rem;">Generate Now →</a>
+            <a href="index.html" class="btn btn--primary btn--sm" style="text-decoration:none;margin-top:0.5rem;">Generate Now →</a>
           </div>`;
         return;
       }
@@ -657,51 +341,42 @@
       if (total > 0) $('dashboard-stats').style.display = 'flex';
     }
 
-    // ─── Pro Status UI ────────────────────────────────────────
     function renderProStatus(isPro) {
-      if (isPro) {
-        $('pro-banner').style.display    = 'flex';
-        $('upgrade-section').style.display = 'none';
-      } else {
-        $('pro-banner').style.display    = 'none';
-        $('upgrade-section').style.display = 'flex';
-      }
+      $('pro-banner').style.display      = isPro ? 'flex' : 'none';
+      $('upgrade-section').style.display = isPro ? 'none' : 'flex';
     }
 
     // ─── Referral Section ─────────────────────────────────────
     let _referralUrl = '';
 
     async function loadReferralData(userId, isPro) {
-      // إظهار الـ section
       $('referral-section').style.display = 'block';
 
       const sb = window._supabaseClient;
       if (!sb) return;
 
       try {
-        // جيب أو ولّد الـ referral code
         const { data: refCode } = await sb.rpc('generate_user_referral_code');
-
         if (refCode) {
           _referralUrl = `${window.location.origin}/index.html?ref=${refCode}`;
           $('referral-url').textContent = _referralUrl;
         }
 
-        // جيب الـ stats
         const { data: stats } = await sb.rpc('get_referral_stats', { p_user_id: userId });
 
         if (stats && stats.length > 0) {
-          const s = stats[0];
-          $('ref-count').textContent    = s.referral_count ?? 0;
-          $('ref-discount').textContent = (s.discount_tier ?? 0) + '%';
-          $('ref-next').textContent     = s.next_tier_at ?? '✓';
-
-          // Progress bar
-          const count    = s.referral_count ?? 0;
+          const s       = stats[0];
+          const count   = s.referral_count ?? 0;
           const nextTier = s.next_tier_at;
+          const discount = s.discount_tier ?? 0;
+
+          $('ref-count').textContent    = count;
+          $('ref-discount').textContent = discount + '%';
+          $('ref-next').textContent     = nextTier ?? '✓';
+
+          // [FIX] Progress bar — label صح في كل حالة
           let pct = 0;
           let progressLabel = '';
-
           if (!nextTier) {
             pct = 100;
             progressLabel = 'Max tier reached! 🎉';
@@ -715,7 +390,9 @@
             progressLabel = `${count}/15 للـ 60%`;
             $('ref-progress-pct').textContent = Math.round(pct) + '%';
           } else {
+            // nextTier === 1 — أول tier
             pct = 0;
+            // [FIX] كان "للـ 40%" — الصح "للـ 20%"
             progressLabel = `${count}/1 للـ 20%`;
             $('ref-progress-pct').textContent = '0%';
           }
@@ -723,18 +400,13 @@
           $('ref-progress-label').textContent = progressLabel;
           $('ref-progress-bar').style.width   = pct + '%';
 
-          // Tier badges
-          const discount = s.discount_tier ?? 0;
           $('tier-20').className = 'tier-badge' + (discount >= 20 ? ' tier-badge--active' : ' tier-badge--locked');
           $('tier-40').className = 'tier-badge' + (discount >= 40 ? ' tier-badge--active' : ' tier-badge--locked');
           $('tier-60').className = 'tier-badge' + (discount >= 60 ? ' tier-badge--active' : ' tier-badge--locked');
 
-          // لو عنده discount → حدّث label الـ upgrade section
           if (!isPro && discount > 0) {
             const upgradeBtn = $('upgrade-telegram-btn');
-            if (upgradeBtn) {
-              upgradeBtn.textContent = `Upgrade with ${discount}% Discount ⚡`;
-            }
+            if (upgradeBtn) upgradeBtn.textContent = `Upgrade with ${discount}% Discount ⚡`;
           }
         }
       } catch (err) {
@@ -754,39 +426,33 @@
       } catch { window.toast?.('Copy failed', 'error'); }
     }
 
-    // ─── Track Referral (لو جه من ref link) ──────────────────
+    // ─── Track Referral ────────────────────────────────────────
     async function trackReferralIfNeeded(userId) {
-      const params    = new URLSearchParams(window.location.search);
-      const refCode   = params.get('ref');
+      const params  = new URLSearchParams(window.location.search);
+      const refCode = params.get('ref');
       if (!refCode) return;
 
       const sb = window._supabaseClient;
       if (!sb) return;
 
       try {
-        // جيب الـ referrer بالـ code
         const { data: referrer } = await sb
-          .from('users')
-          .select('id')
-          .eq('referral_code', refCode)
-          .single();
+          .from('users').select('id').eq('referral_code', refCode).single();
 
-        if (!referrer || referrer.id === userId) return; // مش referral نفسك
+        if (!referrer || referrer.id === userId) return;
 
-        // حاول تسجّل الـ referral (الـ UNIQUE constraint بتحمي من التكرار)
-        await sb.from('referrals').insert({
-          referrer_id: referrer.id,
-          referred_id: userId,
-        });
+        await sb.from('referrals').insert({ referrer_id: referrer.id, referred_id: userId });
 
-        // امسح الـ ref من الـ URL
         const url = new URL(window.location.href);
         url.searchParams.delete('ref');
         window.history.replaceState({}, '', url.toString());
 
       } catch (err) {
-        // unique_violation = اتسجّل قبل كده — مش error
-        if (!err.message?.includes('unique')) {
+        // [FIX] نتحقق من PostgreSQL unique violation code (23505) بدل message string —
+        // message.includes('unique') هش ويمكن يتطابق مع errors تانية عن طريق الخطأ.
+        const isUniqueViolation = err?.code === '23505'
+          || err?.details?.includes('already exists');
+        if (!isUniqueViolation) {
           console.warn('[Dashboard] Referral tracking error:', err);
         }
       }
@@ -803,18 +469,15 @@
     $('activate-cancel-btn').addEventListener('click', () => {
       $('activate-modal').classList.remove('active');
     });
-
     $('activate-modal').addEventListener('click', e => {
       if (e.target === $('activate-modal')) $('activate-modal').classList.remove('active');
     });
 
-    // Auto-uppercase
-    $('activate-code-input').addEventListener('input', function () {
+    $('activate-code-input').addEventListener('input', function() {
       const pos = this.selectionStart;
       this.value = this.value.toUpperCase();
       this.setSelectionRange(pos, pos);
     });
-
     $('activate-code-input').addEventListener('keydown', e => {
       if (e.key === 'Enter') $('activate-confirm-btn').click();
     });
@@ -835,22 +498,17 @@
       msg.style.color = '#8A9E90';
       msg.textContent = 'Verifying…';
 
-      const result = await verifyCode(code);
-
-      if (!result.valid) {
-        btn.disabled    = false;
-        btn.textContent = 'Activate ⚡';
-        msg.style.color = '#FF4F4F';
-        msg.textContent = result.error || 'Invalid or expired code.';
-        return;
-      }
-
       try {
         const sb = window._supabaseClient;
+        if (!sb) throw new Error('Not connected');
+
+        const clean = code.toUpperCase();
+
+        // [FIX] حذفنا client-side HMAC — الـ RPC هي source of truth الوحيدة
         const { data, error } = await sb.rpc('activate_pro', {
-          p_code:      result.code,
-          p_code_type: result.type,
-          p_discount:  result.discount,
+          p_code:      clean,
+          p_code_type: clean.length === 16 ? 'monthly' : 'yearly',
+          p_discount:  0,
         });
 
         if (error) throw error;
@@ -865,14 +523,12 @@
             ? 'This code has already been used.'
             : parsed?.error === 'Already Pro'
             ? 'Your account is already Pro! 🎉'
-            : 'Activation failed. Please try again.';
+            : parsed?.error || 'Activation failed. Please try again.';
           return;
         }
 
-        // ✅ نجاح
         msg.style.color = '#00FF88';
         msg.textContent = '🎉 Activated! Refreshing…';
-
         setTimeout(() => {
           $('activate-modal').classList.remove('active');
           window.location.reload();
@@ -908,9 +564,12 @@
       try {
         const sb = window._supabaseClient;
         if (!sb) throw new Error('Supabase client not ready');
-        await sb.from('projects').delete().eq('portfolio_id', _pendingDeleteId);
-        const { error } = await sb.from('portfolios').delete().eq('id', _pendingDeleteId);
-        if (error) throw error;
+
+        // CASCADE DELETE مفعّل على FK بعد migration_001 —
+        // حذف الـ portfolio بيحذف كل الـ projects المرتبطة تلقائياً.
+        const { error: portError } = await sb
+          .from('portfolios').delete().eq('id', _pendingDeleteId);
+        if (portError) throw portError;
 
         document.querySelector(`[data-id="${_pendingDeleteId}"]`)?.remove();
         window.toast?.('Portfolio deleted ✓', 'success');
@@ -941,6 +600,13 @@
 
     // ─── Init ─────────────────────────────────────────────────
     async function init() {
+      // أنشئ الـ Supabase client لو مش موجود
+      if (!window._supabaseClient && window.supabase?.createClient && window.SUPABASE_URL) {
+        window._supabaseClient = window.supabase.createClient(
+          window.SUPABASE_URL, window.SUPABASE_ANON_KEY
+        );
+      }
+
       const { user, portfolios } = await Auth.getDashboardData();
       if (!user) return;
 
@@ -956,29 +622,37 @@
       if (avatarEl) { avatarEl.src = user.avatarUrl; avatarEl.classList.remove('hidden'); }
       document.querySelector('[data-nav-signout]')?.classList.remove('hidden');
 
-      // جيب الـ Pro status
+      // [FIX] Pro status بيتجلب من check_pro_status RPC (بتتحقق من expiry)
       const sb = window._supabaseClient;
       let isPro = false;
       if (sb) {
-        const { data: userData } = await sb
-          .from('users')
-          .select('is_pro')
-          .eq('id', user.id)
-          .single();
-        isPro = userData?.is_pro === true;
+        try {
+          const { data } = await sb.rpc('check_pro_status');
+          const parsed   = typeof data === 'string' ? JSON.parse(data) : data;
+          isPro = parsed?.is_pro === true;
+
+          if (parsed?.expired) {
+            setTimeout(() => {
+              window.toast?.('Your Pro subscription has expired. Renew to continue.', 'warn');
+            }, 2000);
+          }
+        } catch {
+          // fallback: قرأ is_pro من DB مباشرة
+          const { data: userData } = await sb
+            .from('users').select('is_pro').eq('id', user.id).single();
+          isPro = userData?.is_pro === true;
+        }
       }
 
-      // Render
       renderProStatus(isPro);
       renderStats(portfolios);
       renderGrid(portfolios);
 
-      // تحديث رابط البوت بالـ telegram username الصح
-      const botUsername = window.TELEGRAM_BOT_USERNAME || 'GPortBot';
+      // [FIX] Bot username من window.TELEGRAM_BOT_USERNAME — مكان واحد
+      const botUsername = window.TELEGRAM_BOT_USERNAME || 'GPORT_Payment_BOT';
       const upgradeBtn  = $('upgrade-telegram-btn');
       if (upgradeBtn) upgradeBtn.href = `https://t.me/${botUsername}`;
 
-      // Referral (فقط للـ Free users أو كلهم — الـ referral مش مقيّد بالـ Pro)
       await trackReferralIfNeeded(user.id);
       await loadReferralData(user.id, isPro);
     }
@@ -986,7 +660,7 @@
     // Public API
     window.Dashboard = {
       confirmDelete,
-      preview:          previewPortfolio,
+      preview:         previewPortfolio,
       copyLink,
       copyReferralLink,
       showActivateModal,

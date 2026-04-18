@@ -10,9 +10,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Syne:wght@400;600;700;800&family=Newsreader:ital,wght@0,400;1,300;1,400&display=swap" rel="stylesheet" />
 
-  <!-- GSAP — before app.js -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <!-- GSAP — defer يمنع الـ render-blocking مع ضمان التحميل قبل app.js (نفس السلوك في index.html) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js" defer></script>
 
   <!-- CSS -->
   <link rel="stylesheet" href="css/main.css" />
@@ -20,6 +20,7 @@
   <link id="active-theme-css" rel="stylesheet" href="" />
   <link rel="icon" href="data:,">
 
+  <!-- Supabase config -->
   <script>
     window.SUPABASE_URL      = "https://zxybqbjsnriwpjehinwb.supabase.co";
     window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4eWJxYmpzbnJpd3BqZWhpbndiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMjI1NDEsImV4cCI6MjA5MDY5ODU0MX0.ED8CX81h78oga482b9pepZPsqfvX7znMqmtO0VRn3AM";
@@ -28,73 +29,47 @@
   <style>
     body { padding-top: var(--toolbar-height, 52px); }
 
-    /* ── No-draft ── */
     .no-draft-screen {
-      min-height: 100vh;
-      display: flex; flex-direction: column;
+      min-height: 100vh; display: flex; flex-direction: column;
       align-items: center; justify-content: center;
       text-align: center; gap: var(--sp-5); padding: var(--sp-8);
     }
     .no-draft-screen__icon { font-size: 3rem; opacity: 0.2; }
-    .no-draft-screen__title {
-      font-family: var(--font-display); font-size: var(--fs-xl);
-      font-weight: 700; letter-spacing: var(--ls-tight);
-    }
+    .no-draft-screen__title { font-family: var(--font-display); font-size: var(--fs-xl); font-weight: 700; letter-spacing: var(--ls-tight); }
     .no-draft-screen__sub { font-size: var(--fs-sm); color: var(--clr-text-2); }
 
-    /* ── Portfolio wrapper ── */
-    .portfolio-container {
-      max-width: 960px;
-      margin: 0 auto;
-      padding: 0 var(--sp-6) var(--sp-32);
-    }
+    .portfolio-container { max-width: 960px; margin: 0 auto; padding: 0 var(--sp-6) var(--sp-32); }
 
-    /* ── Hero ── */
-    .portfolio-hero {
-      padding: var(--sp-20) 0 var(--sp-16);
-      position: relative;
-    }
+    .portfolio-hero { padding: var(--sp-20) 0 var(--sp-16); position: relative; }
     .portfolio-hero::after {
-      content: ''; position: absolute;
-      bottom: 0; left: 0; right: 0; height: 1px;
-      background: linear-gradient(90deg, var(--clr-accent), transparent);
-      opacity: 0.2;
+      content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, var(--clr-accent), transparent); opacity: 0.2;
     }
 
     .hero-eyebrow {
       display: inline-flex; align-items: center; gap: var(--sp-2);
-      font-size: var(--fs-xs); font-weight: 500;
-      letter-spacing: var(--ls-wider); text-transform: uppercase;
-      color: var(--clr-accent); margin-bottom: var(--sp-5); opacity: 0.8;
+      font-size: var(--fs-xs); font-weight: 500; letter-spacing: var(--ls-wider);
+      text-transform: uppercase; color: var(--clr-accent); margin-bottom: var(--sp-5); opacity: 0.8;
     }
-    .hero-eyebrow::before {
-      content: ''; width: 24px; height: 1px; background: var(--clr-accent);
-    }
+    .hero-eyebrow::before { content: ''; width: 24px; height: 1px; background: var(--clr-accent); }
 
     .portfolio-hero__name {
-      font-family: var(--font-display);
-      font-size: clamp(3rem, 8vw, 6.5rem);
-      font-weight: 800; letter-spacing: var(--ls-tight);
-      line-height: 0.95; margin-bottom: var(--sp-5);
-      color: var(--clr-text); min-height: 1.2em;
+      font-family: var(--font-display); font-size: clamp(3rem, 8vw, 6.5rem);
+      font-weight: 800; letter-spacing: var(--ls-tight); line-height: 0.95;
+      margin-bottom: var(--sp-5); color: var(--clr-text); min-height: 1.2em;
     }
-
     .portfolio-hero__title {
       font-family: var(--font-body); font-size: var(--fs-lg);
       color: var(--clr-accent); letter-spacing: var(--ls-wide);
       margin-bottom: var(--sp-8); opacity: 0.9; min-height: 1.5em;
     }
-
     .portfolio-hero__bio {
       font-family: var(--font-serif); font-style: italic;
       font-size: clamp(1rem, 2vw, 1.2rem); font-weight: 300;
       color: var(--clr-text-2); line-height: var(--lh-loose);
       max-width: 640px; margin-bottom: var(--sp-10); min-height: 2em;
     }
-
-    .hero-links {
-      display: flex; align-items: center; gap: var(--sp-5);
-    }
+    .hero-links { display: flex; align-items: center; gap: var(--sp-5); }
     .hero-link {
       display: inline-flex; align-items: center; gap: var(--sp-2);
       font-size: var(--fs-sm); color: var(--clr-text-3);
@@ -103,141 +78,68 @@
     }
     .hero-link:hover { color: var(--clr-accent); }
 
-    /* ── Sections ── */
     .portfolio-section { padding: var(--sp-16) 0 0; }
-
     .section-label {
       display: flex; align-items: center; gap: var(--sp-4);
       font-size: var(--fs-xs); font-weight: 500;
       letter-spacing: var(--ls-wider); text-transform: uppercase;
       color: var(--clr-text-3); margin-bottom: var(--sp-8);
     }
-    .section-label::after {
-      content: ''; flex: 1; height: 1px; background: var(--clr-border-dim);
-    }
-    .section-label span {
-      color: var(--clr-accent); font-family: var(--font-display);
-      font-weight: 700; font-size: var(--fs-sm); letter-spacing: normal;
-    }
+    .section-label::after { content: ''; flex: 1; height: 1px; background: var(--clr-border-dim); }
+    .section-label span { color: var(--clr-accent); font-family: var(--font-display); font-weight: 700; font-size: var(--fs-sm); letter-spacing: normal; }
 
-    /* ── Skills ── */
     .skills-container { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 
-    /* ── Projects ── */
-    .projects-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
-      gap: var(--sp-5);
-    }
+    .projects-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: var(--sp-5); }
 
-    /* Project card */
     .project-card {
-      background: var(--clr-bg-3);
-      border: 1px solid var(--clr-border-dim);
-      border-radius: var(--radius-lg);
-      padding: var(--sp-6);
+      background: var(--clr-bg-3); border: 1px solid var(--clr-border-dim);
+      border-radius: var(--radius-lg); padding: var(--sp-6);
       display: flex; flex-direction: column; gap: var(--sp-3);
-      transition: border-color var(--dur-base) var(--ease-out),
-                  box-shadow var(--dur-base) var(--ease-out),
-                  transform var(--dur-base) var(--ease-out);
+      transition: border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
       position: relative; overflow: hidden;
     }
     .project-card::before {
-      content: ''; position: absolute;
-      top: 0; left: 0; right: 0; height: 2px;
-      background: linear-gradient(90deg, var(--clr-accent), transparent);
-      opacity: 0; transition: opacity var(--dur-base);
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, var(--clr-accent), transparent); opacity: 0; transition: opacity var(--dur-base);
     }
-    .project-card:hover {
-      border-color: var(--clr-border);
-      box-shadow: var(--shadow-md);
-      transform: translateY(-3px);
-    }
+    .project-card:hover { border-color: var(--clr-border); box-shadow: var(--shadow-md); transform: translateY(-3px); }
     .project-card:hover::before { opacity: 0.5; }
-    .project-card--featured {
-      border-color: rgba(0,255,136,0.15);
-      background: linear-gradient(135deg, var(--clr-bg-3), var(--clr-surface));
-    }
+    .project-card--featured { border-color: rgba(0,255,136,0.15); background: linear-gradient(135deg, var(--clr-bg-3), var(--clr-surface)); }
     .project-card--featured::before { opacity: 0.5; }
 
-    .project-card__header {
-      display: flex; align-items: center;
-      justify-content: space-between; min-height: 28px;
-    }
+    .project-card__header { display: flex; align-items: center; justify-content: space-between; min-height: 28px; }
     .project-card__meta { display: flex; align-items: center; gap: var(--sp-2); }
     .lang-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
     .project-card__lang { font-size: var(--fs-xs); color: var(--clr-text-3); }
-    .featured-badge {
-      font-size: var(--fs-xs); font-weight: 600;
-      letter-spacing: var(--ls-wide); text-transform: uppercase;
-      color: var(--clr-accent); border: 1px solid rgba(0,255,136,0.3);
-      border-radius: var(--radius-sm); padding: 2px 8px;
-    }
-    .project-card__actions {
-      display: flex; align-items: center; gap: 4px;
-      opacity: 0; transition: opacity var(--dur-fast);
-    }
-    .project-card:hover .project-card__actions,
-    .project-card:focus-within .project-card__actions { opacity: 1; }
+    .featured-badge { font-size: var(--fs-xs); font-weight: 600; letter-spacing: var(--ls-wide); text-transform: uppercase; color: var(--clr-accent); border: 1px solid rgba(0,255,136,0.3); border-radius: var(--radius-sm); padding: 2px 8px; }
+    .project-card__actions { display: flex; align-items: center; gap: 4px; opacity: 0; transition: opacity var(--dur-fast); }
+    .project-card:hover .project-card__actions, .project-card:focus-within .project-card__actions { opacity: 1; }
 
-    .project-card__name {
-      font-family: var(--font-display); font-weight: 700;
-      font-size: var(--fs-lg); letter-spacing: var(--ls-tight);
-      color: var(--clr-text); line-height: var(--lh-snug);
-    }
-    .project-card__desc {
-      font-size: var(--fs-sm); color: var(--clr-text-2);
-      line-height: var(--lh-loose); flex: 1;
-    }
-    .project-card__footer {
-      display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2);
-      padding-top: var(--sp-3);
-      border-top: 1px solid var(--clr-border-dim); margin-top: auto;
-    }
+    .project-card__name { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-lg); letter-spacing: var(--ls-tight); color: var(--clr-text); line-height: var(--lh-snug); }
+    .project-card__desc { font-size: var(--fs-sm); color: var(--clr-text-2); line-height: var(--lh-loose); flex: 1; }
+    .project-card__footer { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2); padding-top: var(--sp-3); border-top: 1px solid var(--clr-border-dim); margin-top: auto; }
     .project-stat { font-size: var(--fs-xs); color: var(--clr-text-3); }
-    .topic-chip {
-      font-size: var(--fs-xs); padding: 2px 8px;
-      border-radius: var(--radius-full);
-      background: var(--clr-accent-dim); color: var(--clr-accent);
-      border: 1px solid rgba(0,255,136,0.15);
-    }
+    .topic-chip { font-size: var(--fs-xs); padding: 2px 8px; border-radius: var(--radius-full); background: var(--clr-accent-dim); color: var(--clr-accent); border: 1px solid rgba(0,255,136,0.15); }
 
-    /* ── Edit hint ── */
     .edit-mode-hint {
-      position: fixed; bottom: var(--sp-5); left: 50%;
-      transform: translateX(-50%);
+      position: fixed; bottom: var(--sp-5); left: 50%; transform: translateX(-50%);
       background: var(--clr-bg-3); border: 1px solid var(--clr-border);
       border-radius: var(--radius-full); padding: var(--sp-2) var(--sp-5);
-      font-size: var(--fs-xs); color: var(--clr-text-3);
-      letter-spacing: var(--ls-wide);
-      display: flex; align-items: center; gap: var(--sp-2);
-      z-index: 10; backdrop-filter: blur(8px);
-      white-space: nowrap; box-shadow: var(--shadow-md);
-      animation: hint-in 0.5s var(--ease-out) 0.8s both;
-      pointer-events: none;
+      font-size: var(--fs-xs); color: var(--clr-text-3); letter-spacing: var(--ls-wide);
+      display: flex; align-items: center; gap: var(--sp-2); z-index: 10;
+      backdrop-filter: blur(8px); white-space: nowrap; box-shadow: var(--shadow-md);
+      animation: hint-in 0.5s var(--ease-out) 0.8s both; pointer-events: none;
     }
     @keyframes hint-in {
       from { opacity: 0; transform: translateX(-50%) translateY(8px); }
       to   { opacity: 1; transform: translateX(-50%) translateY(0); }
     }
-    .hint-dot {
-      width: 6px; height: 6px; border-radius: 50%;
-      background: var(--clr-accent); animation: pulse-dot 2s ease-in-out infinite;
-    }
-    kbd {
-      font-family: var(--font-body); font-size: 10px;
-      background: var(--clr-bg-2); border: 1px solid var(--clr-border);
-      border-radius: 3px; padding: 1px 5px; color: var(--clr-text-2);
-    }
+    .hint-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--clr-accent); animation: pulse-dot 2s ease-in-out infinite; }
+    kbd { font-family: var(--font-body); font-size: 10px; background: var(--clr-bg-2); border: 1px solid var(--clr-border); border-radius: 3px; padding: 1px 5px; color: var(--clr-text-2); }
 
-    /* ── Toast ── */
-    .toast-container {
-      position: fixed; bottom: var(--sp-6); right: var(--sp-6);
-      display: flex; flex-direction: column; gap: var(--sp-3);
-      z-index: var(--z-toast); pointer-events: none;
-    }
+    .toast-container { position: fixed; bottom: var(--sp-6); right: var(--sp-6); display: flex; flex-direction: column; gap: var(--sp-3); z-index: var(--z-toast); pointer-events: none; }
 
-    /* ── Responsive ── */
     @media (max-width: 768px) {
       .portfolio-container { padding: 0 var(--sp-4) var(--sp-20); }
       .projects-grid { grid-template-columns: 1fr; }
@@ -262,16 +164,9 @@
 
       <header class="portfolio-hero">
         <div class="hero-eyebrow" aria-hidden="true">Portfolio</div>
-
-        <h1 class="portfolio-hero__name" data-edit="name"
-            aria-label="Your name — click to edit"></h1>
-
-        <p class="portfolio-hero__title" data-edit="jobTitle"
-           aria-label="Your job title — click to edit"></p>
-
-        <p class="portfolio-hero__bio" data-edit="bio"
-           aria-label="Your bio — click to edit"></p>
-
+        <h1 class="portfolio-hero__name" data-edit="name" aria-label="Your name — click to edit"></h1>
+        <p class="portfolio-hero__title" data-edit="jobTitle" aria-label="Your job title — click to edit"></p>
+        <p class="portfolio-hero__bio" data-edit="bio" aria-label="Your bio — click to edit"></p>
         <div class="hero-links" id="hero-links"></div>
       </header>
 
@@ -305,13 +200,24 @@
   <script src="js/auth.js"></script>
   <script src="js/ai.js"></script>
   <script src="js/portfolio.js"></script>
-  <script src="js/pdf.js"></script>
+  <!-- [FIX] حذفنا js/pdf.js — كان مش موجود في المشروع (404) -->
 
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
 
-      // 1. Check for portfolio id in URL (coming from dashboard Edit button)
-      const urlParams  = new URLSearchParams(window.location.search);
+      // [FIX] الـ Supabase client يُنشأ مرة واحدة فقط هنا
+      // ويُحفظ في window._supabaseClient للاستخدام المشترك
+      if (!window._supabaseClient && window.supabase?.createClient && window.SUPABASE_URL) {
+        window._supabaseClient = window.supabase.createClient(
+          window.SUPABASE_URL,
+          window.SUPABASE_ANON_KEY
+        );
+      }
+      // [FIX] لا نعمل override لـ window.supabase (كان بيكسر portfolio.html)
+      // portfolio.js يستخدم window._supabaseClient مباشرة
+
+      // 1. Check for portfolio id in URL
+      const urlParams   = new URLSearchParams(window.location.search);
       const portfolioId = urlParams.get('id');
 
       let rawDraft = null;
@@ -319,22 +225,27 @@
       if (portfolioId) {
         // ── Load from Supabase by portfolio ID ──────────────────────────
         try {
-          const sb = window._supabaseClient || (() => {
-            if (window.supabase?.createClient) {
-              const c = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-              window._supabaseClient = c;
-              return c;
-            }
-            return null;
-          })();
+          const sb = window._supabaseClient;
 
           if (sb) {
+            // [FIX] تحقق إن المستخدم الحالي هو صاحب الـ portfolio
+            const { data: authData } = await sb.auth.getUser();
+            const currentUserId = authData?.user?.id;
+
             const { data: portfolio } = await sb
               .from('portfolios')
               .select(`id, bio, skills, theme, slug, user_id,
                 projects ( github_repo_name, ai_description, stars, language, topics, sort_order, repo_url, is_featured )`)
               .eq('id', portfolioId)
               .single();
+
+            // [FIX] تحقق من الملكية قبل تحميل البيانات
+            if (portfolio && currentUserId && portfolio.user_id !== currentUserId) {
+              console.warn('[edit.html] Unauthorized: portfolio belongs to another user.');
+              document.getElementById('no-draft-screen').style.display = 'flex';
+              document.getElementById('edit-hint').style.display = 'none';
+              return;
+            }
 
             const { data: userData } = await sb
               .from('users')
@@ -353,7 +264,11 @@
                   stars:            p.stars || 0,
                   language:         p.language,
                   topics:           p.topics || [],
-                  repo_url:         p.repo_url || `https://github.com/${userData?.github_username}/${p.github_repo_name}`,
+                  // [FIX] repo_url بيبني على github_username — مش repo_name وحده
+                  repo_url: p.repo_url
+                    || (userData?.github_username
+                        ? `https://github.com/${userData.github_username}/${p.github_repo_name}`
+                        : '#'),
                 }));
 
               rawDraft = {
@@ -365,12 +280,17 @@
                 jobTitle:       userData?.job_title || 'Software Developer',
                 githubUsername: userData?.github_username || '',
                 theme:          portfolio.theme || 'dark',
-                githubUser:     {},
+                // [FIX] default values بدل {} — يمنع undefined على followers/public_repos
+                githubUser:     {
+                  followers:    0,
+                  following:    0,
+                  public_repos: projects.length,
+                  languages:    {},
+                },
                 githubRepos:    projects,
                 portfolioId,
               };
 
-              // حفظ في sessionStorage عشان portfolio.js يقدر يقراه
               window.AI?.saveDraft?.(rawDraft);
             }
           }
@@ -409,7 +329,7 @@
             @${rawDraft.githubUsername}
           </a>
           ${rawDraft.githubUser?.followers
-            ? `<span class="hero-link" style="cursor:default; pointer-events:none;">
+            ? `<span class="hero-link" style="cursor:default;pointer-events:none;">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
                   <circle cx="9" cy="7" r="4"/>
@@ -420,36 +340,21 @@
         `;
       }
 
-      // 4.5 — Expose Supabase client على window.supabase
-      // portfolio.js بيستخدم window.supabase.auth.getUser() مباشرة
-      // لكن الـ initialized client في window._supabaseClient
-      if (window._supabaseClient && !window.supabase?.auth) {
-        // الـ SDK موجود في window.supabase لكن الـ initialized client في _supabaseClient
-        // نعمل wrapper يحل المشكلة
-        window.supabase = window._supabaseClient;
-      } else if (!window._supabaseClient && window.supabase?.createClient) {
-        // أنشئ client جديد واحفظه
-        window._supabaseClient = window.supabase.createClient(
-          window.SUPABASE_URL,
-          window.SUPABASE_ANON_KEY
-        );
-        window.supabase = window._supabaseClient;
-      }
-
-      // 5. Normalise draft:
-      //    portfolio.js بيدور على data-edit='name' — نعمل alias من fullName
+      // 5. Normalise draft
       const draft = {
         ...rawDraft,
         name:     rawDraft.fullName || rawDraft.githubUser?.name || '',
         fullName: rawDraft.fullName || rawDraft.githubUser?.name || '',
-        // projects: normalise field names
         projects: (rawDraft.projects || []).map(p => ({
           ...p,
           github_repo_name: p.repo_name || p.github_repo_name || p.name || '',
           ai_description:   p.description || p.ai_description || '',
+          // [FIX] repo_url بيبني بشكل صح مع الـ username
           repo_url: p.repo_url
             || (rawDraft.githubRepos?.find(r => r.name === (p.repo_name || p.github_repo_name))?.html_url)
-            || `https://github.com/${rawDraft.githubUsername}/${p.repo_name || p.github_repo_name}`,
+            || (rawDraft.githubUsername
+                ? `https://github.com/${rawDraft.githubUsername}/${p.repo_name || p.github_repo_name}`
+                : '#'),
           language: p.language
             || rawDraft.githubRepos?.find(r => r.name === (p.repo_name || p.github_repo_name))?.language
             || null,
@@ -462,31 +367,21 @@
         })),
       };
 
-      // Save normalised draft back
+      // Save normalised draft
       window.AI?.saveDraft?.(draft);
 
-      // 6. Patch portfolio.js publish for unauthenticated users
-      // portfolio.js بيحتاج user مسجل — لو مش مسجل، نحفظ locally بس
-      const _origPublish = window.Portfolio?.publish;
+      // [FIX] حذفنا الـ dead code — _origPublish كان بيتحدد ومش بيستخدم
 
-      // Override publish to handle missing auth gracefully
-      // سيتم override بعد init() لأن Portfolio.publish بيتعرّف جوا الـ IIFE
-
-      // 6. Set initial theme attributes before Portfolio.init
+      // 6. Set initial theme
       const initialTheme = draft.theme || 'dark';
       document.documentElement.setAttribute('data-theme', initialTheme);
       document.body.setAttribute('data-theme', initialTheme);
       document.body.classList.add(`theme-${initialTheme}`);
 
-      // 6. Init Portfolio editor with normalised draft
+      // 7. Init Portfolio editor
       window.Portfolio?.init({ draft });
 
-      // Re-trigger app.js animations if GSAP loaded after window.load
-      if (typeof gsap !== 'undefined' && typeof ScrollTrigger === 'undefined') {
-        // GSAP loaded but ScrollTrigger not — animations will work on next page load
-      }
-
-      // 7. Fade hint after 6s
+      // 8. Fade hint after 6s
       setTimeout(() => {
         const h = document.getElementById('edit-hint');
         if (!h) return;

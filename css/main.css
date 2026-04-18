@@ -3,9 +3,6 @@
    Variables · Reset · Typography · Layout · Utilities
    ============================================================ */
 
-/* ── Google Fonts ─────────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Syne:wght@400;600;700;800&family=Newsreader:ital,wght@0,400;1,300;1,400&display=swap');
-
 /* ── Design Tokens ────────────────────────────────────────── */
 :root {
   /* Colors */
@@ -100,9 +97,32 @@
   /* Z-index */
   --z-base:    0;
   --z-above:   10;
-  --z-modal:   100;
-  --z-toast:   200;
   --z-nav:     50;
+  --z-modal:   1000;  /* raised to match edit-ui.css usage */
+  --z-panel:   850;
+  --z-toolbar: 900;
+  --z-toast:   1100;
+
+  /* ── Aliases for dashboard.css & edit-ui.css compatibility ──
+     These files use --color-* / --space-* / --font-mono naming.
+     Mapping them here ensures a single source of truth. */
+  --color-bg:         var(--clr-bg);
+  --color-bg-2:       var(--clr-bg-2);
+  --color-accent:     var(--clr-accent);
+  --color-text:       var(--clr-text);
+  --color-text-muted: var(--clr-text-2);
+  --font-mono:        var(--font-body);
+  --space-1:          var(--sp-1);
+  --space-2:          var(--sp-2);
+  --space-3:          var(--sp-3);
+  --space-4:          var(--sp-4);
+  --space-5:          var(--sp-5);
+  --space-6:          var(--sp-6);
+  --space-8:          var(--sp-8);
+  --space-10:         var(--sp-10);
+  --space-16:         var(--sp-16);
+  --transition-base:  var(--dur-base) var(--ease-out);
+  --transition-fast:  var(--dur-fast) var(--ease-out);
 }
 
 /* ── Reset ────────────────────────────────────────────────── */
@@ -117,6 +137,7 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  overflow-x: hidden; /* Prevents body::before/after fixed elements from breaking on iOS Safari */
 }
 
 body {
@@ -126,7 +147,6 @@ body {
   font-size: var(--fs-base);
   line-height: var(--lh-normal);
   min-height: 100vh;
-  overflow-x: hidden;
 }
 
 img, video, svg {
@@ -662,10 +682,12 @@ body::after {
 
 /* Show/Hide */
 .hidden  { display: none !important; }
-.visible { display: block; }
+.visible { display: revert; } /* revert restores default display — safe for flex/grid/inline elements */
 
 /* ── GSAP Animation Targets ───────────────────────────────── */
-/* Elements start invisible — JS animates them in */
+/* Elements start invisible — JS animates them in.
+   NOTE: Add <noscript><style>[data-anim]{opacity:1;transform:none}</style></noscript>
+   to each HTML page to prevent invisible content when JS is disabled. */
 [data-anim] {
   opacity: 0;
   transform: translateY(20px);
@@ -726,16 +748,6 @@ body::after {
   50%       { box-shadow: var(--shadow-glow); }
 }
 
-@keyframes blink-cursor {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0; }
-}
-
-@keyframes scan-line {
-  0%   { transform: translateY(-100%); opacity: 0.08; }
-  100% { transform: translateY(100vh); opacity: 0.08; }
-}
-
 /* ── Scrollbar ────────────────────────────────────────────── */
 ::-webkit-scrollbar {
   width: 6px;
@@ -793,6 +805,7 @@ body::after {
 }
 
 /* ── Button aliases (btn--* → btn-*) ─────────────────────────
+   Use as: class="btn btn--primary" so base .btn styles are inherited.
    portfolio.js بيستخدم .btn--primary بدل .btn-primary
    edit-ui.css بيستخدم نفس النظام
 ───────────────────────────────────────────────────────────── */
@@ -800,55 +813,28 @@ body::after {
   background: var(--clr-accent);
   color: var(--clr-text-inv);
   box-shadow: var(--shadow-glow-sm);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--sp-2);
-  padding: 12px 24px;
-  border-radius: var(--radius-md);
-  font-family: var(--font-body);
-  font-size: var(--fs-base);
-  font-weight: 500;
-  letter-spacing: var(--ls-wide);
-  text-transform: uppercase;
-  border: 1px solid transparent;
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-  white-space: nowrap;
-  transition:
-    background var(--dur-base) var(--ease-out),
-    box-shadow var(--dur-base) var(--ease-out),
-    transform var(--dur-fast) var(--ease-out);
 }
+
+/* [FIX] shimmer overlay مطابق لـ btn-primary — كان مفقوداً من الـ alias */
+.btn--primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.15);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.btn--primary:hover::before { opacity: 1; }
 
 .btn--primary:hover {
   box-shadow: var(--shadow-glow);
 }
 
-.btn--primary:active { transform: scale(0.97); }
-
 .btn--ghost {
   background: transparent;
   color: var(--clr-text);
   border: 1px solid var(--clr-border);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--sp-2);
-  padding: 12px 24px;
-  border-radius: var(--radius-md);
-  font-family: var(--font-body);
-  font-size: var(--fs-base);
-  font-weight: 500;
-  letter-spacing: var(--ls-wide);
-  text-transform: uppercase;
-  cursor: pointer;
-  white-space: nowrap;
-  transition:
-    border-color var(--dur-base) var(--ease-out),
-    color var(--dur-base) var(--ease-out),
-    background var(--dur-base) var(--ease-out);
 }
 
 .btn--ghost:hover {
@@ -857,10 +843,13 @@ body::after {
   background: var(--clr-accent-dim);
 }
 
-.btn--sm {
-  padding: 6px 14px !important;
-  font-size: var(--fs-xs) !important;
-  border-radius: var(--radius-sm) !important;
+/* Fix specificity conflict without !important */
+.btn--primary.btn--sm,
+.btn--ghost.btn--sm,
+.btn.btn--sm {
+  padding: 6px 14px;
+  font-size: var(--fs-xs);
+  border-radius: var(--radius-sm);
 }
 
 .btn--sm svg {

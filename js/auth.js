@@ -39,7 +39,7 @@
     const client = getClient();
     if (!client) return { error: 'Supabase client غير مهيأ' };
 
-    const destination = redirectTo || _buildDashboardURL();
+    const destination = redirectTo || _buildRelativeURL('dashboard.html');
 
     const { error } = await client.auth.signInWithOAuth({
       provider: 'github',
@@ -133,10 +133,10 @@
     if (!user) return;
 
     // إخفاء الحقول اللي بتيجي من OAuth
-    const nameField     = document.querySelector('[data-field="name"]');
-    const jobField      = document.querySelector('[data-field="job-title"]');
-    const nameWrapper   = nameField?.closest('.form-group') || nameField?.parentElement;
-    const jobWrapper    = jobField?.closest('.form-group')  || jobField?.parentElement;
+    const nameField   = document.querySelector('[data-field="name"]');
+    const jobField    = document.querySelector('[data-field="job-title"]');
+    const nameWrapper = nameField?.closest('.form-group') || nameField?.parentElement;
+    const jobWrapper  = jobField?.closest('.form-group')  || jobField?.parentElement;
 
     if (nameWrapper) nameWrapper.style.display = 'none';
     if (jobWrapper)  jobWrapper.style.display  = 'none';
@@ -148,10 +148,27 @@
       usernameInput.dispatchEvent(new Event('input', { bubbles: true }));
     }
 
+    // [FIX] جيب الـ jobTitle من Supabase DB (مش من OAuth metadata اللي دايماً فاضية)
+    let jobTitleFromDB = '';
+    try {
+      const client = getClient();
+      if (client) {
+        const { data: userData } = await client
+          .from('users')
+          .select('job_title')
+          .eq('id', user.id)
+          .single();
+        jobTitleFromDB = userData?.job_title || '';
+      }
+    } catch (err) {
+      // Non-critical — fallback to empty string, لكن نسجّل للـ debug
+      console.warn('[Auth] Could not fetch job_title from DB:', err?.message);
+    }
+
     // حفظ بيانات المستخدم في sessionStorage عشان الـ AI يستخدمها
     sessionStorage.setItem('auth_user', JSON.stringify({
       name:           user.name,
-      jobTitle:       user.jobTitle,
+      jobTitle:       jobTitleFromDB, // [FIX] من DB بدل OAuth metadata
       githubUsername: user.githubUsername,
     }));
   }
@@ -160,9 +177,12 @@
    * Redirect logic بعد الـ generation:
    * - logged in  → dashboard.html
    * - logged out → portfolio.html
+   * [FIX] async — بنتأكد من الـ session الحالية بدل الاعتماد على _currentUser
+   * اللي ممكن يكون null لو اتنادت قبل DOMContentLoaded init.
    */
-  function getPostGenerationRedirect() {
-    return _currentUser
+  async function getPostGenerationRedirect() {
+    const user = await getUser();
+    return user
       ? _buildRelativeURL('dashboard.html')
       : _buildRelativeURL('portfolio.html');
   }
@@ -177,7 +197,9 @@
       name:           meta.full_name || meta.name || meta.user_name || '',
       githubUsername: meta.user_name  || meta.preferred_username || '',
       avatarUrl:      meta.avatar_url || `https://avatars.githubusercontent.com/${meta.user_name}`,
-      jobTitle:       meta.job_title  || '', // لو حطّ المستخدم قبل كده في الـ DB
+      // [FIX] jobTitle لا يُجلب من OAuth metadata (دايماً فاضية)
+      // بيتجلب من Supabase DB في setupIndexPageAuth
+      jobTitle: '',
     };
   }
 
@@ -187,13 +209,7 @@
     });
   }
 
-  function _buildDashboardURL() {
-    // نستخدم localhost بدل 127.0.0.1 — GitHub OAuth بيقبله أحسن
-    const origin = window.location.origin.replace('127.0.0.1', 'localhost');
-    const base   = origin + window.location.pathname;
-    return base.replace(/\/[^/]*$/, '/dashboard.html');
-  }
-
+  // [FIX] دمج _buildDashboardURL و_buildRelativeURL في helper واحد
   function _buildRelativeURL(page) {
     const origin = window.location.origin.replace('127.0.0.1', 'localhost');
     const base   = window.location.pathname.replace(/\/[^/]*$/, '/');
@@ -202,10 +218,10 @@
 
   /** تحديث الـ Nav بناءً على الـ auth state */
   function _updateNav(user) {
-    const signInBtn   = document.querySelector('[data-nav-signin]');
-    const dashBtn     = document.querySelector('[data-nav-dashboard]');
-    const avatarEl    = document.querySelector('[data-nav-avatar]');
-    const signOutBtn  = document.querySelector('[data-nav-signout]');
+    const signInBtn  = document.querySelector('[data-nav-signin]');
+    const dashBtn    = document.querySelector('[data-nav-dashboard]');
+    const avatarEl   = document.querySelector('[data-nav-avatar]');
+    const signOutBtn = document.querySelector('[data-nav-signout]');
 
     if (user) {
       signInBtn?.classList.add('hidden');
@@ -292,6 +308,9 @@
 
   // ─── Auto-init ─────────────────────────────────────────────────────────────
 
+  // [FIX] guard ضد double-init لو setupIndexPageAuth اتنادت يدوياً
+  let _indexPageAuthDone = false;
+
   // بيتشغل تلقائياً على أي صفحة بيتحمل فيها auth.js
   document.addEventListener('DOMContentLoaded', async () => {
     const client = getClient();
@@ -304,7 +323,8 @@
     }
 
     // الصفحة الرئيسية
-    if (document.querySelector('[data-page="index"]')) {
+    if (document.querySelector('[data-page="index"]') && !_indexPageAuthDone) {
+      _indexPageAuthDone = true;
       await setupIndexPageAuth();
     }
 
@@ -328,7 +348,12 @@
     deletePortfolio,
     togglePublish,
     getPostGenerationRedirect,
-    setupIndexPageAuth,
+    // [FIX] setupIndexPageAuth محمية بـ guard ضد double-init
+    setupIndexPageAuth: async () => {
+      if (_indexPageAuthDone) return;
+      _indexPageAuthDone = true;
+      await setupIndexPageAuth();
+    },
   };
 
 })();

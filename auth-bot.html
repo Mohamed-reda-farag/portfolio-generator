@@ -13,212 +13,56 @@
 
   <script>
     window.SUPABASE_URL      = "https://zxybqbjsnriwpjehinwb.supabase.co";
-    window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4eWJxYmpzbnJpd3BqZWhpbndiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMjI1NDEsImV4cCI6MjA5MDY5ODU0MX0.ED8CX81h78oga482b9pepZPsqfvX7znMqmtO0VRn3AM";
+    window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4eWJxYmpzbnJpd3BqZWhpbnciLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc3NTEyMjU0MSwiZXhwIjoyMDkwNjk4NTQxfQ.ED8CX81h78oga482b9pepZPsqfvX7znMqmtO0VRn3AM";
+    // [FIX] اسم البوت في مكان واحد — نفس القيمة في dashboard.html
+    window.TELEGRAM_BOT_USERNAME = 'GPORT_Payment_BOT';
+    // [FIX] السعر في مكان واحد — نفس القيمة في portfolio.js
+    window.GPORT_ORIGINAL_PRICE  = 200;
   </script>
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #080C0A;
-      font-family: 'DM Mono', monospace;
-      padding: 1rem;
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      background: #080C0A; font-family: 'DM Mono', monospace; padding: 1rem;
     }
 
-    .auth-card {
-      width: min(440px, 100%);
-      background: #0D1410;
-      border: 1px solid rgba(0,255,136,0.15);
-      border-radius: 20px;
-      overflow: hidden;
-      box-shadow: 0 32px 80px rgba(0,0,0,0.5);
-    }
+    .auth-card { width: min(440px, 100%); background: #0D1410; border: 1px solid rgba(0,255,136,0.15); border-radius: 20px; overflow: hidden; box-shadow: 0 32px 80px rgba(0,0,0,0.5); }
 
-    /* Header strip */
-    .auth-card__header {
-      height: 100px;
-      background: linear-gradient(135deg, #04040c, #0a2010, #041408);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      overflow: hidden;
-    }
-    .auth-card__header::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background:
-        repeating-linear-gradient(0deg, transparent, transparent 28px,
-          rgba(0,255,136,0.03) 28px, rgba(0,255,136,0.03) 29px),
-        repeating-linear-gradient(90deg, transparent, transparent 28px,
-          rgba(0,255,136,0.03) 28px, rgba(0,255,136,0.03) 29px);
-    }
-    .auth-card__logo {
-      font-family: 'Syne', sans-serif;
-      font-weight: 800;
-      font-size: 1.4rem;
-      color: #E8F0EB;
-      letter-spacing: -0.02em;
-      position: relative;
-      z-index: 1;
-    }
-    .auth-card__logo span {
-      color: #00FF88;
-    }
+    .auth-card__header { height: 100px; background: linear-gradient(135deg, #04040c, #0a2010, #041408); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+    .auth-card__header::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, transparent, transparent 28px, rgba(0,255,136,0.03) 28px, rgba(0,255,136,0.03) 29px), repeating-linear-gradient(90deg, transparent, transparent 28px, rgba(0,255,136,0.03) 28px, rgba(0,255,136,0.03) 29px); }
+    .auth-card__logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.4rem; color: #E8F0EB; letter-spacing: -0.02em; position: relative; z-index: 1; }
+    .auth-card__logo span { color: #00FF88; }
+    .auth-card__body { padding: 2rem; }
 
-    /* Body */
-    .auth-card__body {
-      padding: 2rem;
-    }
-
-    .auth-step {
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-      gap: 1rem;
-    }
+    .auth-step { display: none; flex-direction: column; align-items: center; text-align: center; gap: 1rem; }
     .auth-step.is-active { display: flex; }
-
-    .auth-step__icon {
-      font-size: 2.5rem;
-      line-height: 1;
-    }
-
-    .auth-step__title {
-      font-family: 'Syne', sans-serif;
-      font-weight: 700;
-      font-size: 1.1rem;
-      color: #E8F0EB;
-    }
-
-    .auth-step__sub {
-      font-size: 0.78rem;
-      color: #8A9E90;
-      line-height: 1.6;
-      max-width: 320px;
-    }
-
+    .auth-step__icon { font-size: 2.5rem; line-height: 1; }
+    .auth-step__title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.1rem; color: #E8F0EB; }
+    .auth-step__sub { font-size: 0.78rem; color: #8A9E90; line-height: 1.6; max-width: 320px; }
     .auth-step__sub strong { color: #E8F0EB; }
 
-    /* Discount badge */
-    .discount-badge {
-      background: rgba(0,255,136,0.1);
-      border: 1px solid rgba(0,255,136,0.25);
-      border-radius: 10px;
-      padding: 0.75rem 1.25rem;
-      width: 100%;
-    }
-    .discount-badge__pct {
-      font-family: 'Syne', sans-serif;
-      font-weight: 800;
-      font-size: 2rem;
-      color: #00FF88;
-      display: block;
-      line-height: 1;
-    }
-    .discount-badge__label {
-      font-size: 0.72rem;
-      color: #8A9E90;
-      letter-spacing: 0.06em;
-    }
-    .price-row {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.75rem;
-      margin-top: 0.25rem;
-    }
-    .price-old {
-      font-size: 0.9rem;
-      color: #4A5E52;
-      text-decoration: line-through;
-    }
-    .price-new {
-      font-family: 'Syne', sans-serif;
-      font-weight: 700;
-      font-size: 1.3rem;
-      color: #E8F0EB;
-    }
-    .price-currency {
-      font-size: 0.75rem;
-      color: #8A9E90;
-    }
+    .discount-badge { background: rgba(0,255,136,0.1); border: 1px solid rgba(0,255,136,0.25); border-radius: 10px; padding: 0.75rem 1.25rem; width: 100%; }
+    .discount-badge__pct { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 2rem; color: #00FF88; display: block; line-height: 1; }
+    .discount-badge__label { font-size: 0.72rem; color: #8A9E90; letter-spacing: 0.06em; }
+    .price-row { display: flex; align-items: center; justify-content: center; gap: 0.75rem; margin-top: 0.25rem; }
+    .price-old { font-size: 0.9rem; color: #4A5E52; text-decoration: line-through; }
+    .price-new { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.3rem; color: #E8F0EB; }
+    .price-currency { font-size: 0.75rem; color: #8A9E90; }
 
-    /* Buttons */
-    .btn-primary {
-      width: 100%;
-      background: #00FF88;
-      color: #080C0A;
-      border: none;
-      border-radius: 10px;
-      padding: 13px;
-      font-family: 'DM Mono', monospace;
-      font-size: 0.88rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: opacity 0.2s;
-      letter-spacing: 0.03em;
-    }
+    .btn-primary { width: 100%; background: #00FF88; color: #080C0A; border: none; border-radius: 10px; padding: 13px; font-family: 'DM Mono', monospace; font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s; letter-spacing: 0.03em; }
     .btn-primary:hover { opacity: 0.88; }
     .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
 
-    .btn-ghost {
-      width: 100%;
-      background: transparent;
-      color: #4A5E52;
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 10px;
-      padding: 11px;
-      font-family: 'DM Mono', monospace;
-      font-size: 0.82rem;
-      cursor: pointer;
-      transition: border-color 0.2s;
-      text-decoration: none;
-      display: block;
-      text-align: center;
-    }
+    .btn-ghost { width: 100%; background: transparent; color: #4A5E52; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 11px; font-family: 'DM Mono', monospace; font-size: 0.82rem; cursor: pointer; transition: border-color 0.2s; text-decoration: none; display: block; text-align: center; }
     .btn-ghost:hover { border-color: rgba(255,255,255,0.2); color: #8A9E90; }
 
-    /* Spinner */
-    .spinner {
-      width: 32px; height: 32px;
-      border: 2px solid rgba(0,255,136,0.15);
-      border-top-color: #00FF88;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
+    .spinner { width: 32px; height: 32px; border: 2px solid rgba(0,255,136,0.15); border-top-color: #00FF88; border-radius: 50%; animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* Error */
-    .error-box {
-      background: rgba(255,79,79,0.08);
-      border: 1px solid rgba(255,79,79,0.2);
-      border-radius: 10px;
-      padding: 0.75rem 1rem;
-      font-size: 0.78rem;
-      color: #FF6B6B;
-      line-height: 1.5;
-      width: 100%;
-      text-align: center;
-    }
-
-    /* Success checkmark */
-    .success-icon {
-      width: 64px; height: 64px;
-      background: rgba(0,255,136,0.1);
-      border: 2px solid rgba(0,255,136,0.3);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.8rem;
-    }
+    .error-box { background: rgba(255,79,79,0.08); border: 1px solid rgba(255,79,79,0.2); border-radius: 10px; padding: 0.75rem 1rem; font-size: 0.78rem; color: #FF6B6B; line-height: 1.5; width: 100%; text-align: center; }
+    .success-icon { width: 64px; height: 64px; background: rgba(0,255,136,0.1); border: 2px solid rgba(0,255,136,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; }
   </style>
 </head>
 <body>
@@ -230,67 +74,47 @@
 
     <div class="auth-card__body">
 
-      <!-- Step 1: Loading & checking tg_id -->
+      <!-- Step 1: Loading -->
       <div class="auth-step is-active" id="step-loading">
         <div class="spinner"></div>
         <p class="auth-step__sub">جاري التحقق…</p>
       </div>
 
-      <!-- Step 2: Invalid/missing tg_id -->
+      <!-- Step 2: Invalid -->
       <div class="auth-step" id="step-invalid">
         <div class="auth-step__icon">⚠️</div>
         <h2 class="auth-step__title">رابط غير صالح</h2>
-        <p class="auth-step__sub">
-          الرابط ده مش صح أو انتهت صلاحيته.<br>
-          ارجع للبوت واكتب <strong>/start</strong> تاني.
-        </p>
-        <a href="https://t.me/GPortBot" class="btn-ghost" id="back-to-bot-btn">
-          ← ارجع للبوت
-        </a>
+        <p class="auth-step__sub">الرابط ده مش صح أو انتهت صلاحيته.<br>ارجع للبوت واكتب <strong>/start</strong> تاني.</p>
+        <a href="#" class="btn-ghost" id="back-to-bot-invalid">← ارجع للبوت</a>
       </div>
 
       <!-- Step 3: Already Pro -->
       <div class="auth-step" id="step-already-pro">
         <div class="success-icon">⚡</div>
         <h2 class="auth-step__title">أنت Pro بالفعل!</h2>
-        <p class="auth-step__sub">
-          حسابك مفعّل بالفعل على Pro.<br>
-          استمتع بكل الـ themes! 🎉
-        </p>
-        <a href="dashboard.html" class="btn-primary" style="text-decoration:none;display:block;text-align:center;">
-          روح للـ Dashboard →
-        </a>
+        <p class="auth-step__sub">حسابك مفعّل بالفعل على Pro.<br>استمتع بكل الـ themes! 🎉</p>
+        <a href="dashboard.html" class="btn-primary" style="text-decoration:none;display:block;text-align:center;">روح للـ Dashboard →</a>
       </div>
 
-      <!-- Step 4: Sign in with GitHub -->
+      <!-- Step 4: Sign in -->
       <div class="auth-step" id="step-signin">
         <div class="auth-step__icon">🔗</div>
         <h2 class="auth-step__title">ربط حساب التليجرام</h2>
-        <p class="auth-step__sub">
-          سجّل دخول بـ GitHub عشان نربط حسابك بالتليجرام
-          ونحسبلك المبلغ الصح بعد أي خصومات.
-        </p>
-
-        <!-- Discount preview (هيظهر لو في tg_discount في الـ URL) -->
+        <p class="auth-step__sub">سجّل دخول بـ GitHub عشان نربط حسابك بالتليجرام ونحسبلك المبلغ الصح بعد أي خصومات.</p>
         <div class="discount-badge" id="discount-preview" style="display:none;">
           <span class="discount-badge__pct" id="discount-pct">0%</span>
           <span class="discount-badge__label">خصم الـ Referral بتاعك</span>
           <div class="price-row">
-            <span class="price-old" id="price-old">99 جنيه</span>
-            <span class="price-new" id="price-new">99</span>
+            <span class="price-old" id="price-old"></span>
+            <span class="price-new" id="price-new"></span>
             <span class="price-currency">جنيه</span>
           </div>
         </div>
-
-        <button class="btn-primary" id="signin-btn">
-          سجّل دخول بـ GitHub →
-        </button>
-        <p class="auth-step__sub" style="font-size:0.7rem;color:#3A4E42;">
-          بتسجّل دخول بنفس الـ GitHub اللي عامل بيه الـ portfolio
-        </p>
+        <button class="btn-primary" id="signin-btn">سجّل دخول بـ GitHub →</button>
+        <p class="auth-step__sub" style="font-size:0.7rem;color:#3A4E42;">بتسجّل دخول بنفس الـ GitHub اللي عامل بيه الـ portfolio</p>
       </div>
 
-      <!-- Step 5: Linking in progress -->
+      <!-- Step 5: Linking -->
       <div class="auth-step" id="step-linking">
         <div class="spinner"></div>
         <h2 class="auth-step__title">جاري الربط…</h2>
@@ -301,23 +125,17 @@
       <div class="auth-step" id="step-success">
         <div class="success-icon">✅</div>
         <h2 class="auth-step__title">تم الربط بنجاح!</h2>
-        <p class="auth-step__sub" id="success-msg">
-          حسابك اتربط. ارجع للبوت وابعت الـ screenshot.
-        </p>
-
+        <p class="auth-step__sub" id="success-msg">حسابك اتربط. ارجع للبوت وابعت الـ screenshot.</p>
         <div class="discount-badge" id="success-discount" style="display:none;">
           <span class="discount-badge__pct" id="success-pct">0%</span>
           <span class="discount-badge__label">خصمك المطبّق</span>
           <div class="price-row">
-            <span class="price-old" id="success-price-old">99 جنيه</span>
-            <span class="price-new" id="success-price-new">99</span>
+            <span class="price-old" id="success-price-old"></span>
+            <span class="price-new" id="success-price-new"></span>
             <span class="price-currency">جنيه</span>
           </div>
         </div>
-
-        <a href="#" class="btn-primary" id="back-to-bot-success" style="text-decoration:none;display:block;text-align:center;">
-          ارجع للبوت ←
-        </a>
+        <a href="#" class="btn-primary" id="back-to-bot-success" style="text-decoration:none;display:block;text-align:center;">ارجع للبوت ←</a>
       </div>
 
       <!-- Step 7: Error -->
@@ -325,9 +143,7 @@
         <div class="auth-step__icon">❌</div>
         <h2 class="auth-step__title">حصل خطأ</h2>
         <div class="error-box" id="error-msg">حصل خطأ غير متوقع.</div>
-        <a href="https://t.me/GPortBot" class="btn-ghost" id="error-back-btn">
-          ← ارجع للبوت
-        </a>
+        <a href="#" class="btn-ghost" id="back-to-bot-error">← ارجع للبوت</a>
       </div>
 
     </div>
@@ -340,10 +156,11 @@
   ;(function () {
     'use strict';
 
-    const ORIGINAL_PRICE     = 99;
-    const BOT_USERNAME       = 'GPortBot'; // ⚠️ غيّره للـ username الحقيقي
+    // [FIX] السعر من window.GPORT_ORIGINAL_PRICE — نفس portfolio.js (200 جنيه)
+    const ORIGINAL_PRICE = window.GPORT_ORIGINAL_PRICE || 200;
+    // [FIX] اسم البوت من window.TELEGRAM_BOT_USERNAME — مكان واحد
+    const BOT_USERNAME   = window.TELEGRAM_BOT_USERNAME || 'GPORT_Payment_BOT';
 
-    // ─── Helpers ──────────────────────────────────────────────
     function showStep(id) {
       document.querySelectorAll('.auth-step').forEach(s => s.classList.remove('is-active'));
       document.getElementById(id)?.classList.add('is-active');
@@ -353,27 +170,30 @@
       return ORIGINAL_PRICE - Math.round(ORIGINAL_PRICE * discount / 100);
     }
 
-    // ─── Init ──────────────────────────────────────────────────
+    // تحديث كل روابط البوت
+    function updateBotLinks() {
+      const botUrl = `https://t.me/${BOT_USERNAME}`;
+      document.getElementById('back-to-bot-invalid').href  = botUrl;
+      document.getElementById('back-to-bot-success').href  = botUrl;
+      document.getElementById('back-to-bot-error').href    = botUrl;
+    }
+
     async function init() {
-      // جيب الـ tg_id من الـ URL
+      updateBotLinks();
+
       const params   = new URLSearchParams(window.location.search);
       const tgId     = params.get('tg_id');
       const discount = parseInt(params.get('discount') || '0', 10);
 
-      // تحديث رابط البوت
-      document.querySelectorAll('[href*="GPortBot"]').forEach(el => {
-        el.href = `https://t.me/${BOT_USERNAME}`;
-      });
-      const backSuccess = document.getElementById('back-to-bot-success');
-      if (backSuccess) backSuccess.href = `https://t.me/${BOT_USERNAME}`;
-
-      if (!tgId || isNaN(parseInt(tgId))) {
+      // [FIX] validation أقوى للـ tg_id
+      const tgIdNum = parseInt(tgId, 10);
+      if (!tgId || isNaN(tgIdNum) || tgIdNum <= 0 || tgIdNum > Number.MAX_SAFE_INTEGER) {
         showStep('step-invalid');
         return;
       }
 
-      // لو في discount في الـ URL — اعرضه في صفحة الـ signin
-      if (discount > 0) {
+      // عرض الـ discount في صفحة الـ signin
+      if (discount > 0 && discount <= 100) {
         const finalPrice = calcPrice(discount);
         document.getElementById('discount-pct').textContent  = discount + '%';
         document.getElementById('price-old').textContent     = ORIGINAL_PRICE + ' جنيه';
@@ -381,7 +201,7 @@
         document.getElementById('discount-preview').style.display = 'block';
       }
 
-      // جيب الـ Supabase client
+      // [FIX] نستخدم الـ shared client بدل إنشاء جديد
       const sb = window._supabaseClient
         || (window.supabase?.createClient
             ? window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY)
@@ -389,54 +209,46 @@
 
       if (!sb) { showStep('step-error'); return; }
 
-      // تحقق من الـ session الحالية
       const { data: { session } } = await sb.auth.getSession();
 
       if (!session) {
-        // مش logged in — عرض صفحة الـ signin
         showStep('step-signin');
 
         document.getElementById('signin-btn').addEventListener('click', async () => {
-          // احفظ الـ tg_id وdiscount في sessionStorage عشان بعد الـ OAuth redirect
-          sessionStorage.setItem('pending_tg_id',       tgId);
-          sessionStorage.setItem('pending_tg_discount', discount.toString());
+          // [FIX] نحفظ في sessionStorage عشان بعد الـ redirect
+          try {
+            sessionStorage.setItem('pending_tg_id', tgId);
+            sessionStorage.setItem('pending_tg_discount', discount.toString());
+          } catch {}
 
-          const origin      = window.location.origin;
-          const redirectUrl = `${origin}/auth-bot.html?tg_id=${tgId}&discount=${discount}`;
-
+          const redirectUrl = `${window.location.origin}/auth-bot.html?tg_id=${tgId}&discount=${discount}`;
           await sb.auth.signInWithOAuth({
             provider: 'github',
-            options:  { redirectTo: redirectUrl, scopes: 'read:user' },
+            options: { redirectTo: redirectUrl, scopes: 'read:user' },
           });
         });
 
       } else {
-        // Logged in — ربط الـ telegram_id
-        await linkTelegram(sb, session, tgId, discount);
+        await linkTelegram(sb, session, tgId, tgIdNum, discount);
       }
     }
 
-    async function linkTelegram(sb, session, tgId, discount) {
+    async function linkTelegram(sb, session, tgId, tgIdNum, discount) {
       showStep('step-linking');
 
       const userId = session.user.id;
 
       try {
-        // تحقق لو Pro أصلاً
         const { data: userData } = await sb
-          .from('users')
-          .select('is_pro, telegram_id')
-          .eq('id', userId)
-          .single();
+          .from('users').select('is_pro, telegram_id').eq('id', userId).single();
 
-        if (userData?.is_pro) {
-          showStep('step-already-pro');
-          return;
-        }
+        // [FIX] نربط الـ telegram_id حتى لو كان Pro (ممكن اتمسح قبل كده)
+        // بس نوريه step-already-pro بعد الربط
+        const isAlreadyPro = userData?.is_pro;
 
         // اربط الـ telegram_id
         const { data: linkResult } = await sb.rpc('link_telegram_id', {
-          p_telegram_id: parseInt(tgId),
+          p_telegram_id: tgIdNum,
         });
 
         const parsed = typeof linkResult === 'string' ? JSON.parse(linkResult) : linkResult;
@@ -445,10 +257,20 @@
           throw new Error(parsed?.error || 'Link failed');
         }
 
-        // ✅ نجاح — عرض صفحة الـ success
-        const finalPrice = discount > 0 ? calcPrice(discount) : ORIGINAL_PRICE;
+        // [FIX] امسح الـ sessionStorage بعد النجاح
+        try {
+          sessionStorage.removeItem('pending_tg_id');
+          sessionStorage.removeItem('pending_tg_discount');
+        } catch {}
 
-        if (discount > 0) {
+        if (isAlreadyPro) {
+          showStep('step-already-pro');
+          return;
+        }
+
+        // عرض صفحة النجاح مع الـ discount
+        if (discount > 0 && discount <= 100) {
+          const finalPrice = calcPrice(discount);
           document.getElementById('success-pct').textContent       = discount + '%';
           document.getElementById('success-price-old').textContent = ORIGINAL_PRICE + ' جنيه';
           document.getElementById('success-price-new').textContent = finalPrice;
@@ -456,8 +278,7 @@
           document.getElementById('success-msg').textContent =
             `حسابك اتربط! ارجع للبوت وابعت screenshot بـ ${finalPrice} جنيه.`;
         } else {
-          document.getElementById('success-msg').textContent =
-            'حسابك اتربط! ارجع للبوت وابعت الـ screenshot.';
+          document.getElementById('success-msg').textContent = 'حسابك اتربط! ارجع للبوت وابعت الـ screenshot.';
         }
 
         showStep('step-success');
@@ -469,7 +290,6 @@
       }
     }
 
-    // شغّل بعد تحميل الـ DOM
     document.addEventListener('DOMContentLoaded', init);
 
   })();

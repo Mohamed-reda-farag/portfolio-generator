@@ -25,39 +25,39 @@
   // ─── Config ─────────────────────────────────────────────────────────────────
 
   const CONFIG = {
-    SUPABASE_URL: window.SUPABASE_URL || "",        // من main.js / config
-    SUPABASE_ANON_KEY: window.SUPABASE_ANON_KEY || "", // من main.js / config
-    EDGE_FUNCTION_URL: "", // يُحسب تلقائياً من SUPABASE_URL
-    SESSION_KEY: "pg_portfolio_draft",              // sessionStorage key
-    GENERATION_TIMEOUT_MS: 45_000,                 // 45 ثانية max
+    SUPABASE_URL:        window.SUPABASE_URL      || "",
+    SUPABASE_ANON_KEY:   window.SUPABASE_ANON_KEY || "",
+    EDGE_FUNCTION_URL:   "", // يُحسب تلقائياً من SUPABASE_URL
+    SESSION_KEY:         "pg_portfolio_draft",
+    GENERATION_TIMEOUT_MS: 45_000,               // 45 ثانية max
     PROGRESS_STEPS: [
-      { pct: 5,  label: "Fetching your GitHub profile…",       duration: 300 },
-      { pct: 20, label: "Analyzing your repositories…",        duration: 800 },
-      { pct: 40, label: "Understanding your tech stack…",      duration: 600 },
-      { pct: 60, label: "Generating your bio with AI…",        duration: 1000 },
-      { pct: 75, label: "Writing project descriptions…",       duration: 800 },
-      { pct: 88, label: "Polishing your skills section…",      duration: 500 },
-      { pct: 95, label: "Almost ready…",                       duration: 400 },
-      { pct: 100, label: "Portfolio generated! 🎉",            duration: 200 },
+      { pct: 5,   label: "Fetching your GitHub profile…",  duration: 300  },
+      { pct: 20,  label: "Analyzing your repositories…",   duration: 800  },
+      { pct: 40,  label: "Understanding your tech stack…", duration: 600  },
+      { pct: 60,  label: "Generating your bio with AI…",   duration: 1000 },
+      { pct: 75,  label: "Writing project descriptions…",  duration: 800  },
+      { pct: 88,  label: "Polishing your skills section…", duration: 500  },
+      { pct: 95,  label: "Almost ready…",                  duration: 400  },
+      { pct: 100, label: "Portfolio generated! 🎉",        duration: 200  },
     ],
   };
 
   // ─── State ──────────────────────────────────────────────────────────────────
 
-  let _supabaseClient = null;
+  let _supabaseClient  = null;
   let _realtimeChannel = null;
-  let _progressInterval = null;
+  // [FIX] _progressTimer بدل _progressInterval — بيستخدم setTimeout مش setInterval
+  let _progressTimer   = null;
   let _currentStepIndex = 0;
-  let _progressEl = null;
+  let _progressEl      = null;
   let _progressLabelEl = null;
-  let _isGenerating = false;
+  let _isGenerating    = false;
 
   // ─── Supabase client (lazy init) ────────────────────────────────────────────
 
   function getSupabaseClient() {
     if (_supabaseClient) return _supabaseClient;
 
-    // استخدم الـ shared client من auth.js لو موجود (يمنع Multiple GoTrueClient)
     if (window._supabaseClient) {
       _supabaseClient = window._supabaseClient;
       CONFIG.EDGE_FUNCTION_URL = `${CONFIG.SUPABASE_URL}/functions/v1/generate`;
@@ -65,11 +65,11 @@
     }
 
     if (!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY) {
-      console.warn("[AI] Supabase not configured — running in offline mode.");
+      // [FIX] validation مبكرة — بدل الـ URL الفاضي الصامت
+      console.warn("[AI] SUPABASE_URL أو SUPABASE_ANON_KEY مش موجودين — offline mode.");
       return null;
     }
 
-    // Supabase JS v2 — expected to be loaded from CDN
     if (!window.supabase?.createClient) {
       console.warn("[AI] Supabase SDK not loaded.");
       return null;
@@ -80,28 +80,17 @@
       CONFIG.SUPABASE_ANON_KEY
     );
 
-    // حساب Edge Function URL
     CONFIG.EDGE_FUNCTION_URL = `${CONFIG.SUPABASE_URL}/functions/v1/generate`;
-
     return _supabaseClient;
   }
 
   // ─── Progress Bar Helpers ────────────────────────────────────────────────────
 
-  /**
-   * يجد عناصر الـ progress في الـ DOM
-   * بيدور على: [data-progress-bar] و [data-progress-label]
-   */
   function findProgressElements() {
-    _progressEl = document.querySelector("[data-progress-bar]");
+    _progressEl      = document.querySelector("[data-progress-bar]");
     _progressLabelEl = document.querySelector("[data-progress-label]");
   }
 
-  /**
-   * يحدث الـ progress bar بـ animation ناعمة
-   * @param {number} pct - 0 to 100
-   * @param {string} label - النص اللي يظهر تحت الـ bar
-   */
   function setProgress(pct, label) {
     if (_progressEl) {
       _progressEl.style.width = `${Math.min(100, Math.max(0, pct))}%`;
@@ -113,39 +102,36 @@
   }
 
   /**
-   * يشغل الـ progress steps التلقائية (simulation)
-   * بيتوقف لو وصل لـ 95% — الـ 5% الأخيرة للـ real completion
+   * يشغل الـ progress steps التلقائية (simulation).
+   * [FIX] بيستخدم clearTimeout بدل clearInterval — لأن المتغير setTimeout handle
    */
   function startProgressSimulation() {
     _currentStepIndex = 0;
-    clearInterval(_progressInterval);
+    // [FIX] clearTimeout بدل clearInterval
+    clearTimeout(_progressTimer);
 
     function advanceStep() {
-      if (_currentStepIndex >= CONFIG.PROGRESS_STEPS.length) {
-        clearInterval(_progressInterval);
-        return;
-      }
+      if (_currentStepIndex >= CONFIG.PROGRESS_STEPS.length) return;
 
       const step = CONFIG.PROGRESS_STEPS[_currentStepIndex];
       setProgress(step.pct, step.label);
       _currentStepIndex++;
 
       // وقف عند 95% — استنى الـ real response
-      if (step.pct >= 95) {
-        clearInterval(_progressInterval);
-        return;
-      }
+      if (step.pct >= 95) return;
 
-      clearInterval(_progressInterval);
-      _progressInterval = setTimeout(advanceStep, step.duration);
+      // [FIX] clearTimeout بدل clearInterval، وحفظ الـ handle في _progressTimer
+      clearTimeout(_progressTimer);
+      _progressTimer = setTimeout(advanceStep, step.duration);
     }
 
     advanceStep();
   }
 
   function stopProgressSimulation() {
-    clearInterval(_progressInterval);
-    _progressInterval = null;
+    // [FIX] clearTimeout بدل clearInterval
+    clearTimeout(_progressTimer);
+    _progressTimer = null;
   }
 
   function completeProgress() {
@@ -157,8 +143,9 @@
   // ─── Supabase Realtime ───────────────────────────────────────────────────────
 
   /**
-   * يشترك في تحديثات الـ generation من Supabase Realtime
-   * @param {string} generationId - UUID
+   * يشترك في تحديثات الـ generation من Supabase Realtime.
+   * [FIX] الـ Realtime status لا يتعارض مع الـ simulation —
+   *       "processing" لا يرجع الـ progress للخلف
    */
   function subscribeToGenerationUpdates(generationId) {
     const sb = getSupabaseClient();
@@ -179,7 +166,12 @@
           console.log("[AI] Realtime update:", status);
 
           if (status === "processing") {
-            setProgress(50, "AI is writing your portfolio…");
+            // [FIX] نتحقق إن الـ current progress أقل من 60 قبل ما نغيّره
+            // عشان نمنع الـ bar من الرجوع للخلف لو الـ simulation وصلت أبعد
+            const currentPct = parseFloat(_progressEl?.style.width || "0");
+            if (currentPct < 60) {
+              setProgress(60, "AI is writing your portfolio…");
+            }
           } else if (status === "completed") {
             completeProgress();
           } else if (status === "failed") {
@@ -202,28 +194,36 @@
   // ─── DB Helpers ──────────────────────────────────────────────────────────────
 
   /**
-   * يخزن record في ai_generations قبل الـ generation
-   * @returns {string|null} generationId
+   * يخزن record في ai_generations قبل الـ generation.
+   * [FIX] بيخزّن summary بس بدل الـ githubData كاملة — يقلل الـ payload في DB
    */
   async function createGenerationRecord(userId, githubData) {
     const sb = getSupabaseClient();
     if (!sb) return null;
 
-    // نولد الـ UUID في الـ client عشان نتجنب .select() اللي محتاج SELECT RLS permission
     const id = crypto.randomUUID();
+
+    // [FIX] بنخزن summary بس مش الـ raw data كاملة (all_repos ممكن يكون 30 repo)
+    const summary = {
+      username:    githubData?.user?.login,
+      total_repos: githubData?.total_repos,
+      total_stars: githubData?.total_stars,
+      top_repo_count: githubData?.top_repos?.length,
+      fetched_at:  githubData?.fetched_at,
+    };
 
     const { error } = await sb
       .from("ai_generations")
       .insert({
         id,
-        user_id: userId || null,
-        status: "pending",
-        github_data: githubData,
+        user_id:     userId || null,
+        status:      "pending",
+        github_data: summary,
       });
 
     if (error) {
       console.warn("[AI] Could not create generation record:", error.message);
-      return null; // مش مشكلة حرجة — الـ generation تكمّل بدون tracking
+      return null;
     }
 
     return id;
@@ -231,10 +231,6 @@
 
   // ─── Session Storage ──────────────────────────────────────────────────────────
 
-  /**
-   * يحفظ الـ portfolio draft في sessionStorage
-   * @param {object} data - { bio, skills, projects, githubUser, jobTitle, theme }
-   */
   function savePortfolioDraft(data) {
     try {
       sessionStorage.setItem(CONFIG.SESSION_KEY, JSON.stringify({
@@ -247,17 +243,13 @@
     }
   }
 
-  /**
-   * يقرأ الـ draft المحفوظ
-   * @returns {object|null}
-   */
   function getPortfolioDraft() {
     try {
       const raw = sessionStorage.getItem(CONFIG.SESSION_KEY);
       if (!raw) return null;
       const parsed = JSON.parse(raw);
-      // Draft صالح لـ 2 ساعة
-      if (Date.now() - parsed._savedAt > 2 * 60 * 60 * 1000) {
+      // Draft صالح لـ 24 ساعة (كان 2 — زوّدناه لـ UX أفضل)
+      if (Date.now() - parsed._savedAt > 24 * 60 * 60 * 1000) {
         sessionStorage.removeItem(CONFIG.SESSION_KEY);
         return null;
       }
@@ -302,15 +294,14 @@
     return key ? ERROR_MESSAGES[key] : ERROR_MESSAGES.DEFAULT;
   }
 
-  // ─── Toast (بيستخدم window.toast من app.js لو موجود) ──────────────────────
+  // ─── Toast ────────────────────────────────────────────────────────────────────
 
   function showToast(message, type = "error") {
     if (typeof window.toast === "function") {
       window.toast(message, type);
     } else {
-      // fallback بسيط لو app.js مش محمّل
+      // [FIX] حذف alert() — blocking ويكسر الـ UX. console فقط كـ fallback
       console[type === "error" ? "error" : "log"](`[Toast] ${message}`);
-      alert(message);
     }
   }
 
@@ -328,6 +319,13 @@
       btn.classList.remove("loading");
       btn.textContent = btn.dataset.originalText || "Generate Portfolio";
     }
+  }
+
+  // ─── Helper: sleep ────────────────────────────────────────────────────────────
+  // مُعرَّفة محلياً داخل الـ IIFE لضمان توافرها بغض النظر عن ترتيب تحميل app.js.
+  // window.sleep من app.js مطابقة لكن لا نعتمد عليها هنا.
+  function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   // ─── Core: Generate Portfolio ─────────────────────────────────────────────────
@@ -362,7 +360,6 @@
       return { success: false, error: "Missing GitHub username." };
     }
 
-    // ── تحقق من window.GitHub ──────────────────────────────────────────────
     if (!window.GitHub?.fetchGitHubData) {
       showToast(ERROR_MESSAGES.GITHUB_MISSING, "error");
       return { success: false, error: "GitHub module not loaded." };
@@ -372,27 +369,40 @@
     setButtonLoading(submitBtn, true);
     findProgressElements();
 
-    // إظهار progress container لو مخفي
     const progressContainer = document.querySelector("[data-progress-container]");
     if (progressContainer) {
       progressContainer.style.display = "block";
       progressContainer.setAttribute("aria-hidden", "false");
     }
 
+    // [FIX] نبدأ الـ simulation من صفر ولا نتعارض معاه بـ manual setProgress
+    // الـ simulation تتولى الـ progress من 5% → 95%
+    // الـ manual setProgress بس بعد انتهاء الـ generation
     startProgressSimulation();
 
     try {
       // ── Step 1: جلب GitHub data ────────────────────────────────────────────
-      setProgress(5, "Fetching your GitHub profile…");
-
+      // github.js لديها timeouts داخلية على كل request (API_TIMEOUT=5s, ghFetch=10s).
+      // الـ GH_TIMEOUT_MS هو ceiling خارجي للعملية كاملة.
+      const GH_TIMEOUT_MS = 30_000;
       let githubData;
       try {
-        githubData = await Promise.race([
-          window.GitHub.fetchGitHubData(githubUsername),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("TIMEOUT: GitHub fetch timed out.")), CONFIG.GENERATION_TIMEOUT_MS)
-          ),
-        ]);
+        const ghAbort = new AbortController();
+        const ghTimer = setTimeout(() => ghAbort.abort(), GH_TIMEOUT_MS);
+
+        try {
+          githubData = await Promise.race([
+            window.GitHub.fetchGitHubData(githubUsername),
+            new Promise((_, reject) => {
+              ghAbort.signal.addEventListener("abort", () =>
+                reject(new Error("TIMEOUT: GitHub fetch timed out."))
+              );
+            }),
+          ]);
+        } finally {
+          // [FIX] finally يضمن clearTimeout سواء نجح الـ race أو فشل
+          clearTimeout(ghTimer);
+        }
       } catch (ghError) {
         const msg = ghError.message || "";
         if (msg.includes("NOT_FOUND")) {
@@ -407,8 +417,7 @@
         throw ghError;
       }
 
-      setProgress(35, "Analyzing your repositories…");
-      await sleep(300);
+      await sleep(200);
 
       // ── Step 2: تخزين generation record في DB ──────────────────────────────
       const sb = getSupabaseClient();
@@ -425,64 +434,63 @@
         }
       }
 
-      setProgress(45, "Sending data to AI…");
-
       // ── Step 3: استدعاء Edge Function ──────────────────────────────────────
       const edgeUrl = CONFIG.EDGE_FUNCTION_URL ||
         `${CONFIG.SUPABASE_URL}/functions/v1/generate`;
 
-      // Headers
-      const headers = {
-        "Content-Type": "application/json",
-      };
+      if (!edgeUrl || edgeUrl === '/functions/v1/generate') {
+        throw new Error("AUTH_ERROR: Supabase URL not configured.");
+      }
 
-      // أضف Authorization header لو في user مسجل دخول
+      const headers = { "Content-Type": "application/json" };
+
       if (sb) {
         const { data: sessionData } = await sb.auth.getSession();
         const accessToken = sessionData?.session?.access_token;
-        if (accessToken) {
-          headers["Authorization"] = `Bearer ${accessToken}`;
-        } else {
-          // استخدم الـ anon key للمستخدمين غير المسجلين
-          headers["Authorization"] = `Bearer ${CONFIG.SUPABASE_ANON_KEY}`;
-        }
+        headers["Authorization"] = accessToken
+          ? `Bearer ${accessToken}`
+          : `Bearer ${CONFIG.SUPABASE_ANON_KEY}`;
+      } else {
+        headers["Authorization"] = `Bearer ${CONFIG.SUPABASE_ANON_KEY}`;
       }
+
+      // [FIX] AbortController للـ fetch timeout بدل Promise.race المتسرب
+      const aiAbort  = new AbortController();
+      const aiTimer  = setTimeout(
+        () => aiAbort.abort(),
+        CONFIG.GENERATION_TIMEOUT_MS
+      );
 
       let response;
       try {
-        response = await Promise.race([
-          fetch(edgeUrl, {
-            method: "POST",
-            headers,
-            body: JSON.stringify({
-              githubData: {
-                user: {
-                  ...githubData.user,
-                  languages: Object.fromEntries(
-                    githubData.languages.map(l => [l.language, l.bytes])
-                  ),
-                },
-                repos: githubData.top_repos,
+        response = await fetch(edgeUrl, {
+          method: "POST",
+          headers,
+          signal: aiAbort.signal,
+          body: JSON.stringify({
+            githubData: {
+              user: {
+                ...githubData.user,
+                languages: Object.fromEntries(
+                  githubData.languages.map(l => [l.language, l.bytes])
+                ),
               },
-              jobTitle,
-              generationId,
-            }),
+              repos: githubData.top_repos,
+            },
+            jobTitle,
+            generationId,
           }),
-          new Promise((_, reject) =>
-            setTimeout(
-              () => reject(new Error("TIMEOUT: AI generation timed out.")),
-              CONFIG.GENERATION_TIMEOUT_MS
-            )
-          ),
-        ]);
+        });
+        clearTimeout(aiTimer);
       } catch (fetchError) {
-        if (fetchError.message?.includes("TIMEOUT")) throw fetchError;
+        clearTimeout(aiTimer);
+        if (fetchError.name === "AbortError") {
+          throw new Error("TIMEOUT: AI generation timed out.");
+        }
         throw new Error("NETWORK: Could not reach the generation server.");
       }
 
       // ── Step 4: Parse response ─────────────────────────────────────────────
-      setProgress(90, "Finalizing your portfolio…");
-
       let responseData;
       try {
         responseData = await response.json();
@@ -499,12 +507,12 @@
 
       // ── Step 5: حفظ في sessionStorage ──────────────────────────────────────
       const portfolioDraft = {
-        bio: aiData.bio,
-        skills: aiData.skills,
-        projects: aiData.projects,
-        githubUser: githubData.user,
-        githubRepos: githubData.top_repos,
-        fullName: fullName || githubData.user.name || githubUsername,
+        bio:            aiData.bio,
+        skills:         aiData.skills,
+        projects:       aiData.projects,
+        githubUser:     githubData.user,
+        githubRepos:    githubData.top_repos,
+        fullName:       fullName || githubData.user.name || githubUsername,
         jobTitle,
         theme,
         githubUsername,
@@ -515,35 +523,33 @@
 
       // ── Step 6: إنهاء الـ progress ──────────────────────────────────────────
       completeProgress();
-      await sleep(600); // اسمح للـ animation تكتمل
+      await sleep(600);
 
       unsubscribeRealtime();
 
       // ── Step 7: Redirect ────────────────────────────────────────────────────
       console.log("[AI] Generation complete! Redirecting to", redirectUrl);
       window.location.href = redirectUrl;
-
-      return { success: true, data: portfolioDraft };
+      // لا return هنا — الـ redirect يحصل فوراً والـ JS بيتوقف تدريجياً
 
     } catch (error) {
       stopProgressSimulation();
       unsubscribeRealtime();
 
-      const errorMsg = error.message || "";
+      const errorMsg  = error.message || "";
       const errorCode = errorMsg.split(":")[0]?.trim();
       const userMessage = getErrorMessage(errorCode);
 
       console.error("[AI] Generation failed:", error);
-      setProgress(0, "Generation failed. Please try again.");
 
       showToast(userMessage, "error");
 
-      // إخفاء progress container عند الـ error
+      // [FIX] بنخفي الـ container مباشرة بدل ما نرجع progress للـ 0 أولاً
       const progressContainer = document.querySelector("[data-progress-container]");
       if (progressContainer) {
         setTimeout(() => {
           progressContainer.style.display = "none";
-        }, 2000);
+        }, 1500);
       }
 
       return { success: false, error: userMessage };
@@ -554,18 +560,8 @@
     }
   }
 
-  // ─── Helper: sleep ────────────────────────────────────────────────────────────
-
-  function sleep(ms) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-  }
-
   // ─── Auto-init: Form Listener ─────────────────────────────────────────────────
 
-  /**
-   * يتصل تلقائياً بـ form الـ generate في index.html
-   * يدور على: [data-generate-form]
-   */
   function initFormListener() {
     const form = document.querySelector("[data-generate-form]");
     if (!form) return;
@@ -591,10 +587,16 @@
         ""
       ).trim();
 
-      // الـ theme المختارة (من sessionStorage أو default)
+      // [FIX] الأولوية من الأحدث للأقدم:
+      // pg_intended_theme = Pro theme اختاره المستخدم من landing (الأحدث دائماً)
+      // pg_selected_theme = theme عام
+      // pg_theme          = free theme قديم (الأقدم — يُقرأ أخيراً)
       let theme = "dark";
       try {
-        const savedTheme = sessionStorage.getItem("pg_theme") || sessionStorage.getItem("pg_selected_theme");
+        const savedTheme =
+          sessionStorage.getItem("pg_intended_theme") ||
+          sessionStorage.getItem("pg_selected_theme") ||
+          sessionStorage.getItem("pg_theme");
         if (savedTheme) theme = savedTheme;
       } catch {}
 
@@ -624,38 +626,12 @@
   // ─── Public API ───────────────────────────────────────────────────────────────
 
   window.AI = {
-    /**
-     * الدالة الرئيسية — يمكن استدعاؤها من أي مكان
-     */
-    generate: generatePortfolio,
-
-    /**
-     * قراءة الـ draft المحفوظ في sessionStorage
-     * تُستخدم في edit.html و portfolio.html
-     */
-    getDraft: getPortfolioDraft,
-
-    /**
-     * مسح الـ draft
-     */
+    generate:   generatePortfolio,
+    getDraft:   getPortfolioDraft,
     clearDraft: clearPortfolioDraft,
-
-    /**
-     * حفظ الـ draft يدوياً (بعد inline editing مثلاً)
-     */
-    saveDraft: savePortfolioDraft,
-
-    /**
-     * Session storage key (للاستخدام الخارجي)
-     */
+    saveDraft:  savePortfolioDraft,
     SESSION_KEY: CONFIG.SESSION_KEY,
-
-    /**
-     * هل في generation جارية الآن؟
-     */
-    get isGenerating() {
-      return _isGenerating;
-    },
+    get isGenerating() { return _isGenerating; },
   };
 
   console.log("[AI] ai.js loaded — window.AI ready.");
