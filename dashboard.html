@@ -599,7 +599,13 @@
     });
 
     // ─── Init ─────────────────────────────────────────────────
+    let _initDone = false;
+
     async function init() {
+      // guard ضد double-init على OAuth redirect
+      if (_initDone) return;
+      _initDone = true;
+
       // أنشئ الـ Supabase client لو مش موجود
       if (!window._supabaseClient && window.supabase?.createClient && window.SUPABASE_URL) {
         window._supabaseClient = window.supabase.createClient(
@@ -608,7 +614,11 @@
       }
 
       const { user, portfolios } = await Auth.getDashboardData();
-      if (!user) return;
+      if (!user) {
+        // لو مفيش user، خلّي الـ flag false عشان onAuthStateChange يقدر ينادي init() تاني
+        _initDone = false;
+        return;
+      }
 
       // Greeting
       const name = user.name?.split(' ')[0] || user.githubUsername || 'Developer';
@@ -664,6 +674,7 @@
       copyLink,
       copyReferralLink,
       showActivateModal,
+      init,
     };
 
     document.addEventListener('DOMContentLoaded', init);

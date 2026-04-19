@@ -344,6 +344,8 @@
             // نظّف الـ hash من الـ URL بدون reload
             window.history.replaceState(null, '', window.location.pathname);
             _updateNav(_currentUser);
+            // [FIX] ننادي Dashboard.init() عشان يحمّل البيانات بعد ما الـ session اتأكدت
+            window.Dashboard?.init?.();
           } else if (event === 'SIGNED_OUT' || !newSession) {
             subscription.unsubscribe();
             window.location.href = _buildRelativeURL('index.html');
