@@ -330,11 +330,31 @@
 
     // Dashboard — redirect لو مش logged in
     if (document.querySelector('[data-page="dashboard"]')) {
-      if (!_currentUser) {
+      // [FIX] لو في #access_token في الـ URL، ده معناه OAuth redirect جديد.
+      // Supabase بياخد وقت يـ parse الـ hash ويحفظ الـ session —
+      // نستنى الـ onAuthStateChange يـ fire بدل الـ check الفوري.
+      const hasOAuthToken = window.location.hash.includes('access_token');
+
+      if (hasOAuthToken) {
+        // نستنى الـ SIGNED_IN event من Supabase (بيجي في ثوانٍ)
+        const { data: { subscription } } = client.auth.onAuthStateChange((event, newSession) => {
+          if (event === 'SIGNED_IN' && newSession) {
+            _currentUser = _buildUserObject(newSession.user);
+            subscription.unsubscribe();
+            // نظّف الـ hash من الـ URL بدون reload
+            window.history.replaceState(null, '', window.location.pathname);
+            _updateNav(_currentUser);
+          } else if (event === 'SIGNED_OUT' || !newSession) {
+            subscription.unsubscribe();
+            window.location.href = _buildRelativeURL('index.html');
+          }
+        });
+      } else if (!_currentUser) {
         window.location.href = _buildRelativeURL('index.html');
         return;
+      } else {
+        _updateNav(_currentUser);
       }
-      _updateNav(_currentUser);
     }
   });
 
