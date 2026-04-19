@@ -125,7 +125,6 @@
   display: flex;
   flex-direction: column;
   position: relative;
-  animation: card-in 400ms ease both;
 }
 
 .portfolio-card:hover {
@@ -217,6 +216,28 @@
 .preview--cyberpunk .preview__bar--accent { background: #00ff41; }
 .preview--space .preview__bar--accent     { background: #a78bfa; }
 
+/* Theme label badge */
+.preview__theme-label {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-family: var(--font-mono, 'DM Mono', monospace);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  color: rgba(255,255,255,0.7);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.preview--light .preview__theme-label,
+.preview--minimal .preview__theme-label {
+  background: rgba(0,0,0,0.12);
+  color: rgba(0,0,0,0.6);
+}
 
 /* ─── Card Body ───────────────────────────────────────────────────────────── */
 
@@ -370,7 +391,7 @@
 }
 
 .card-action--copy {
-  margin-inline-start: auto; /* logical property — safe for RTL layouts */
+  margin-left: auto;
 }
 
 .card-action--copy.copied {
@@ -467,7 +488,7 @@
   inset: 0;
   background: rgba(0,0,0,0.7);
   backdrop-filter: blur(4px);
-  z-index: var(--z-modal, 1000);
+  z-index: var(--z-modal, 300);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -597,6 +618,10 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+.portfolio-card {
+  animation: card-in 400ms ease both;
 }
 
 /* Stagger delays for cards */

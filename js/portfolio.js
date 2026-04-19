@@ -1,7 +1,7 @@
 /**
  * portfolio.js — Step 5
  * Inline Editing + Theme Switcher + Edit Mode UI
- * + Pro Paywall with Supabase Activation Code Validation
+ * + Pro Paywall with HMAC Activation Code Validation
  *
  * Depends on: window.AI (ai.js), window.GitHub (github.js)
  * Exposes: window.Portfolio
@@ -27,12 +27,104 @@
     ],
   };
 
-  const MAX_UNDO         = 20;
+  const MAX_UNDO = 20;
   const AUTOSAVE_DEBOUNCE = 600; // ms
 
-  // [FIX] مجموعة واحدة مركزية للـ Pro themes — بدل 3 تعريفات مكررة
-  const FREE_THEMES = new Set(['light', 'dark', 'minimal']);
-  const PRO_THEMES  = new Set(['glass3d', 'cyberpunk', 'space']);
+  /* ═══════════════════════════════════════════════════════════════
+     HMAC CODE SYSTEM
+     ────────────────────────────────────────────────────────────
+     كل كود بيتكون من 3 أجزاء:
+       GPORT  +  HMAC_PREFIX  +  RANDOM_SUFFIX
+       4 chars    4 chars         بيتحدد بالطول الكلي
+
+     الطول الكلي بيحدد نوع الكود:
+       16 chars → Pro Full  (100%)
+       14 chars → Ref 60%
+       12 chars → Ref 40%
+       10 chars → Ref 20%
+
+     الـ HMAC_PREFIX بيتحسب من:
+       HMAC-SHA256(GPORT_SECRET, floor(timestamp / WINDOW_MS))
+       → أول 4 chars من النتيجة بالـ HEX
+
+     الـ WINDOW_MS = 48 ساعة
+     الموقع بيقبل الـ window الحالية والـ window اللي قبلها
+     (عشان الكود ما ينتهيش فجأة لو الـ window اتقلبت)
+  ═══════════════════════════════════════════════════════════════ */
+
+  // ⚠️ غيّر الـ SECRET ده بقيمة سرية ثابتة — نفس القيمة في البوت
+  const GPORT_SECRET  = '65c021d4717e612a0af42b1feed99e8b11424314ee28f23c8d949b7b51cff70c';
+  const GPORT_PREFIX  = 'GPORT';
+  const WINDOW_MS     = 48 * 60 * 60 * 1000; // 48 ساعة
+
+  const CODE_TYPES = {
+    16: { type: 'monthly', label: 'شهري (شهر كامل)'   },
+    14: { type: 'yearly',  label: 'سنوي (سنة كاملة)'  },
+  };
+
+  /**
+   * حساب الـ HMAC prefix لـ time window معين
+   * @param {number} windowIndex - رقم الـ window (floor(Date.now() / WINDOW_MS))
+   * @returns {Promise<string>} 4-char hex prefix
+   */
+  async function _computeHmacPrefix(windowIndex) {
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(GPORT_SECRET);
+    const message = encoder.encode(String(windowIndex));
+
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw', keyData,
+      { name: 'HMAC', hash: 'SHA-256' },
+      false, ['sign']
+    );
+
+    const signature = await crypto.subtle.sign('HMAC', cryptoKey, message);
+    const hexArray  = Array.from(new Uint8Array(signature));
+    const hexString = hexArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+    return hexString.slice(0, 4).toUpperCase();
+  }
+
+  /**
+   * التحقق من صحة الكود
+   * @param {string} code - الكود المدخل من المستخدم
+   * @returns {Promise<{valid: boolean, type?: string, discount?: number, label?: string, error?: string}>}
+   */
+  async function _verifyCode(code) {
+    const clean = code.trim().toUpperCase();
+
+    // تحقق من الـ prefix الثابت
+    if (!clean.startsWith(GPORT_PREFIX)) {
+      return { valid: false, error: 'Invalid code format' };
+    }
+
+    // تحديد النوع من الطول
+    const codeType = CODE_TYPES[clean.length];
+    if (!codeType) {
+      return { valid: false, error: 'Invalid code length' };
+    }
+
+    // استخراج الـ HMAC prefix من الكود (الـ 4 chars بعد GPORT)
+    const codeHmacPart = clean.slice(GPORT_PREFIX.length, GPORT_PREFIX.length + 4);
+
+    // حساب الـ window الحالية والسابقة
+    const currentWindow = Math.floor(Date.now() / WINDOW_MS);
+    const windows       = [currentWindow, currentWindow - 1]; // نقبل الاتنين
+
+    for (const w of windows) {
+      const expectedPrefix = await _computeHmacPrefix(w);
+      if (codeHmacPart === expectedPrefix) {
+        return {
+          valid: true,
+          code:  clean,
+          type:  codeType.type,
+          label: codeType.label,
+        };
+      }
+    }
+
+    return { valid: false, error: 'Code expired or invalid' };
+  }
 
   /* ═══════════════════════════════════════════════════════════════
      STATE
@@ -41,9 +133,9 @@
   let _draft      = null;
   let _undoStack  = [];
   let _redoStack  = [];
-  let _isPro      = false;
+  let _isPro      = false;  // يتحدد من Supabase في init()
   let _isSaving   = false;
-  // [FIX] _isPublished محذوف — لم يكن يُستخدم في أي مكان خارج publish()
+  let _isPublished = false;
 
   /* ═══════════════════════════════════════════════════════════════
      HELPERS
@@ -84,6 +176,10 @@
      PRO STATUS — من Supabase
   ═══════════════════════════════════════════════════════════════ */
 
+  /**
+   * يجيب الـ Pro status من Supabase
+   * بيتنادى في init() قبل ما يبني الـ toolbar
+   */
   async function _loadProStatus() {
     try {
       const sb = window._supabaseClient;
@@ -95,6 +191,7 @@
 
       const parsed = typeof data === 'string' ? JSON.parse(data) : data;
 
+      // لو انتهى الاشتراك — نعرض toast للمستخدم
       if (parsed.expired) {
         setTimeout(() => {
           window.toast?.('Your Pro subscription has expired. Renew to continue using Pro themes.', 'warn');
@@ -153,12 +250,9 @@
   }
 
   function _onSkillBlur(el, index) {
+    const before = snapshot();
     const val = el.textContent.replace('×', '').trim();
     if (!val) { _removeSkill(index); return; }
-
-    // [FIX] تحقق من التغيّر قبل pushUndo — يمنع الـ undo stack من الامتلاء بدون سبب
-    const before = snapshot();
-    if (_draft.skills[index] === val) return; // لا تغيير
     pushUndo(before);
     _draft.skills[index] = val;
     _scheduleAutosave();
@@ -209,8 +303,6 @@
     card.setAttribute('data-project-index', index);
 
     const langColor = _getLangColor(proj.language);
-    // [FIX] الـ move-down-btn بيتـ disable لآخر project في الـ list
-    const isLast = index === _draft.projects.length - 1;
 
     card.innerHTML = `
       <div class="project-card__header">
@@ -221,7 +313,7 @@
         </div>
         <div class="project-card__actions">
           <button class="icon-btn move-up-btn" data-index="${index}" title="Move up" aria-label="Move project up" ${index === 0 ? 'disabled' : ''}>↑</button>
-          <button class="icon-btn move-down-btn" data-index="${index}" title="Move down" aria-label="Move project down" ${isLast ? 'disabled' : ''}>↓</button>
+          <button class="icon-btn move-down-btn" data-index="${index}" title="Move down" aria-label="Move project down">↓</button>
           <a href="${proj.repo_url || '#'}" target="_blank" rel="noopener" class="icon-btn ext-link" aria-label="Open on GitHub">↗</a>
         </div>
       </div>
@@ -242,29 +334,18 @@
 
     const nameEl = card.querySelector('[data-edit="projectName"]');
     nameEl.addEventListener('blur', () => {
-      const newVal = nameEl.textContent.trim();
-      // [FIX] OR بدل AND — القيمة المعروضة هي github_repo_name أو name (أيهما موجود).
-      // نتجاهل التغيير لو الـ newVal يساوي القيمة المعروضة فعلاً.
-      const displayed = _draft.projects[index].github_repo_name || _draft.projects[index].name || '';
-      if (newVal === displayed) return;
-      const before = snapshot();
-      pushUndo(before);
-      _draft.projects[index].github_repo_name = newVal;
-      _draft.projects[index].name = newVal;
+      const before = snapshot(); pushUndo(before);
+      _draft.projects[index].github_repo_name = nameEl.textContent.trim();
+      _draft.projects[index].name = nameEl.textContent.trim();
       _scheduleAutosave();
     });
     nameEl.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); nameEl.blur(); } });
 
     const descEl = card.querySelector('[data-edit="projectDesc"]');
     descEl.addEventListener('blur', () => {
-      const newVal = descEl.textContent.trim();
-      // [FIX] OR بدل AND — نفس المنطق: القيمة المعروضة هي ai_description أو description.
-      const displayed = _draft.projects[index].ai_description || _draft.projects[index].description || '';
-      if (newVal === displayed) return;
-      const before = snapshot();
-      pushUndo(before);
-      _draft.projects[index].ai_description = newVal;
-      _draft.projects[index].description = newVal;
+      const before = snapshot(); pushUndo(before);
+      _draft.projects[index].ai_description = descEl.textContent.trim();
+      _draft.projects[index].description = descEl.textContent.trim();
       _scheduleAutosave();
     });
 
@@ -277,8 +358,7 @@
   function _moveProject(index, direction) {
     const newIndex = index + direction;
     if (newIndex < 0 || newIndex >= _draft.projects.length) return;
-    const before = snapshot();
-    pushUndo(before);
+    const before = snapshot(); pushUndo(before);
     const temp = _draft.projects[index];
     _draft.projects[index] = _draft.projects[newIndex];
     _draft.projects[newIndex] = temp;
@@ -299,20 +379,11 @@
       el.setAttribute('spellcheck', 'false');
       el.classList.add('is-editable');
 
-      // حفظ القيمة عند الـ focus عشان نقارنها بعدين
-      let _valueOnFocus = '';
-      el.addEventListener('focus', () => {
-        el.classList.add('is-editing');
-        _valueOnFocus = el.textContent.trim();
-      });
+      el.addEventListener('focus', () => el.classList.add('is-editing'));
       el.addEventListener('blur', () => {
         el.classList.remove('is-editing');
-        const newVal = el.textContent.trim();
-        // [FIX] pushUndo بس لو القيمة اتغيّرت فعلاً
-        if (newVal === _valueOnFocus) return;
-        const before = snapshot();
-        pushUndo(before);
-        _draft[field] = newVal;
+        const before = snapshot(); pushUndo(before);
+        _draft[field] = el.textContent.trim();
         _scheduleAutosave();
       });
       el.addEventListener('keydown', e => {
@@ -334,10 +405,8 @@
     const indicator = $('#save-indicator');
     if (!indicator) return;
     const messages = {
-      draft:     '✓ Draft saved',
-      saving:    '⟳ Saving...',
-      published: '✓ Published!',
-      error:     '✗ Save failed',
+      draft: '✓ Draft saved', saving: '⟳ Saving...',
+      published: '✓ Published!', error: '✗ Save failed',
     };
     indicator.textContent = messages[state] || '';
     indicator.className = `save-indicator save-indicator--${state}`;
@@ -355,7 +424,6 @@
     _redoStack.push(snapshot());
     _draft = JSON.parse(_undoStack.pop());
     applyDraftToDom(_draft);
-    _syncThemeCss(_draft.theme);
     _scheduleAutosave();
     _updateUndoButtons();
   }
@@ -365,25 +433,8 @@
     _undoStack.push(snapshot());
     _draft = JSON.parse(_redoStack.pop());
     applyDraftToDom(_draft);
-    _syncThemeCss(_draft.theme);
     _scheduleAutosave();
     _updateUndoButtons();
-  }
-
-  /**
-   * يُزامن الـ CSS والـ DOM attributes مع الـ themeId المطلوب
-   * بدون إضافة للـ undo stack أو toast — يُستخدم من undo/redo فقط.
-   */
-  function _syncThemeCss(themeId) {
-    if (!themeId) return;
-    const link = $('#active-theme-css');
-    if (link) link.href = `css/themes/${themeId}.css`;
-    document.body.className = document.body.className.replace(/\btheme-\S+/g, '').trim();
-    document.body.classList.add(`theme-${themeId}`);
-    document.documentElement.setAttribute('data-theme', themeId);
-    document.body.setAttribute('data-theme', themeId);
-    _setupProThemeElements(themeId);
-    handleThemeScriptLifecycle(themeId);
   }
 
   document.addEventListener('keydown', e => {
@@ -492,27 +543,13 @@
     if (!panel) return;
     panel.classList.remove('is-open');
     panel.setAttribute('aria-hidden', 'true');
-    // [FIX] حفظ reference للـ panel قبل الـ setTimeout عشان لو اتفتح تاني ما يتمسحش
-    const panelRef = panel;
-    setTimeout(() => panelRef.remove(), 300);
+    setTimeout(() => panel.remove(), 300);
     $('#toolbar-theme-btn')?.focus();
   }
 
   function applyTheme(themeId) {
     if (!_draft) return;
-    // لو نفس الـ theme — لا شيء يتغير
-    if (themeId === _draft.theme) return;
-
-    // [FIX] التحقق من الـ Pro paywall قبل pushUndo —
-    // لو المستخدم Free وحاول Pro theme، نفتح الـ paywall ونرجع بدون تغيير الـ state.
-    // الـ paywall نفسه بينادي applyTheme تاني بعد التفعيل الناجح.
-    if (!_isPro && PRO_THEMES.has(themeId)) {
-      _showProPaywall('upgrade');
-      return;
-    }
-
-    const before = snapshot();
-    pushUndo(before);
+    const before = snapshot(); pushUndo(before);
     _draft.theme = themeId;
 
     let link = $('#active-theme-css');
@@ -566,10 +603,7 @@
       </div>
 
       <div class="edit-toolbar__right">
-        ${!_isPro
-          ? `<span class="pro-status-badge pro-status-badge--free">Free Plan</span>`
-          : `<span class="pro-status-badge pro-status-badge--pro">⚡ Pro</span>`
-        }
+        ${!_isPro ? `<span class="pro-status-badge pro-status-badge--free">Free Plan</span>` : `<span class="pro-status-badge pro-status-badge--pro">⚡ Pro</span>`}
         <button id="toolbar-theme-btn" class="btn btn--ghost btn--sm" aria-label="Change theme">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
           Theme
@@ -619,7 +653,7 @@
   ═══════════════════════════════════════════════════════════════ */
 
   function saveDraft() {
-    // [FIX] يستخدم PRO_THEMES المركزية بدل local Set
+    const PRO_THEMES = new Set(['glass3d', 'cyberpunk', 'space']);
     if (!_isPro && PRO_THEMES.has(_draft?.theme)) {
       _showProPaywall('save');
       return;
@@ -637,8 +671,8 @@
     if (btn) { btn.disabled = true; btn.textContent = 'Publishing...'; }
     _showSaveIndicator('saving');
 
-    // [FIX] يستخدم PRO_THEMES المركزية بدل local Set
-    if (!_isPro && PRO_THEMES.has(_draft?.theme)) {
+    const PRO_THEMES_SET = new Set(['glass3d', 'cyberpunk', 'space']);
+    if (!_isPro && PRO_THEMES_SET.has(_draft?.theme)) {
       _showProPaywall('publish');
       if (btn) { btn.disabled = false; btn.textContent = 'Publish'; }
       _isSaving = false;
@@ -658,68 +692,50 @@
             .toLowerCase().replace(/[^a-z0-9-]/g, '-');
 
           await sb.from('users').upsert({
-            id: userId,
-            email: authData.user.email || '',
+            id: userId, email: authData.user.email || '',
             github_username: draft.githubUsername || '',
             full_name: draft.fullName || draft.name || '',
             job_title: draft.jobTitle || '',
           }, { onConflict: 'id' });
 
-          // [FIX] نستخدم upsert مع select() عشان نرجع الـ ID بدون extra SELECT request
-          const { data: portData, error: portError } = await sb
-            .from('portfolios')
-            .upsert({
-              user_id:      userId,
-              bio:          draft.bio,
-              skills:       draft.skills || [],
-              theme:        draft.theme || 'dark',
-              slug,
-              is_published: true,
-              updated_at:   new Date().toISOString(),
-            }, { onConflict: 'user_id' })
-            .select('id')
-            .single();
+          const { error: portError } = await sb.from('portfolios').upsert({
+            user_id: userId, bio: draft.bio,
+            skills: draft.skills || [], theme: draft.theme || 'dark',
+            slug, is_published: true, updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id' });
 
           if (portError) throw portError;
 
+          const { data: portData } = await sb
+            .from('portfolios').select('id').eq('user_id', userId).single();
+
           if (portData?.id) {
             const projectsPayload = (draft.projects || []).map((p, i) => ({
-              portfolio_id:     portData.id,
+              portfolio_id: portData.id,
               github_repo_name: p.github_repo_name || p.name || '',
-              repo_url:         p.repo_url || '',
-              ai_description:   p.ai_description || p.description || '',
-              stars:            p.stars || 0,
-              language:         p.language || null,
-              topics:           p.topics || [],
-              sort_order:       i,
-              is_featured:      i === 0,
+              repo_url: p.repo_url || '',
+              ai_description: p.ai_description || p.description || '',
+              stars: p.stars || 0, language: p.language || null,
+              topics: p.topics || [], sort_order: i, is_featured: i === 0,
             }));
-
-            // [FIX] upsert بدل delete+insert — يمنع data loss لو الـ insert فشل بعد الـ delete.
-            // conflict على (portfolio_id, github_repo_name) — يُحدَّث الـ row لو موجود،
-            // يُنشأ جديد لو مش موجود.
-            // ملاحظة: repos محذوفة من الـ draft ستبقى في DB — يُنظَّف بـ RPC منفصل عند الحاجة.
-            const { error: upsertError } = await sb
-              .from('projects')
-              .upsert(projectsPayload, { onConflict: 'portfolio_id,github_repo_name' });
-
-            if (upsertError) throw upsertError;
+            await sb.from('projects').delete().eq('portfolio_id', portData.id);
+            await sb.from('projects').insert(projectsPayload);
           }
 
         } else {
           window.AI?.saveDraft?.(draft);
           window.toast?.('Draft saved locally. Sign in to publish online.', 'warn');
+          _isPublished = false;
           _showSaveIndicator('draft');
           if (btn) { btn.disabled = false; btn.textContent = 'Publish'; }
           _isSaving = false;
           return;
         }
       } else {
-        // Supabase غير متاح — نحفظ محلياً ونخبر المستخدم
         window.AI?.saveDraft?.(draft);
-        window.toast?.('Could not reach server. Draft saved locally.', 'warn');
       }
 
+      _isPublished = true;
       _showSaveIndicator('published');
       window.toast?.('Portfolio published! 🎉 Redirecting to dashboard…', 'success');
       if (btn) { btn.textContent = '✓ Published'; btn.classList.add('is-published'); }
@@ -747,6 +763,7 @@
   async function _showProPaywall(action) {
     document.getElementById('pro-paywall-modal')?.remove();
 
+    // ── جلب الـ discount ديناميكياً من Supabase ──────────────
     const ORIGINAL_PRICE = 200;
     let finalPrice  = ORIGINAL_PRICE;
     let discountPct = 0;
@@ -766,20 +783,14 @@
     } catch (e) {
       console.warn('[Portfolio] Could not load discount:', e);
     }
-
     const priceDisplay = discountPct > 0
       ? '<strong style="color:#E8F0EB;">' + finalPrice + ' جنيه</strong> <span style="color:#4A5E52;text-decoration:line-through;font-size:0.75rem;">' + ORIGINAL_PRICE + '</span> <span style="color:#00FF88;font-size:0.72rem;">(خصم ' + discountPct + '%)</span>'
       : '<strong style="color:#E8F0EB;">' + ORIGINAL_PRICE + ' جنيه</strong>';
 
     const modal = document.createElement('div');
     modal.id = 'pro-paywall-modal';
-    // [FIX] z-index يتبع الـ design system:
-    // --z-toolbar: 900 | --z-modal: 1000 | --z-toast: 1100
-    // الـ paywall فوق كل شيء ما عدا الـ toast
-    const modalZ = getComputedStyle(document.documentElement)
-      .getPropertyValue('--z-modal').trim() || '1000';
     modal.style.cssText = `
-      position: fixed; inset: 0; z-index: ${modalZ};
+      position: fixed; inset: 0; z-index: 9999;
       display: flex; align-items: center; justify-content: center;
       background: rgba(0,0,0,0.75); backdrop-filter: blur(6px);
       animation: toast-in 0.25s ease;
@@ -789,6 +800,7 @@
       ? _draft.theme.charAt(0).toUpperCase() + _draft.theme.slice(1)
       : 'Pro';
 
+    // نص تعليمات الدفع بناءً على الـ action
     const isUpgrade = action === 'upgrade';
     const actionText = action === 'publish' ? 'publish' : action === 'save' ? 'save' : 'upgrade';
 
@@ -800,6 +812,7 @@
         box-shadow: 0 32px 80px rgba(0,0,0,0.6);
         font-family: 'DM Mono', monospace;
       ">
+        <!-- Preview strip -->
         <div style="
           height: 120px; position: relative; overflow: hidden;
           background: ${_draft?.theme === 'glass3d'
@@ -813,6 +826,7 @@
           <span style="position:absolute;top:16px;left:24px;background:linear-gradient(135deg,#00FF88,#00ccff);color:#080C0A;font-size:0.6rem;font-weight:700;letter-spacing:0.1em;padding:3px 10px;border-radius:4px;">PRO</span>
         </div>
 
+        <!-- Body -->
         <div style="padding: 1.5rem;">
           <h3 style="font-family:'Syne',sans-serif;font-size:1.15rem;font-weight:700;color:#E8F0EB;margin:0 0 0.4rem;">
             ${isUpgrade ? 'Upgrade to Pro' : 'Unlock ' + themeName + ' Theme'}
@@ -823,8 +837,10 @@
               : `You're previewing a Pro theme. To ${actionText} with <strong style="color:#E8F0EB;">${themeName}</strong>, upgrade to Pro.`}
           </p>
 
+          <!-- Payment Instructions -->
           <div style="background:rgba(0,255,136,0.04);border:1px solid rgba(0,255,136,0.12);border-radius:10px;padding:1rem;margin-bottom:1rem;">
             <p style="font-size:0.7rem;color:#4A5E52;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 0.75rem;">كيفية الترقية — خطوات بسيطة</p>
+
             <div style="display:flex;flex-direction:column;gap:0.6rem;">
               <div style="display:flex;gap:0.75rem;align-items:flex-start;">
                 <span style="background:rgba(0,255,136,0.15);color:#00FF88;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:700;flex-shrink:0;margin-top:1px;">1</span>
@@ -849,6 +865,7 @@
             </div>
           </div>
 
+          <!-- Activation Code Input -->
           <div style="background:rgba(0,255,136,0.03);border:1px solid rgba(0,255,136,0.1);border-radius:10px;padding:1rem;margin-bottom:1.25rem;">
             <label style="font-size:0.7rem;color:#4A5E52;letter-spacing:0.1em;text-transform:uppercase;display:block;margin-bottom:0.5rem;">
               كود التفعيل
@@ -874,6 +891,7 @@
             <p id="paywall-code-msg" style="font-size:0.72rem;margin:0.5rem 0 0;min-height:1.2em;line-height:1.4;"></p>
           </div>
 
+          <!-- Close -->
           <button id="paywall-close-btn" style="
             width:100%;background:transparent;border:1px solid rgba(255,255,255,0.08);
             color:#4A5E52;border-radius:8px;padding:10px;
@@ -891,14 +909,17 @@
 
     document.body.appendChild(modal);
 
+    // Close
     const closeModal = () => modal.remove();
     modal.querySelector('#paywall-close-btn').addEventListener('click', closeModal);
     modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
 
+    // Code input UX
     const codeInput = modal.querySelector('#paywall-code-input');
     const codeMsg   = modal.querySelector('#paywall-code-msg');
     const applyBtn  = modal.querySelector('#paywall-apply-btn');
 
+    // Auto-uppercase أثناء الكتابة
     codeInput.addEventListener('input', () => {
       const pos = codeInput.selectionStart;
       codeInput.value = codeInput.value.toUpperCase();
@@ -913,42 +934,51 @@
     });
 
     applyBtn.addEventListener('click', () => {
-      _validateAndActivateCode(codeInput.value, action, modal, codeMsg, applyBtn);
+      _validateDiscountCode(codeInput.value, action, modal, codeMsg, applyBtn);
     });
 
     codeInput.addEventListener('keydown', e => {
       if (e.key === 'Enter') applyBtn.click();
     });
 
+    // Focus الـ input
     setTimeout(() => codeInput.focus(), 100);
   }
 
   /* ═══════════════════════════════════════════════════════════════
-     VALIDATE & ACTIVATE CODE — Supabase only (server is source of truth)
-     [FIX] حذف الـ HMAC client-side verification — السر كان مكشوف.
-     الـ activate_pro RPC هي الـ source of truth الوحيدة.
+     VALIDATE DISCOUNT CODE — HMAC + Supabase
   ═══════════════════════════════════════════════════════════════ */
 
-  async function _validateAndActivateCode(code, action, modal, msgEl, applyBtn) {
+  async function _validateDiscountCode(code, action, modal, msgEl, applyBtn) {
     if (!code || code.trim().length < 10) {
       _setCodeMsg(msgEl, 'error', 'Please enter your activation code.');
       return;
     }
 
-    const clean = code.trim().toUpperCase();
-
+    // Loading state
     applyBtn.disabled = true;
     applyBtn.textContent = '...';
     _setCodeMsg(msgEl, 'loading', 'Verifying code…');
 
+    // 1. HMAC verification (offline — no server needed)
+    const result = await _verifyCode(code);
+
+    if (!result.valid) {
+      applyBtn.disabled = false;
+      applyBtn.textContent = 'Activate';
+      _setCodeMsg(msgEl, 'error', result.error || 'Invalid or expired code. Please try again.');
+      _shakeInput(modal);
+      return;
+    }
+
+    // 2. Supabase — تسجيل الكود وتفعيل Pro (يمنع إعادة الاستخدام)
     try {
       const sb = window._supabaseClient;
       if (!sb) throw new Error('Not connected');
 
-      // [FIX] بعت الكود مباشرة للـ Supabase RPC — هي بتتحقق من الـ HMAC server-side
       const { data, error } = await sb.rpc('activate_pro', {
-        p_code:      clean,
-        p_code_type: clean.length === 16 ? 'monthly' : 'yearly',
+        p_code:      result.code,
+        p_code_type: result.type,
         p_discount:  0,
       });
 
@@ -965,29 +995,35 @@
           ? 'Your account is already Pro! 🎉'
           : parsed?.error || 'Activation failed. Please try again.';
         _setCodeMsg(msgEl, 'error', errMsg);
-        _shakeInput(modal);
         return;
       }
 
       // ✅ نجاح
       _isPro = true;
 
+      // تحديث الـ UI
       _setCodeMsg(msgEl, 'success',
-        clean.length === 16
-          ? '🎉 Code accepted! You\'re now Pro for a month!'
-          : '🎉 Code accepted! You\'re now Pro for a full year!'
+        result.type === 'yearly'
+          ? '🎉 Code accepted! You\'re now Pro for a full year!'
+          : '🎉 Code accepted! You\'re now Pro for a month!'
       );
 
       applyBtn.textContent = '✓ Activated!';
       applyBtn.style.background = 'rgba(0,255,136,0.2)';
       applyBtn.style.color = '#00FF88';
 
+      // بعد لحظة: اغلق الـ modal وكمّل العملية
       setTimeout(async () => {
         modal.remove();
         window.toast?.('⚡ Pro activated! Continuing…', 'success');
+
+        // أعد بناء الـ toolbar عشان يظهر Pro badge
         _buildToolbar();
+
+        // كمّل الـ action الأصلي
         if (action === 'save')    saveDraft();
         if (action === 'publish') publish();
+
       }, 1500);
 
     } catch (err) {
@@ -1086,7 +1122,10 @@
   ═══════════════════════════════════════════════════════════════ */
 
   async function init(options = {}) {
+    // جلب الـ Pro status من Supabase أولاً
     _isPro = options.isPro ?? (await _loadProStatus());
+
+    // Load draft
     _draft = window.AI?.getDraft?.() || options.draft || null;
 
     if (!_draft) {
@@ -1162,6 +1201,9 @@
       window.toast?.('Could not load theme effects', 'error');
     }
   }
+
+  const FREE_THEMES = new Set(['light', 'dark', 'minimal']);
+  const PRO_THEMES  = new Set(['glass3d', 'cyberpunk', 'space']);
 
   async function handleThemeScriptLifecycle(themeName) {
     if (FREE_THEMES.has(themeName)) { deactivateCurrentProTheme(); return; }

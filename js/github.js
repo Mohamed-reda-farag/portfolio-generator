@@ -21,12 +21,8 @@
 const GH_BASE          = 'https://api.github.com';
 const MAX_REPOS_FETCH  = 100;   // GitHub API max per page
 const MAX_REPOS_SHOWN  = 6;     // Portfolio limit
-const MAX_PAGES        = 3;     // [FIX] حد أقصى لعدد الصفحات — يمنع infinite loop
-const API_TIMEOUT      = 5_000; // [FIX] اسم أوضح بدل README_TIMEOUT
+const README_TIMEOUT   = 5_000; // ms — skip README if slow
 const CACHE_TTL        = 5 * 60 * 1000; // 5 min in-memory cache
-
-// [FIX] Sentinel value للتفريق بين "مش موجود في الـ cache" و"موجود وقيمته null"
-const CACHE_NULL = Symbol('null');
 
 /* ─────────────────────────────────────────────────────────────────
    IN-MEMORY CACHE
@@ -36,18 +32,16 @@ const _cache = new Map(); // key → { data, ts }
 
 function cacheGet(key) {
   const entry = _cache.get(key);
-  if (!entry) return undefined; // [FIX] undefined = مش موجود في الـ cache
+  if (!entry) return null;
   if (Date.now() - entry.ts > CACHE_TTL) {
     _cache.delete(key);
-    return undefined;
+    return null;
   }
-  // [FIX] لو المخزّن هو CACHE_NULL، ارجع null (README فعلاً فاضي)
-  return entry.data === CACHE_NULL ? null : entry.data;
+  return entry.data;
 }
 
 function cacheSet(key, data) {
-  // [FIX] لو القيمة null، نخزّن CACHE_NULL عشان نفرّق بين "مش موجود" و"null حقيقي"
-  _cache.set(key, { data: data === null ? CACHE_NULL : data, ts: Date.now() });
+  _cache.set(key, { data, ts: Date.now() });
 }
 
 /* ─────────────────────────────────────────────────────────────────
@@ -103,12 +97,12 @@ async function ghFetch(url, options = {}, timeoutMs = 10_000) {
       signal: controller.signal,
     });
   } catch (err) {
+    clearTimeout(timer);
     if (err.name === 'AbortError') {
       throw new GitHubError('Request timed out. GitHub might be slow — try again.', 'TIMEOUT');
     }
     throw GH_ERRORS.NETWORK();
   } finally {
-    // finally يشتغل في كل الحالات — catch وsuccess — كافي وحده
     clearTimeout(timer);
   }
 
@@ -167,7 +161,7 @@ async function ghFetch(url, options = {}, timeoutMs = 10_000) {
 async function fetchUserProfile(username) {
   const cacheKey = `user:${username}`;
   const cached = cacheGet(cacheKey);
-  if (cached !== undefined) return cached; // [FIX] undefined = مش في الـ cache
+  if (cached) return cached;
 
   const data = await ghFetch(`${GH_BASE}/users/${username}`);
 
@@ -227,13 +221,13 @@ async function fetchUserProfile(username) {
 async function fetchUserRepos(username) {
   const cacheKey = `repos:${username}`;
   const cached = cacheGet(cacheKey);
-  if (cached !== undefined) return cached; // [FIX] undefined = مش في الـ cache
+  if (cached) return cached;
 
   let allRepos = [];
   let page = 1;
 
-  // [FIX] حد أقصى على عدد الصفحات — يمنع infinite loop لو GitHub رجّع بيانات غريبة
-  while (page <= MAX_PAGES) {
+  // Paginate until we have everything or hit our fetch cap
+  while (true) {
     const url = `${GH_BASE}/users/${username}/repos?type=public&sort=pushed&direction=desc&per_page=${MAX_REPOS_FETCH}&page=${page}`;
     const batch = await ghFetch(url);
 
@@ -244,10 +238,10 @@ async function fetchUserRepos(username) {
     // GitHub paginates — stop if this page was partial
     if (batch.length < MAX_REPOS_FETCH) break;
 
+    page++;
+
     // Safety cap — never exceed 300 repos
     if (allRepos.length >= 300) break;
-
-    page++;
   }
 
   cacheSet(cacheKey, allRepos);
@@ -265,10 +259,10 @@ async function fetchUserRepos(username) {
 async function fetchRepoLanguages(fullName) {
   const cacheKey = `langs:${fullName}`;
   const cached = cacheGet(cacheKey);
-  if (cached !== undefined) return cached ?? {}; // [FIX] undefined = مش في الـ cache
+  if (cached) return cached;
 
   try {
-    const data = await ghFetch(`${GH_BASE}/repos/${fullName}/languages`, {}, API_TIMEOUT);
+    const data = await ghFetch(`${GH_BASE}/repos/${fullName}/languages`, {}, README_TIMEOUT);
     const result = data || {};
     cacheSet(cacheKey, result);
     return result;
@@ -288,9 +282,8 @@ async function fetchRepoLanguages(fullName) {
  */
 async function fetchRepoReadme(fullName, defaultBranch = 'main') {
   const cacheKey = `readme:${fullName}`;
-  // [FIX] cacheGet بيرجع undefined لو مش موجود، null لو README فعلاً فاضي
   const cached = cacheGet(cacheKey);
-  if (cached !== undefined) return cached;
+  if (cached !== null) return cached;
 
   // Try README.md in common case variations
   const candidates = [
@@ -300,11 +293,12 @@ async function fetchRepoReadme(fullName, defaultBranch = 'main') {
   ];
 
   for (const url of candidates) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), API_TIMEOUT);
-
     try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), README_TIMEOUT);
+
       const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timer);
 
       if (res.ok) {
         const text = await res.text();
@@ -314,14 +308,11 @@ async function fetchRepoReadme(fullName, defaultBranch = 'main') {
         return clean;
       }
     } catch {
-      // Try next candidate (AbortError = timeout, others = 404/network)
-    } finally {
-      // [FIX] finally يضمن clearTimeout في كل الحالات — success وerror وabort
-      clearTimeout(timer);
+      // Try next candidate
+      continue;
     }
   }
 
-  // [FIX] cacheSet(null) الآن بيخزّن CACHE_NULL — بيمنع re-fetch في كل مرة
   cacheSet(cacheKey, null);
   return null;
 }
@@ -334,22 +325,22 @@ async function fetchRepoReadme(fullName, defaultBranch = 'main') {
  */
 function stripMarkdown(md) {
   return md
-    .replace(/!\[.*?\]\(.*?\)/g, '')           // images
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')  // [FIX] links → text (captured group صح)
-    .replace(/```[\s\S]*?```/g, '')            // code blocks
-    .replace(/`[^`]*`/g, '')                   // inline code
-    .replace(/^#{1,6}\s+/gm, '')              // headers
-    .replace(/^\s*[-*+]\s+/gm, '')            // list bullets
-    .replace(/^\s*\d+\.\s+/gm, '')            // ordered lists
-    .replace(/(\*\*|__)(.*?)\1/g, '$2')       // bold
-    .replace(/(\*|_)(.*?)\1/g, '$2')          // italic
-    .replace(/^>\s+/gm, '')                   // blockquotes
-    .replace(/\|.*?\|/g, '')                  // table rows
-    .replace(/^[-=]{3,}/gm, '')              // HR / table separator
-    .replace(/<!--[\s\S]*?-->/g, '')          // HTML comments
-    .replace(/<[^>]+>/g, '')                  // HTML tags (badges etc.)
-    .replace(/https?:\/\/\S+/g, '')           // bare URLs
-    .replace(/\n{3,}/g, '\n\n')              // excess blank lines
+    .replace(/!\[.*?\]\(.*?\)/g, '')          // images
+    .replace(/\[.*?\]\(.*?\)/g, '$1')         // links → text
+    .replace(/```[\s\S]*?```/g, '')           // code blocks
+    .replace(/`[^`]*`/g, '')                  // inline code
+    .replace(/^#{1,6}\s+/gm, '')             // headers
+    .replace(/^\s*[-*+]\s+/gm, '')           // list bullets
+    .replace(/^\s*\d+\.\s+/gm, '')           // ordered lists
+    .replace(/(\*\*|__)(.*?)\1/g, '$2')      // bold
+    .replace(/(\*|_)(.*?)\1/g, '$2')         // italic
+    .replace(/^>\s+/gm, '')                  // blockquotes
+    .replace(/\|.*?\|/g, '')                 // table rows
+    .replace(/^[-=]{3,}/gm, '')             // HR / table separator
+    .replace(/<!--[\s\S]*?-->/g, '')         // HTML comments
+    .replace(/<[^>]+>/g, '')                 // HTML tags (badges etc.)
+    .replace(/https?:\/\/\S+/g, '')          // bare URLs
+    .replace(/\n{3,}/g, '\n\n')             // excess blank lines
     .trim();
 }
 
@@ -429,7 +420,7 @@ function processRepos(rawRepos, readmes, languages) {
         created_at:     r.created_at,
         fork:           r.fork     || false,
         archived:       r.archived || false,
-        readme:         readmes.get(r.full_name) ?? null,
+        readme:         readmes.get(r.full_name) || null,
         default_branch: r.default_branch || 'main',
       };
 
@@ -526,12 +517,12 @@ async function fetchGitHubData(username, onProgress) {
   // ── Step 3/4: Languages + READMEs (parallel, capped) ──
   progress(40, 'Analysing languages and READMEs…');
 
-  // [FIX] نزوّد الـ candidates لـ 30 عشان الـ processRepos تاخد data كافية
-  // وبنستخدم نفس الـ candidates في processRepos بدل rawRepos كاملة
+  // We only fetch details for top 20 candidates to stay fast
+  // Sort by stars first for pre-selection
   const candidates = [...rawRepos]
     .filter(r => !r.private && !r.disabled)
     .sort((a, b) => (b.stargazers_count || 0) - (a.stargazers_count || 0))
-    .slice(0, 30);
+    .slice(0, 20);
 
   // Fetch languages + READMEs in parallel batches of 5
   const BATCH_SIZE = 5;
@@ -562,9 +553,7 @@ async function fetchGitHubData(username, onProgress) {
   // ── Step 4/4: Process + sort ──────────────────────────
   progress(70, 'Sorting and scoring repos…');
 
-  // [FIX] بنعالج الـ candidates بس (اللي عندهم languages + readmes)
-  // بدل rawRepos كاملة اللي الـ repos رقم 31+ مش عندهم data
-  const processedRepos = processRepos(candidates, readmeMap, languageMap);
+  const processedRepos = processRepos(rawRepos, readmeMap, languageMap);
   const topRepos = processedRepos.slice(0, MAX_REPOS_SHOWN);
   const aggregatedLangs = aggregateLanguages(processedRepos);
   const totalStars = processedRepos.reduce((s, r) => s + r.stars, 0);

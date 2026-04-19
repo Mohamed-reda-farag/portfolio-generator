@@ -1,18 +1,15 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- Dynamic meta — filled by JS -->
+  <!-- Dynamic meta — filled by portfolio.js -->
   <title>Portfolio</title>
   <meta name="description" content="" />
   <meta property="og:title" content="" />
   <meta property="og:description" content="" />
   <meta property="og:type" content="website" />
-
-  <!-- [FIX] حذفنا data-theme="light" من html tag — كان بيسبب flash of wrong theme -->
-  <!-- الـ theme بيتحدد في init() بعد تحميل الـ data -->
 
   <!-- ─── Fonts ──────────────────────────────────────────────────────────── -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -21,16 +18,18 @@
 
   <!-- ─── Main CSS ────────────────────────────────────────────────────────── -->
   <link rel="stylesheet" href="css/main.css" />
-  <!-- [FIX] حذفنا light.css hardcoded — الـ theme CSS بيتحمّل ديناميكياً في init() -->
-  <!-- بدلاً منه: placeholder يتحدث بالـ theme الصح -->
-  <link id="active-theme-css" rel="stylesheet" href="css/themes/dark.css" />
+  <link rel="stylesheet" href="css/themes/light.css" />
 
   <!-- ─── Portfolio Page Styles ───────────────────────────────────────────── -->
   <style>
     /* ══════════════════════════════════════════════════════════════════════
-       PORTFOLIO PAGE — Public View (Light editorial aesthetic)
+       PORTFOLIO PAGE — LIGHT THEME
+       Editorial / Magazine aesthetic
+       Primary: #080C0A on #F5F2ED warm paper background
+       Accent:  #00FF88 terminal green (sparingly)
     ══════════════════════════════════════════════════════════════════════ */
 
+    /* ── CSS Vars (light theme overrides) ─────────────────────────────── */
     :root {
       --bg:           #F5F2ED;
       --bg-2:         #EDEAE4;
@@ -48,147 +47,628 @@
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
     html { scroll-behavior: smooth; }
 
     body {
       font-family: 'DM Mono', monospace;
-      background: var(--bg); color: var(--ink);
-      line-height: 1.6; overflow-x: hidden;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.6;
+      overflow-x: hidden;
+      /* Subtle paper texture via repeating gradient */
       background-image:
         radial-gradient(ellipse 80% 50% at 50% -10%, rgba(0,255,136,0.04) 0%, transparent 60%),
-        repeating-linear-gradient(0deg, transparent, transparent 59px, rgba(10,13,11,0.025) 59px, rgba(10,13,11,0.025) 60px);
+        repeating-linear-gradient(
+          0deg,
+          transparent,
+          transparent 59px,
+          rgba(10,13,11,0.025) 59px,
+          rgba(10,13,11,0.025) 60px
+        );
     }
 
     /* ── Loading State ──────────────────────────────────────────────────── */
     #page-loader {
-      position: fixed; inset: 0; background: var(--bg); z-index: 9999;
-      display: flex; align-items: center; justify-content: center;
-      flex-direction: column; gap: 16px;
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 16px;
       transition: opacity 0.4s ease, visibility 0.4s ease;
     }
-    #page-loader.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
-    .loader-dot-row { display: flex; gap: 8px; }
-    .loader-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); animation: loader-pulse 1.2s ease-in-out infinite; }
+    #page-loader.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .loader-dot-row {
+      display: flex;
+      gap: 8px;
+    }
+    .loader-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--ink-3);
+      animation: loader-pulse 1.2s ease-in-out infinite;
+    }
     .loader-dot:nth-child(2) { animation-delay: 0.2s; }
     .loader-dot:nth-child(3) { animation-delay: 0.4s; }
-    @keyframes loader-pulse { 0%, 80%, 100% { transform: scale(0.6); opacity: 0.3; } 40% { transform: scale(1); opacity: 1; } }
-    .loader-label { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.15em; color: var(--ink-3); text-transform: uppercase; }
+    @keyframes loader-pulse {
+      0%, 80%, 100% { transform: scale(0.6); opacity: 0.3; }
+      40% { transform: scale(1); opacity: 1; }
+    }
+    .loader-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      color: var(--ink-3);
+      text-transform: uppercase;
+    }
 
     /* ── Error State ────────────────────────────────────────────────────── */
-    #error-state { display: none; min-height: 100vh; align-items: center; justify-content: center; flex-direction: column; gap: 16px; text-align: center; padding: 32px; }
+    #error-state {
+      display: none;
+      min-height: 100vh;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 16px;
+      text-align: center;
+      padding: 32px;
+    }
     #error-state.visible { display: flex; }
-    .error-code { font-size: 80px; font-family: 'Syne', sans-serif; font-weight: 800; color: var(--border-strong); line-height: 1; }
-    .error-msg { font-size: 15px; color: var(--ink-2); }
-    .error-link { color: var(--accent-dim); text-decoration: none; font-size: 13px; letter-spacing: 0.05em; }
+    .error-code {
+      font-size: 80px;
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      color: var(--border-strong);
+      line-height: 1;
+    }
+    .error-msg {
+      font-size: 15px;
+      color: var(--ink-2);
+    }
+    .error-link {
+      color: var(--accent-dim);
+      text-decoration: none;
+      font-size: 13px;
+      letter-spacing: 0.05em;
+    }
     .error-link:hover { text-decoration: underline; }
 
     /* ── Main Layout ────────────────────────────────────────────────────── */
     #portfolio-page { display: none; }
     #portfolio-page.visible { display: block; }
 
-    /* ── NAV ────────────────────────────────────────────────────────────── */
-    .p-nav { position: sticky; top: 0; z-index: 100; background: rgba(245,242,237,0.85); backdrop-filter: blur(12px) saturate(1.5); -webkit-backdrop-filter: blur(12px) saturate(1.5); border-bottom: 1px solid var(--border); padding: 0 clamp(20px, 5vw, 60px); height: 56px; display: flex; align-items: center; justify-content: space-between; }
-    .p-nav-logo { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; letter-spacing: 0.08em; color: var(--ink); text-decoration: none; }
-    .p-nav-logo span { color: var(--accent-dim); }
-    .p-nav-actions { display: flex; align-items: center; gap: 12px; }
-    .p-nav-github { display: flex; align-items: center; gap: 6px; font-size: 12px; letter-spacing: 0.05em; color: var(--ink-2); text-decoration: none; padding: 6px 12px; border: 1px solid var(--border-strong); border-radius: 6px; transition: all 0.2s ease; }
-    .p-nav-github:hover { border-color: var(--ink); color: var(--ink); background: var(--bg-2); }
+    /* ── NAV BAR ────────────────────────────────────────────────────────── */
+    .p-nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(245, 242, 237, 0.85);
+      backdrop-filter: blur(12px) saturate(1.5);
+      -webkit-backdrop-filter: blur(12px) saturate(1.5);
+      border-bottom: 1px solid var(--border);
+      padding: 0 clamp(20px, 5vw, 60px);
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .p-nav-logo {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: 0.08em;
+      color: var(--ink);
+      text-decoration: none;
+    }
+    .p-nav-logo span {
+      color: var(--accent-dim);
+    }
+    .p-nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .p-nav-github {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      letter-spacing: 0.05em;
+      color: var(--ink-2);
+      text-decoration: none;
+      padding: 6px 12px;
+      border: 1px solid var(--border-strong);
+      border-radius: 6px;
+      transition: all 0.2s ease;
+    }
+    .p-nav-github:hover {
+      border-color: var(--ink);
+      color: var(--ink);
+      background: var(--bg-2);
+    }
     .p-nav-github svg { width: 14px; height: 14px; }
 
     /* ── HERO ───────────────────────────────────────────────────────────── */
-    .p-hero { padding: clamp(60px,10vh,120px) clamp(20px,5vw,60px) clamp(40px,6vh,80px); max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr auto; gap: 48px; align-items: end; }
-    @media (max-width: 700px) { .p-hero { grid-template-columns: 1fr; align-items: start; } .p-hero-avatar-wrap { order: -1; } }
+    .p-hero {
+      padding: clamp(60px, 10vh, 120px) clamp(20px, 5vw, 60px) clamp(40px, 6vh, 80px);
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 48px;
+      align-items: end;
+    }
+    @media (max-width: 700px) {
+      .p-hero {
+        grid-template-columns: 1fr;
+        align-items: start;
+      }
+      .p-hero-avatar-wrap { order: -1; }
+    }
+
     .p-hero-left { min-width: 0; }
-    .p-hero-eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 20px; }
-    .p-hero-eyebrow-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse-dot 2s ease-in-out infinite; }
-    @keyframes pulse-dot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.7); } }
-    .p-hero-name { font-family: 'Syne', sans-serif; font-weight: 800; font-size: clamp(44px,8vw,96px); line-height: 0.95; letter-spacing: -0.03em; color: var(--ink); margin-bottom: 8px; overflow: hidden; }
-    .p-hero-name-inner { display: block; transform: translateY(110%); opacity: 0; transition: transform 0.7s cubic-bezier(0.16,1,0.3,1), opacity 0.5s ease; }
-    .p-hero-name-inner.revealed { transform: translateY(0); opacity: 1; }
-    .p-hero-title { font-family: 'Newsreader', serif; font-style: italic; font-size: clamp(16px,2.5vw,22px); color: var(--ink-2); margin-bottom: 28px; opacity: 0; transform: translateY(12px); transition: opacity 0.5s ease 0.4s, transform 0.5s ease 0.4s; }
+
+    /* eyebrow */
+    .p-hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+      margin-bottom: 20px;
+    }
+    .p-hero-eyebrow-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.7); }
+    }
+
+    /* name — the BIG moment */
+    .p-hero-name {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: clamp(44px, 8vw, 96px);
+      line-height: 0.95;
+      letter-spacing: -0.03em;
+      color: var(--ink);
+      margin-bottom: 8px;
+      /* clip for reveal animation */
+      overflow: hidden;
+    }
+    .p-hero-name-inner {
+      display: block;
+      transform: translateY(110%);
+      opacity: 0;
+      transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+                  opacity 0.5s ease;
+    }
+    .p-hero-name-inner.revealed {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    /* job title */
+    .p-hero-title {
+      font-family: 'Newsreader', serif;
+      font-style: italic;
+      font-size: clamp(16px, 2.5vw, 22px);
+      color: var(--ink-2);
+      margin-bottom: 28px;
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity 0.5s ease 0.4s, transform 0.5s ease 0.4s;
+    }
     .p-hero-title.revealed { opacity: 1; transform: translateY(0); }
-    .p-hero-bio { font-size: 15px; line-height: 1.75; color: var(--ink-2); max-width: 560px; margin-bottom: 32px; opacity: 0; transform: translateY(12px); transition: opacity 0.5s ease 0.55s, transform 0.5s ease 0.55s; }
+
+    /* bio */
+    .p-hero-bio {
+      font-size: 15px;
+      line-height: 1.75;
+      color: var(--ink-2);
+      max-width: 560px;
+      margin-bottom: 32px;
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity 0.5s ease 0.55s, transform 0.5s ease 0.55s;
+    }
     .p-hero-bio.revealed { opacity: 1; transform: translateY(0); }
-    .p-hero-links { display: flex; flex-wrap: wrap; gap: 10px; opacity: 0; transform: translateY(12px); transition: opacity 0.5s ease 0.7s, transform 0.5s ease 0.7s; }
+
+    /* social links */
+    .p-hero-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity 0.5s ease 0.7s, transform 0.5s ease 0.7s;
+    }
     .p-hero-links.revealed { opacity: 1; transform: translateY(0); }
-    .p-hero-link { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; letter-spacing: 0.06em; text-decoration: none; color: var(--ink-2); border: 1px solid var(--border-strong); padding: 8px 14px; border-radius: 6px; transition: all 0.2s ease; }
-    .p-hero-link:hover { border-color: var(--ink); color: var(--ink); background: var(--bg-2); transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+    .p-hero-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      text-decoration: none;
+      color: var(--ink-2);
+      border: 1px solid var(--border-strong);
+      padding: 8px 14px;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+    }
+    .p-hero-link:hover {
+      border-color: var(--ink);
+      color: var(--ink);
+      background: var(--bg-2);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-sm);
+    }
     .p-hero-link svg { width: 14px; height: 14px; flex-shrink: 0; }
-    .p-hero-avatar-wrap { opacity: 0; transform: scale(0.9); transition: opacity 0.6s ease 0.2s, transform 0.6s cubic-bezier(0.16,1,0.3,1) 0.2s; }
+
+    /* avatar */
+    .p-hero-avatar-wrap {
+      opacity: 0;
+      transform: scale(0.9);
+      transition: opacity 0.6s ease 0.2s, transform 0.6s cubic-bezier(0.16,1,0.3,1) 0.2s;
+    }
     .p-hero-avatar-wrap.revealed { opacity: 1; transform: scale(1); }
-    .p-avatar { width: clamp(100px,14vw,180px); height: clamp(100px,14vw,180px); border-radius: 50%; object-fit: cover; border: 3px solid var(--bg-card); box-shadow: var(--shadow-lg); display: block; }
-    .p-avatar-placeholder { width: clamp(100px,14vw,180px); height: clamp(100px,14vw,180px); border-radius: 50%; background: var(--bg-2); border: 3px solid var(--bg-card); box-shadow: var(--shadow-lg); display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-weight: 800; font-size: clamp(28px,5vw,56px); color: var(--ink-3); }
+    .p-avatar {
+      width: clamp(100px, 14vw, 180px);
+      height: clamp(100px, 14vw, 180px);
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid var(--bg-card);
+      box-shadow: var(--shadow-lg);
+      display: block;
+    }
+    .p-avatar-placeholder {
+      width: clamp(100px, 14vw, 180px);
+      height: clamp(100px, 14vw, 180px);
+      border-radius: 50%;
+      background: var(--bg-2);
+      border: 3px solid var(--bg-card);
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: clamp(28px, 5vw, 56px);
+      color: var(--ink-3);
+    }
 
     /* ── STATS BAR ─────────────────────────────────────────────────────── */
-    .p-stats { max-width: 1200px; margin: 0 auto; padding: 0 clamp(20px,5vw,60px) 56px; display: flex; gap: 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); background: var(--bg-card); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-sm); opacity: 0; transform: translateY(16px); transition: opacity 0.5s ease 0.8s, transform 0.5s ease 0.8s; }
+    .p-stats {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 clamp(20px, 5vw, 60px) 56px;
+      display: flex;
+      gap: 0;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-card);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+      opacity: 0;
+      transform: translateY(16px);
+      transition: opacity 0.5s ease 0.8s, transform 0.5s ease 0.8s;
+    }
     .p-stats.revealed { opacity: 1; transform: translateY(0); }
-    .p-stat { flex: 1; padding: 20px 24px; border-right: 1px solid var(--border); text-align: center; }
+    .p-stat {
+      flex: 1;
+      padding: 20px 24px;
+      border-right: 1px solid var(--border);
+      text-align: center;
+    }
     .p-stat:last-child { border-right: none; }
-    .p-stat-value { font-family: 'Syne', sans-serif; font-weight: 700; font-size: clamp(20px,3vw,32px); color: var(--ink); display: block; }
-    .p-stat-label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); margin-top: 2px; }
-    @media (max-width: 500px) { .p-stats { flex-wrap: wrap; } .p-stat { min-width: 50%; border-right: none; border-bottom: 1px solid var(--border); } .p-stat:nth-child(odd) { border-right: 1px solid var(--border); } .p-stat:last-child { border-bottom: none; } }
+    .p-stat-value {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: clamp(20px, 3vw, 32px);
+      color: var(--ink);
+      display: block;
+    }
+    .p-stat-label {
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+      margin-top: 2px;
+    }
+    @media (max-width: 500px) {
+      .p-stats { flex-wrap: wrap; }
+      .p-stat { min-width: 50%; border-right: none; border-bottom: 1px solid var(--border); }
+      .p-stat:nth-child(odd) { border-right: 1px solid var(--border); }
+      .p-stat:last-child { border-bottom: none; }
+    }
 
     /* ── SECTION WRAPPER ───────────────────────────────────────────────── */
-    .p-section { max-width: 1200px; margin: 0 auto; padding: clamp(48px,8vh,96px) clamp(20px,5vw,60px); }
-    .p-section-header { display: flex; align-items: baseline; gap: 16px; margin-bottom: 40px; }
-    .p-section-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: clamp(22px,3.5vw,32px); color: var(--ink); }
-    .p-section-count { font-size: 12px; letter-spacing: 0.1em; color: var(--ink-3); font-family: 'DM Mono', monospace; }
-    .p-section-line { flex: 1; height: 1px; background: var(--border); }
+    .p-section {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: clamp(48px, 8vh, 96px) clamp(20px, 5vw, 60px);
+    }
+
+    .p-section-header {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+    .p-section-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: clamp(22px, 3.5vw, 32px);
+      color: var(--ink);
+    }
+    .p-section-count {
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      color: var(--ink-3);
+      font-family: 'DM Mono', monospace;
+    }
+    .p-section-line {
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
 
     /* ── SKILLS ─────────────────────────────────────────────────────────── */
-    .p-skills-grid { display: flex; flex-wrap: wrap; gap: 10px; }
-    .p-skill { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; letter-spacing: 0.04em; color: var(--ink-2); background: var(--bg-card); border: 1px solid var(--border-strong); padding: 8px 16px; border-radius: 100px; cursor: default; transition: all 0.2s ease; white-space: nowrap; opacity: 0; transform: translateY(8px) scale(0.95); }
-    .p-skill.revealed { opacity: 1; transform: translateY(0) scale(1); }
-    .p-skill:hover { border-color: var(--accent-dim); color: var(--ink); background: rgba(0,204,106,0.06); box-shadow: 0 0 0 3px rgba(0,204,106,0.08); }
-    .p-skill-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+    .p-skills-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .p-skill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      color: var(--ink-2);
+      background: var(--bg-card);
+      border: 1px solid var(--border-strong);
+      padding: 8px 16px;
+      border-radius: 100px;
+      cursor: default;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      opacity: 0;
+      transform: translateY(8px) scale(0.95);
+      /* Stagger set by JS */
+    }
+    .p-skill.revealed {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    .p-skill:hover {
+      border-color: var(--accent-dim);
+      color: var(--ink);
+      background: rgba(0,204,106,0.06);
+      box-shadow: 0 0 0 3px rgba(0,204,106,0.08);
+    }
+    .p-skill-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--accent);
+      flex-shrink: 0;
+    }
 
     /* ── PROJECTS GRID ──────────────────────────────────────────────────── */
-    .p-projects-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 20px; }
-    .p-project-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 28px; display: flex; flex-direction: column; gap: 16px; cursor: default; transition: transform 0.25s cubic-bezier(0.16,1,0.3,1), box-shadow 0.25s ease, border-color 0.2s ease; opacity: 0; transform: translateY(20px); }
-    .p-project-card.revealed { opacity: 1; transform: translateY(0); }
-    .p-project-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: var(--border-strong); }
-    .p-project-card.featured { border-color: rgba(0,204,106,0.3); background: linear-gradient(135deg, #FFFFFF 0%, rgba(0,255,136,0.03) 100%); }
-    .p-project-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-    .p-project-name { font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 500; color: var(--ink); word-break: break-word; }
-    .p-project-link { color: var(--ink-3); text-decoration: none; flex-shrink: 0; transition: color 0.2s ease; margin-top: 1px; }
+    .p-projects-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+      gap: 20px;
+    }
+
+    .p-project-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      cursor: default;
+      transition: transform 0.25s cubic-bezier(0.16,1,0.3,1),
+                  box-shadow 0.25s ease,
+                  border-color 0.2s ease;
+      opacity: 0;
+      transform: translateY(20px);
+      /* Stagger set by JS */
+    }
+    .p-project-card.revealed {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .p-project-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-lg);
+      border-color: var(--border-strong);
+    }
+
+    /* featured badge */
+    .p-project-card.featured {
+      border-color: rgba(0, 204, 106, 0.3);
+      background: linear-gradient(135deg, #FFFFFF 0%, rgba(0,255,136,0.03) 100%);
+    }
+
+    .p-project-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .p-project-name {
+      font-family: 'DM Mono', monospace;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--ink);
+      word-break: break-word;
+    }
+    .p-project-link {
+      color: var(--ink-3);
+      text-decoration: none;
+      flex-shrink: 0;
+      transition: color 0.2s ease;
+      margin-top: 1px;
+    }
     .p-project-link:hover { color: var(--ink); }
     .p-project-link svg { width: 16px; height: 16px; display: block; }
-    .p-project-desc { font-size: 13px; line-height: 1.65; color: var(--ink-2); flex: 1; }
-    .p-project-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
-    .p-project-lang { display: flex; align-items: center; gap: 6px; font-size: 11px; letter-spacing: 0.04em; color: var(--ink-3); }
-    .p-lang-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-    .p-project-stars { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--ink-3); letter-spacing: 0.03em; }
+
+    .p-project-desc {
+      font-size: 13px;
+      line-height: 1.65;
+      color: var(--ink-2);
+      flex: 1;
+    }
+
+    .p-project-meta {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+    .p-project-lang {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      color: var(--ink-3);
+    }
+    .p-lang-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .p-project-stars {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      color: var(--ink-3);
+      letter-spacing: 0.03em;
+    }
     .p-project-stars svg { width: 12px; height: 12px; }
-    .p-project-topics { display: flex; flex-wrap: wrap; gap: 5px; margin-left: auto; }
-    .p-topic { font-size: 10px; letter-spacing: 0.06em; text-transform: lowercase; color: var(--ink-3); background: var(--bg-2); padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border); }
-    .p-featured-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent-dim); background: rgba(0,204,106,0.1); border: 1px solid rgba(0,204,106,0.25); padding: 3px 8px; border-radius: 4px; }
+    .p-project-topics {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-left: auto;
+    }
+    .p-topic {
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      text-transform: lowercase;
+      color: var(--ink-3);
+      background: var(--bg-2);
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+
+    /* Featured star badge */
+    .p-featured-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent-dim);
+      background: rgba(0,204,106,0.1);
+      border: 1px solid rgba(0,204,106,0.25);
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
 
     /* ── FOOTER ─────────────────────────────────────────────────────────── */
-    .p-footer { border-top: 1px solid var(--border); padding: 28px clamp(20px,5vw,60px); display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-    .p-footer-left { font-size: 12px; color: var(--ink-3); }
-    .p-footer-cta { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; letter-spacing: 0.06em; text-decoration: none; color: var(--ink-2); border: 1px solid var(--border-strong); padding: 8px 16px; border-radius: 6px; transition: all 0.2s ease; }
-    .p-footer-cta:hover { border-color: var(--accent-dim); color: var(--accent-dim); background: rgba(0,204,106,0.05); }
+    .p-footer {
+      border-top: 1px solid var(--border);
+      padding: 28px clamp(20px, 5vw, 60px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .p-footer-left {
+      font-size: 12px;
+      color: var(--ink-3);
+    }
+    .p-footer-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      text-decoration: none;
+      color: var(--ink-2);
+      border: 1px solid var(--border-strong);
+      padding: 8px 16px;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+    }
+    .p-footer-cta:hover {
+      border-color: var(--accent-dim);
+      color: var(--accent-dim);
+      background: rgba(0,204,106,0.05);
+    }
 
-    /* ── Language Colors ────────────────────────────────────────────────── */
-    .lang-javascript   { background: #F7DF1E; } .lang-typescript   { background: #3178C6; }
-    .lang-python       { background: #3572A5; } .lang-rust         { background: #DEA584; }
-    .lang-go           { background: #00ADD8; } .lang-java         { background: #B07219; }
-    .lang-css          { background: #563D7C; } .lang-html         { background: #E34C26; }
-    .lang-ruby         { background: #701516; } .lang-swift        { background: #F05138; }
-    .lang-kotlin       { background: #7F52FF; } .lang-cpp          { background: #F34B7D; }
-    .lang-c            { background: #555555; } .lang-shell        { background: #89E051; }
-    .lang-php          { background: #4F5D95; } .lang-dart         { background: #00B4AB; }
-    .lang-vue          { background: #41B883; } .lang-svelte       { background: #FF3E00; }
+    /* ── Language Colors (GitHub-inspired) ─────────────────────────────── */
+    .lang-javascript   { background: #F7DF1E; }
+    .lang-typescript   { background: #3178C6; }
+    .lang-python       { background: #3572A5; }
+    .lang-rust         { background: #DEA584; }
+    .lang-go           { background: #00ADD8; }
+    .lang-java         { background: #B07219; }
+    .lang-css          { background: #563D7C; }
+    .lang-html         { background: #E34C26; }
+    .lang-ruby         { background: #701516; }
+    .lang-swift        { background: #F05138; }
+    .lang-kotlin       { background: #7F52FF; }
+    .lang-cpp          { background: #F34B7D; }
+    .lang-c            { background: #555555; }
+    .lang-shell        { background: #89E051; }
+    .lang-php          { background: #4F5D95; }
+    .lang-dart         { background: #00B4AB; }
+    .lang-vue          { background: #41B883; }
+    .lang-svelte       { background: #FF3E00; }
     .lang-default      { background: #8B8B8B; }
 
-    /* ── Scroll reveal ────────────────────────────────────────────────── */
-    .p-reveal-section { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.16,1,0.3,1); }
+    /* ── Scroll reveal for sections ────────────────────────────────────── */
+    .p-reveal-section {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.16,1,0.3,1);
+    }
     .p-reveal-section.in-view { opacity: 1; transform: translateY(0); }
   </style>
 </head>
 <body>
 
-  <!-- LOADING -->
+  <!-- ══════════════════════════════════════════════════════════════════════
+       LOADING SCREEN
+  ══════════════════════════════════════════════════════════════════════ -->
   <div id="page-loader" role="status" aria-label="Loading portfolio">
     <div class="loader-dot-row">
       <div class="loader-dot"></div>
@@ -198,22 +678,31 @@
     <span class="loader-label">Loading portfolio…</span>
   </div>
 
-  <!-- ERROR -->
+  <!-- ══════════════════════════════════════════════════════════════════════
+       ERROR STATE
+  ══════════════════════════════════════════════════════════════════════ -->
   <div id="error-state" role="alert" aria-live="polite">
     <div class="error-code">404</div>
     <p class="error-msg" id="error-msg-text">Portfolio not found or has expired.</p>
     <a href="index.html" class="error-link">← Generate your own portfolio</a>
   </div>
 
-  <!-- PORTFOLIO PAGE -->
+  <!-- ══════════════════════════════════════════════════════════════════════
+       PORTFOLIO PAGE
+  ══════════════════════════════════════════════════════════════════════ -->
   <div id="portfolio-page" class="portfolio-wrapper" aria-hidden="true">
 
     <!-- NAV -->
     <nav class="p-nav" aria-label="Portfolio navigation">
-      <a href="index.html" class="p-nav-logo">portfolio<span>.</span>gen</a>
+      <a href="index.html" class="p-nav-logo">
+        portfolio<span>.</span>gen
+      </a>
       <div class="p-nav-actions">
         <a href="#" id="nav-github-link" class="p-nav-github" target="_blank" rel="noopener noreferrer" aria-label="View GitHub profile">
-          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+          <!-- GitHub Icon -->
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+          </svg>
           <span id="nav-github-username">GitHub</span>
         </a>
       </div>
@@ -222,36 +711,68 @@
     <!-- HERO -->
     <header class="p-hero" id="p-hero" aria-label="Developer profile">
       <div class="p-hero-left">
+        <!-- Eyebrow -->
         <div class="p-hero-eyebrow">
           <span class="p-hero-eyebrow-dot" aria-hidden="true"></span>
           <span id="hero-eyebrow-text">Software Developer</span>
         </div>
+
+        <!-- Name — BIG REVEAL -->
         <h1 class="p-hero-name" aria-label="Developer name">
-          <!-- [FIX] حذفنا data-edit — هذه صفحة عرض عام مش edit mode -->
-          <span class="p-hero-name-inner" id="hero-name">—</span>
+          <span class="p-hero-name-inner" id="hero-name" data-edit="name">—</span>
         </h1>
-        <p class="p-hero-title" id="hero-title">Software Developer</p>
-        <p class="p-hero-bio" id="hero-bio">Loading bio…</p>
+
+        <!-- Job Title -->
+        <p class="p-hero-title" id="hero-title" data-edit="jobTitle">Software Developer</p>
+
+        <!-- Bio -->
+        <p class="p-hero-bio" id="hero-bio" data-edit="bio">
+          Loading bio…
+        </p>
+
+        <!-- Links -->
         <div class="p-hero-links" id="hero-links">
           <a href="#" id="link-github" class="p-hero-link" target="_blank" rel="noopener noreferrer">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+            </svg>
             GitHub
           </a>
         </div>
       </div>
+
+      <!-- Avatar -->
       <div class="p-hero-avatar-wrap" id="p-hero-avatar-wrap">
         <div class="p-avatar-placeholder" id="p-avatar-placeholder" aria-hidden="true">?</div>
-        <img id="p-avatar-img" class="p-avatar" alt="Developer avatar" style="display:none;" loading="eager" />
+        <img
+          id="p-avatar-img"
+          class="p-avatar"
+          alt="Developer avatar"
+          style="display:none;"
+          loading="eager"
+        />
       </div>
     </header>
 
     <!-- STATS BAR -->
-    <div class="p-section" style="padding-top:0;padding-bottom:32px;">
+    <div class="p-section" style="padding-top:0; padding-bottom:32px;">
       <div class="p-stats p-reveal-section" id="p-stats" role="list" aria-label="GitHub statistics">
-        <div class="p-stat" role="listitem"><span class="p-stat-value" id="stat-repos">—</span><span class="p-stat-label">Repositories</span></div>
-        <div class="p-stat" role="listitem"><span class="p-stat-value" id="stat-stars">—</span><span class="p-stat-label">Total Stars</span></div>
-        <div class="p-stat" role="listitem"><span class="p-stat-value" id="stat-followers">—</span><span class="p-stat-label">Followers</span></div>
-        <div class="p-stat" role="listitem"><span class="p-stat-value" id="stat-lang">—</span><span class="p-stat-label">Top Language</span></div>
+        <div class="p-stat" role="listitem">
+          <span class="p-stat-value" id="stat-repos">—</span>
+          <span class="p-stat-label">Repositories</span>
+        </div>
+        <div class="p-stat" role="listitem">
+          <span class="p-stat-value" id="stat-stars">—</span>
+          <span class="p-stat-label">Total Stars</span>
+        </div>
+        <div class="p-stat" role="listitem">
+          <span class="p-stat-value" id="stat-followers">—</span>
+          <span class="p-stat-label">Followers</span>
+        </div>
+        <div class="p-stat" role="listitem">
+          <span class="p-stat-value" id="stat-lang">—</span>
+          <span class="p-stat-label">Top Language</span>
+        </div>
       </div>
     </div>
 
@@ -272,30 +793,41 @@
         <span class="p-section-count" id="projects-count" aria-live="polite"></span>
         <div class="p-section-line" aria-hidden="true"></div>
       </div>
-      <div class="p-projects-grid" id="p-projects-grid" aria-label="Portfolio projects"></div>
+      <div class="p-projects-grid" id="p-projects-grid" data-projects-grid aria-label="Portfolio projects"></div>
     </section>
 
     <!-- FOOTER -->
     <footer class="p-footer" role="contentinfo">
-      <p class="p-footer-left">Built with <a href="index.html" style="color:var(--accent-dim);text-decoration:none;">Portfolio Generator</a></p>
+      <p class="p-footer-left">
+        Built with <a href="index.html" style="color:var(--accent-dim);text-decoration:none;">Portfolio Generator</a>
+      </p>
       <a href="index.html" class="p-footer-cta">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M12 5v14M5 12l7 7 7-7"/>
+        </svg>
         Create yours — free
       </a>
     </footer>
 
-  </div>
+  </div><!-- /#portfolio-page -->
 
-  <!-- SCRIPTS -->
+  <!-- ══════════════════════════════════════════════════════════════════════
+       SCRIPTS
+  ══════════════════════════════════════════════════════════════════════ -->
+  <!-- Config — يُضاف قبل الـ scripts -->
   <script>
     window.SUPABASE_URL      = "https://zxybqbjsnriwpjehinwb.supabase.co";
     window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4eWJxYmpzbnJpd3BqZWhpbndiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMjI1NDEsImV4cCI6MjA5MDY5ODU0MX0.ED8CX81h78oga482b9pepZPsqfvX7znMqmtO0VRn3AM";
   </script>
 
+  <!-- Supabase SDK (للـ auth في الـ steps الجاية) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+  <!-- AI module (بيوفر window.AI.getDraft) -->
   <script src="js/github.js"></script>
   <script src="js/ai.js"></script>
 
+  <!-- Portfolio Page Logic -->
   <script>
   (function () {
     "use strict";
@@ -314,117 +846,204 @@
       return LANG_COLORS[lang.toLowerCase()] || '#8B8B8B';
     }
 
+    // ── Format numbers ────────────────────────────────────────────────────
     function fmtNum(n) {
       if (typeof n !== 'number') return '0';
       if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
       return String(n);
     }
 
+    // ── Safe text ─────────────────────────────────────────────────────────
     function esc(str) {
       const d = document.createElement('div');
       d.textContent = String(str || '');
       return d.innerHTML;
     }
 
+    // ── Intersection Observer for scroll reveal ───────────────────────────
     function initScrollReveal() {
       const els = document.querySelectorAll('.p-reveal-section');
       const io = new IntersectionObserver(
-        (entries) => entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in-view'); io.unobserve(e.target); } }),
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('in-view');
+              io.unobserve(entry.target);
+            }
+          });
+        },
         { threshold: 0.1, rootMargin: '0px 0px -40px 0px' }
       );
       els.forEach((el) => io.observe(el));
     }
 
+    // ── Stagger children into view ────────────────────────────────────────
     function staggerReveal(children, baseDelay = 0, step = 80) {
-      children.forEach((el, i) => setTimeout(() => el.classList.add('revealed'), baseDelay + i * step));
+      children.forEach((el, i) => {
+        setTimeout(() => {
+          el.classList.add('revealed');
+        }, baseDelay + i * step);
+      });
     }
 
+    // ── Hero entrance animation ───────────────────────────────────────────
     function animateHero() {
-      setTimeout(() => document.getElementById('hero-name')?.classList.add('revealed'), 100);
-      setTimeout(() => document.getElementById('hero-title')?.classList.add('revealed'), 350);
-      setTimeout(() => document.getElementById('hero-bio')?.classList.add('revealed'), 500);
-      setTimeout(() => document.getElementById('hero-links')?.classList.add('revealed'), 650);
-      setTimeout(() => document.getElementById('p-hero-avatar-wrap')?.classList.add('revealed'), 200);
-      setTimeout(() => document.getElementById('p-stats')?.classList.add('revealed'), 900);
+      // Name reveal
+      setTimeout(() => {
+        document.getElementById('hero-name')?.classList.add('revealed');
+      }, 100);
+
+      // Title
+      setTimeout(() => {
+        document.getElementById('hero-title')?.classList.add('revealed');
+      }, 350);
+
+      // Bio
+      setTimeout(() => {
+        document.getElementById('hero-bio')?.classList.add('revealed');
+      }, 500);
+
+      // Links
+      setTimeout(() => {
+        document.getElementById('hero-links')?.classList.add('revealed');
+      }, 650);
+
+      // Avatar
+      setTimeout(() => {
+        document.getElementById('p-hero-avatar-wrap')?.classList.add('revealed');
+      }, 200);
+
+      // Stats bar
+      setTimeout(() => {
+        document.getElementById('p-stats')?.classList.add('revealed');
+      }, 900);
     }
 
+    // ── Render skills ─────────────────────────────────────────────────────
     function renderSkills(skills) {
-      const grid  = document.getElementById('p-skills-grid');
+      const grid = document.getElementById('p-skills-grid');
       const count = document.getElementById('skills-count');
       if (!grid) return;
-      if (!skills?.length) { grid.innerHTML = '<p style="color:var(--ink-3);font-size:13px;">No skills listed yet.</p>'; return; }
+
+      if (!skills?.length) {
+        grid.innerHTML = '<p style="color:var(--ink-3);font-size:13px;">No skills listed yet.</p>';
+        return;
+      }
+
       count.textContent = `${skills.length} skills`;
+
       grid.innerHTML = skills.map((skill) => `
         <div class="p-skill" role="listitem">
           <span class="p-skill-dot" aria-hidden="true"></span>
           ${esc(skill)}
         </div>
       `).join('');
-      setTimeout(() => staggerReveal([...grid.querySelectorAll('.p-skill')], 0, 60), 300);
+
+      // Stagger reveal
+      const skillEls = grid.querySelectorAll('.p-skill');
+      setTimeout(() => staggerReveal([...skillEls], 0, 60), 300);
     }
 
-    function renderProjects(projects, githubUsername) {
-      const grid  = document.getElementById('p-projects-grid');
+    // ── Render projects ───────────────────────────────────────────────────
+    function renderProjects(projects, githubRepos) {
+      const grid = document.getElementById('p-projects-grid');
       const count = document.getElementById('projects-count');
       if (!grid) return;
-      if (!projects?.length) { grid.innerHTML = '<p style="color:var(--ink-3);font-size:13px;">No projects to display.</p>'; return; }
+
+      if (!projects?.length) {
+        grid.innerHTML = '<p style="color:var(--ink-3);font-size:13px;">No projects to display.</p>';
+        return;
+      }
 
       count.textContent = `${projects.length} project${projects.length !== 1 ? 's' : ''}`;
 
-      // [FIX] بناء الـ URL بشكل صح باستخدام githubUsername
-      const mapped = projects.map((p, idx) => ({
-        name:        p.repo_name || p.github_repo_name || p.name || '—',
-        description: p.description || p.ai_description || '—',
-        // [FIX] URL بيبني مع الـ username لو مفيش repo_url
-        url:         p.url || p.repo_url
-                     || (githubUsername
-                         ? `https://github.com/${githubUsername}/${p.repo_name || p.github_repo_name}`
-                         : '#'),
-        stars:       p.stars || 0,
-        language:    p.language || null,
-        topics:      p.topics || [],
-        featured:    idx === 0,
-      }));
+      // Merge AI descriptions with GitHub repo data
+      const merged = projects.map((p, idx) => {
+        const repo = (githubRepos || []).find(
+          (r) => r.name === p.repo_name || r.name?.toLowerCase() === p.repo_name?.toLowerCase()
+        ) || {};
 
-      grid.innerHTML = mapped.map((proj) => `
+        return {
+          name: p.repo_name,
+          description: p.description || repo.description || '—',
+          url: repo.url || `https://github.com/${p.repo_name}`,
+          stars: repo.stars || 0,
+          language: repo.language || null,
+          topics: repo.topics || [],
+          featured: idx === 0, // أول project = featured
+        };
+      });
+
+      grid.innerHTML = merged.map((proj, i) => `
         <article class="p-project-card${proj.featured ? ' featured' : ''}" role="article">
           <div class="p-project-head">
             <div>
               ${proj.featured ? `<div class="p-featured-badge">★ Featured</div><br/>` : ''}
               <h3 class="p-project-name">${esc(proj.name)}</h3>
             </div>
-            <a href="${esc(proj.url)}" target="_blank" rel="noopener noreferrer"
-               class="p-project-link" aria-label="View ${esc(proj.name)} on GitHub">
+            <a
+              href="${esc(proj.url)}"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="p-project-link"
+              aria-label="View ${esc(proj.name)} on GitHub"
+            >
+              <!-- External link icon -->
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
-                <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                <polyline points="15 3 21 3 21 9"/>
+                <line x1="10" y1="14" x2="21" y2="3"/>
               </svg>
             </a>
           </div>
+
           <p class="p-project-desc">${esc(proj.description)}</p>
+
           <div class="p-project-meta">
-            ${proj.language ? `<span class="p-project-lang"><span class="p-lang-dot" style="background:${getLangColor(proj.language)}" aria-hidden="true"></span>${esc(proj.language)}</span>` : ''}
-            ${proj.stars > 0 ? `<span class="p-project-stars"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>${fmtNum(proj.stars)}</span>` : ''}
-            ${proj.topics?.length ? `<div class="p-project-topics">${proj.topics.slice(0, 3).map((t) => `<span class="p-topic">${esc(t)}</span>`).join('')}</div>` : ''}
+            ${proj.language ? `
+              <span class="p-project-lang">
+                <span class="p-lang-dot" style="background:${getLangColor(proj.language)}" aria-hidden="true"></span>
+                ${esc(proj.language)}
+              </span>
+            ` : ''}
+
+            ${proj.stars > 0 ? `
+              <span class="p-project-stars">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                </svg>
+                ${fmtNum(proj.stars)}
+              </span>
+            ` : ''}
+
+            ${proj.topics?.length ? `
+              <div class="p-project-topics">
+                ${proj.topics.slice(0, 3).map((t) => `<span class="p-topic">${esc(t)}</span>`).join('')}
+              </div>
+            ` : ''}
           </div>
         </article>
       `).join('');
 
-      setTimeout(() => staggerReveal([...grid.querySelectorAll('.p-project-card')], 200, 100), 200);
+      // Stagger reveal
+      const cards = grid.querySelectorAll('.p-project-card');
+      setTimeout(() => staggerReveal([...cards], 200, 100), 200);
     }
 
-    function renderStats(githubUser, projects) {
-      const totalStars = (projects || []).reduce((s, r) => s + (r.stars || 0), 0);
-      const topLang    = githubUser?.languages
+    // ── Render stats bar ──────────────────────────────────────────────────
+    function renderStats(githubUser, githubRepos) {
+      const totalStars = (githubRepos || []).reduce((s, r) => s + (r.stars || 0), 0);
+      const topLang = githubUser?.languages
         ? Object.entries(githubUser.languages).sort(([,a],[,b]) => b - a)[0]?.[0] || '—'
         : '—';
 
-      document.getElementById('stat-repos').textContent     = fmtNum(githubUser?.public_repos || 0);
-      document.getElementById('stat-stars').textContent     = fmtNum(totalStars);
+      document.getElementById('stat-repos').textContent  = fmtNum(githubUser?.public_repos || 0);
+      document.getElementById('stat-stars').textContent  = fmtNum(totalStars);
       document.getElementById('stat-followers').textContent = fmtNum(githubUser?.followers || 0);
-      document.getElementById('stat-lang').textContent      = topLang;
+      document.getElementById('stat-lang').textContent   = topLang;
     }
 
+    // ── Update meta tags ──────────────────────────────────────────────────
     function updateMeta(name, jobTitle, bio) {
       const title = `${name} — ${jobTitle} | Portfolio`;
       document.title = title;
@@ -433,24 +1052,33 @@
       document.querySelector('meta[property="og:description"]')?.setAttribute('content', bio?.slice(0, 200) || '');
     }
 
+    // ── Load avatar ───────────────────────────────────────────────────────
     function loadAvatar(githubUsername, fullName) {
-      const img         = document.getElementById('p-avatar-img');
+      const img = document.getElementById('p-avatar-img');
       const placeholder = document.getElementById('p-avatar-placeholder');
       if (!img || !githubUsername) return;
 
+      // GitHub avatar URL
       const avatarUrl = `https://avatars.githubusercontent.com/${encodeURIComponent(githubUsername)}?v=4&s=360`;
-      const initials  = (fullName || githubUsername || '?').split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() || '').join('');
+      const initials = (fullName || githubUsername || '?')
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((w) => w[0]?.toUpperCase() || '')
+        .join('');
+
       if (placeholder) placeholder.textContent = initials;
-      img.onload  = () => { img.style.display = 'block'; if (placeholder) placeholder.style.display = 'none'; };
-      img.onerror = () => {};
+
+      img.onload = () => {
+        img.style.display = 'block';
+        if (placeholder) placeholder.style.display = 'none';
+      };
+      img.onerror = () => {
+        // Keep placeholder with initials
+      };
       img.src = avatarUrl;
     }
 
-    function applyThemeCss(theme) {
-      const link = document.getElementById('active-theme-css');
-      if (link) link.href = `css/themes/${theme}.css`;
-    }
-
+    // ── Show error state ──────────────────────────────────────────────────
     function showError(message) {
       document.getElementById('page-loader')?.classList.add('hidden');
       const errState = document.getElementById('error-state');
@@ -459,28 +1087,44 @@
       if (errState) errState.classList.add('visible');
     }
 
+    // ── Main render ───────────────────────────────────────────────────────
     function renderPortfolio(draft) {
-      const { bio, skills, projects, githubUser, fullName, jobTitle, githubUsername } = draft;
+      const {
+        bio, skills, projects,
+        githubUser, githubRepos,
+        fullName, jobTitle,
+        githubUsername,
+      } = draft;
 
-      document.getElementById('hero-name').textContent         = fullName || githubUsername || 'Developer';
-      document.getElementById('hero-title').textContent        = jobTitle || 'Software Developer';
-      document.getElementById('hero-bio').textContent          = bio || '';
+      // ─ Hero text
+      document.getElementById('hero-name').textContent    = fullName || githubUsername || 'Developer';
+      document.getElementById('hero-title').textContent   = jobTitle || 'Software Developer';
+      document.getElementById('hero-bio').textContent     = bio || '';
       document.getElementById('hero-eyebrow-text').textContent = jobTitle || 'Software Developer';
 
+      // ─ GitHub links
       const ghUrl = `https://github.com/${githubUsername}`;
-      const navGhLink = document.getElementById('nav-github-link');
-      const navGhUser = document.getElementById('nav-github-username');
-      const linkGh    = document.getElementById('link-github');
-      if (navGhLink) navGhLink.href = ghUrl;
-      if (navGhUser) navGhUser.textContent = `@${githubUsername}`;
-      if (linkGh)    linkGh.href = ghUrl;
+      const navGhLink   = document.getElementById('nav-github-link');
+      const navGhUser   = document.getElementById('nav-github-username');
+      const linkGithub  = document.getElementById('link-github');
 
+      if (navGhLink)  navGhLink.href = ghUrl;
+      if (navGhUser)  navGhUser.textContent = `@${githubUsername}`;
+      if (linkGithub) { linkGithub.href = ghUrl; }
+
+      // ─ Avatar
       loadAvatar(githubUsername, fullName);
-      // [FIX] نمرر projects مباشرة لـ renderStats بدل githubRepos اللي كانت دايماً نفسهم
-      renderStats(githubUser, projects);
+
+      // ─ Stats
+      renderStats(githubUser, githubRepos);
+
+      // ─ Skills
       renderSkills(skills);
-      // [FIX] نمرر githubUsername لـ renderProjects عشان يبني الـ URLs صح
-      renderProjects(projects, githubUsername);
+
+      // ─ Projects
+      renderProjects(projects, githubRepos);
+
+      // ─ Meta
       updateMeta(fullName || githubUsername, jobTitle, bio);
     }
 
@@ -490,49 +1134,63 @@
       if (!window.supabase?.createClient) return null;
 
       try {
-        // [FIX] نستخدم client واحد بدل ما ننشئ جديد في كل call
-        const sb = window._supabaseClient
-          || window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+        const sb = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
+        // جيب الـ portfolio بالـ slug
         const { data: portfolio, error } = await sb
           .from('portfolios')
-          .select(`id, bio, skills, theme, slug, is_published, user_id,
-            projects ( github_repo_name, ai_description, stars, language, topics, sort_order, repo_url, is_featured )`)
+          .select(`
+            id, bio, skills, theme, slug, is_published,
+            user_id,
+            projects ( github_repo_name, ai_description, stars, language, topics, sort_order, repo_url, is_featured )
+          `)
           .eq('slug', slug)
           .eq('is_published', true)
           .single();
 
         if (error || !portfolio) return null;
 
+        // جيب بيانات الـ user
         const { data: userData } = await sb
           .from('users')
           .select('full_name, github_username, job_title')
           .eq('id', portfolio.user_id)
           .single();
 
+        // Sort projects
         const projects = (portfolio.projects || [])
           .sort((a, b) => a.sort_order - b.sort_order)
           .map(p => ({
-            repo_name:   p.github_repo_name,
+            repo_name: p.github_repo_name,
             description: p.ai_description,
-            stars:       p.stars || 0,
-            language:    p.language,
-            topics:      p.topics || [],
-            // [FIX] URL بيبني مع الـ username
-            url: p.repo_url
-              || (userData?.github_username
-                  ? `https://github.com/${userData.github_username}/${p.github_repo_name}`
-                  : '#'),
+            stars: p.stars,
+            language: p.language,
+            topics: p.topics || [],
+            url: p.repo_url || `https://github.com/${userData?.github_username}/${p.github_repo_name}`,
           }));
 
-        // [FIX] حذفنا GitHub API call في كل زيارة — كان بيضرب الـ rate limit
-        // بنستخدم بيانات Supabase بس (followers/public_repos من users table لو موجودة)
-        const githubUser = {
-          public_repos: projects.length,
-          followers:    0,
-          following:    0,
-          languages:    {},
-        };
+        // جيب بيانات GitHub الحقيقية
+        let githubUser = { public_repos: projects.length, followers: 0, languages: {} };
+        if (userData?.github_username) {
+          try {
+            const ghRes = await fetch(
+              `https://api.github.com/users/${userData.github_username}`,
+              { headers: { 'Accept': 'application/vnd.github.v3+json' } }
+            );
+            if (ghRes.ok) {
+              const ghData = await ghRes.json();
+              githubUser = {
+                public_repos: ghData.public_repos || projects.length,
+                followers:    ghData.followers    || 0,
+                following:    ghData.following    || 0,
+                languages:    {},
+              };
+            }
+          } catch (e) {
+            // fallback — استخدم عدد الـ projects
+            githubUser.public_repos = projects.length;
+          }
+        }
 
         return {
           bio:            portfolio.bio,
@@ -543,6 +1201,7 @@
           githubUsername: userData?.github_username || '',
           theme:          portfolio.theme || 'dark',
           githubUser,
+          githubRepos:    projects,
           _fromSupabase:  true,
         };
       } catch (err) {
@@ -553,18 +1212,23 @@
 
     // ── Init ──────────────────────────────────────────────────────────────
     async function init() {
-      const urlParams = new URLSearchParams(window.location.search);
-      const slugParam = urlParams.get('slug') || urlParams.get('u');
-      const pathSlug  = window.location.pathname.match(/\/p\/([^/?#]+)/)?.[1];
-      const slug      = slugParam || pathSlug || null;
+      // 1. Check URL for slug: /portfolio.html?slug=username or /p/username
+      const urlParams  = new URLSearchParams(window.location.search);
+      const slugParam  = urlParams.get('slug') || urlParams.get('u');
+      const pathSlug   = window.location.pathname.match(/\/p\/([^/?#]+)/)?.[1];
+      const slug       = slugParam || pathSlug || null;
 
       let draft = null;
 
       if (slug) {
+        // ── Public mode: load from Supabase by slug ───────────────────────
         draft = await loadFromSupabase(slug);
-        if (!draft) { showError(`Portfolio "${slug}" not found or not published.`); return; }
+        if (!draft) {
+          showError(`Portfolio "${slug}" not found or not published.`);
+          return;
+        }
       } else {
-        // Preview mode — من sessionStorage بعد الـ generation
+        // ── Preview mode: load from sessionStorage (after generation) ─────
         if (window.AI?.getDraft) {
           draft = window.AI.getDraft();
         } else {
@@ -575,17 +1239,21 @@
         }
       }
 
+      // Brief load delay for UX polish
       await new Promise(r => setTimeout(r, slug ? 0 : 600));
 
-      if (!draft) { showError('Portfolio not found. Please generate one first.'); return; }
+      if (!draft) {
+        showError('Portfolio not found. Please generate one first.');
+        return;
+      }
 
-      // [FIX] بنحدد الـ theme في الـ CSS قبل أي render — يمنع الـ FOUT
+      // Set theme attributes
       const theme = draft.theme || 'dark';
-      applyThemeCss(theme);
       document.documentElement.setAttribute('data-theme', theme);
       document.body.setAttribute('data-theme', theme);
       document.body.classList.add(`theme-${theme}`);
 
+      // Render content
       try {
         renderPortfolio(draft);
       } catch (err) {
@@ -594,13 +1262,22 @@
         return;
       }
 
+      // Show page
       document.getElementById('page-loader')?.classList.add('hidden');
       const page = document.getElementById('portfolio-page');
-      if (page) { page.classList.add('visible'); page.removeAttribute('aria-hidden'); }
+      if (page) {
+        page.classList.add('visible');
+        page.removeAttribute('aria-hidden');
+      }
 
-      requestAnimationFrame(() => { animateHero(); initScrollReveal(); });
+      // Animations
+      requestAnimationFrame(() => {
+        animateHero();
+        initScrollReveal();
+      });
     }
 
+    // ── Wait for DOM ──────────────────────────────────────────────────────
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', init);
     } else {

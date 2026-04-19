@@ -14,315 +14,870 @@
   <!-- CSS -->
   <link rel="stylesheet" href="css/main.css" />
 
+  <!-- Theme preload (default dark on landing) -->
   <style>
     /* ── Landing Page Specific Styles ────────────────────────── */
 
+    /* ─ Nav ───────────────────────────────────────────────────── */
     .nav-logo-icon {
-      width: 28px; height: 28px;
+      width: 28px;
+      height: 28px;
       background: var(--clr-accent);
       border-radius: 6px;
-      display: grid; place-items: center;
+      display: grid;
+      place-items: center;
     }
-    .nav-logo-icon svg { width: 14px; height: 14px; color: var(--clr-bg); }
 
+    .nav-logo-icon svg {
+      width: 14px;
+      height: 14px;
+      color: var(--clr-bg);
+    }
+
+    /* ─ Hero ──────────────────────────────────────────────────── */
     .hero {
       min-height: 100vh;
-      display: flex; align-items: center;
-      padding-top: var(--nav-h); padding-bottom: var(--sp-20);
-      position: relative; z-index: 1;
+      display: flex;
+      align-items: center;
+      padding-top: var(--nav-h);
+      padding-bottom: var(--sp-20);
+      position: relative;
+      z-index: 1;
     }
-    .hero__inner {
-      display: grid; grid-template-columns: 1fr 1fr;
-      gap: var(--sp-16); align-items: center;
-    }
-    .hero__eyebrow { margin-bottom: var(--sp-6); }
-    .hero__title {
-      font-family: var(--font-display); font-weight: 800;
-      font-size: var(--fs-hero); line-height: var(--lh-tight);
-      letter-spacing: var(--ls-tight); margin-bottom: var(--sp-6);
-    }
-    .hero__title em {
-      font-family: var(--font-serif); font-style: italic;
-      font-weight: 300; color: var(--clr-accent);
-    }
-    .hero__sub {
-      font-size: var(--fs-md); color: var(--clr-text-2);
-      line-height: var(--lh-loose); max-width: 420px; margin-bottom: var(--sp-10);
-    }
-    .hero__timer {
-      display: inline-flex; align-items: center; gap: var(--sp-2);
-      font-size: var(--fs-sm); color: var(--clr-text-3); margin-bottom: var(--sp-8);
-    }
-    .hero__timer .dot-live { width: 6px; height: 6px; }
 
-    .hero-form-card {
-      background: var(--clr-bg-3); border: 1px solid var(--clr-border);
-      border-radius: var(--radius-xl); padding: var(--sp-8);
-      position: relative; overflow: hidden; box-shadow: var(--shadow-lg);
+    .hero__inner {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--sp-16);
+      align-items: center;
     }
+
+    .hero__eyebrow {
+      margin-bottom: var(--sp-6);
+    }
+
+    .hero__title {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: var(--fs-hero);
+      line-height: var(--lh-tight);
+      letter-spacing: var(--ls-tight);
+      margin-bottom: var(--sp-6);
+    }
+
+    .hero__title em {
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-weight: 300;
+      color: var(--clr-accent);
+    }
+
+    .hero__sub {
+      font-size: var(--fs-md);
+      color: var(--clr-text-2);
+      line-height: var(--lh-loose);
+      max-width: 420px;
+      margin-bottom: var(--sp-10);
+    }
+
+    .hero__timer {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--sp-2);
+      font-size: var(--fs-sm);
+      color: var(--clr-text-3);
+      margin-bottom: var(--sp-8);
+    }
+
+    .hero__timer .dot-live {
+      width: 6px;
+      height: 6px;
+    }
+
+    /* ─ Hero Form Card ────────────────────────────────────────── */
+    .hero-form-card {
+      background: var(--clr-bg-3);
+      border: 1px solid var(--clr-border);
+      border-radius: var(--radius-xl);
+      padding: var(--sp-8);
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow-lg);
+    }
+
     .hero-form-card::before {
-      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
       background: linear-gradient(90deg, transparent, var(--clr-accent), transparent);
       opacity: 0.6;
     }
+
     .hero-form-card__header {
-      display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-6);
+      display: flex;
+      align-items: center;
+      gap: var(--sp-3);
+      margin-bottom: var(--sp-6);
     }
-    .terminal-dots { display: flex; gap: 6px; }
-    .terminal-dots span { width: 10px; height: 10px; border-radius: 50%; background: var(--clr-text-3); }
+
+    .terminal-dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .terminal-dots span {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--clr-text-3);
+    }
+
     .terminal-dots span:nth-child(1) { background: #FF5F57; }
     .terminal-dots span:nth-child(2) { background: #FFBD2E; }
     .terminal-dots span:nth-child(3) { background: #28CA41; }
-    .terminal-title { font-size: var(--fs-xs); color: var(--clr-text-3); letter-spacing: var(--ls-wide); }
 
-    .form-inputs { display: flex; flex-direction: column; gap: var(--sp-4); margin-bottom: var(--sp-6); }
-
-    .github-input-wrap { position: relative; }
-    .github-prefix {
-      position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
-      font-size: var(--fs-sm); color: var(--clr-text-3);
-      pointer-events: none; user-select: none;
+    .terminal-title {
+      font-size: var(--fs-xs);
+      color: var(--clr-text-3);
+      letter-spacing: var(--ls-wide);
     }
-    .github-prefix svg { display: inline; vertical-align: middle; margin-right: 4px; }
-    #input-github { padding-left: 130px; }
 
+    .form-inputs {
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-4);
+      margin-bottom: var(--sp-6);
+    }
+
+    /* GitHub username input with prefix */
+    .github-input-wrap {
+      position: relative;
+    }
+
+    .github-prefix {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: var(--fs-sm);
+      color: var(--clr-text-3);
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .github-prefix svg {
+      display: inline;
+      vertical-align: middle;
+      margin-right: 4px;
+    }
+
+    #input-github {
+      padding-left: 130px;
+    }
+
+    /* Generate button — big CTA */
     .btn-generate {
-      width: 100%; padding: 16px;
-      background: var(--clr-accent); color: var(--clr-text-inv);
-      font-family: var(--font-body); font-size: var(--fs-md); font-weight: 500;
-      letter-spacing: var(--ls-wide); text-transform: uppercase;
-      border-radius: var(--radius-md); border: none; cursor: pointer;
-      position: relative; overflow: hidden;
+      width: 100%;
+      padding: 16px;
+      background: var(--clr-accent);
+      color: var(--clr-text-inv);
+      font-family: var(--font-body);
+      font-size: var(--fs-md);
+      font-weight: 500;
+      letter-spacing: var(--ls-wide);
+      text-transform: uppercase;
+      border-radius: var(--radius-md);
+      border: none;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
       transition: box-shadow var(--dur-base) var(--ease-out), transform var(--dur-fast) var(--ease-out);
       animation: glow-pulse 3s ease-in-out infinite;
     }
-    .btn-generate:hover { box-shadow: 0 0 40px rgba(0,255,136,0.4); animation: none; }
-    .btn-generate:active { transform: scale(0.98); }
-    .btn-generate__inner { display: flex; align-items: center; justify-content: center; gap: var(--sp-3); }
-    .btn-generate__icon { font-size: 1.2em; }
-    .btn-generate__timer { font-size: var(--fs-xs); opacity: 0.7; font-style: italic; font-family: var(--font-serif); }
 
+    .btn-generate:hover {
+      box-shadow: 0 0 40px rgba(0,255,136,0.4);
+      animation: none;
+    }
+
+    .btn-generate:active {
+      transform: scale(0.98);
+    }
+
+    .btn-generate__inner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--sp-3);
+    }
+
+    .btn-generate__icon {
+      font-size: 1.2em;
+    }
+
+    .btn-generate__timer {
+      font-size: var(--fs-xs);
+      opacity: 0.7;
+      font-style: italic;
+      font-family: var(--font-serif);
+    }
+
+    /* Form meta */
     .form-meta {
-      display: flex; align-items: center; justify-content: center;
-      gap: var(--sp-4); margin-top: var(--sp-4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--sp-4);
+      margin-top: var(--sp-4);
     }
-    .form-meta__item {
-      display: flex; align-items: center; gap: var(--sp-2);
-      font-size: var(--fs-xs); color: var(--clr-text-3);
-    }
-    .form-meta__item svg { color: var(--clr-accent); opacity: 0.7; }
-    .form-meta__sep { width: 3px; height: 3px; border-radius: 50%; background: var(--clr-text-3); }
 
+    .form-meta__item {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-2);
+      font-size: var(--fs-xs);
+      color: var(--clr-text-3);
+    }
+
+    .form-meta__item svg {
+      color: var(--clr-accent);
+      opacity: 0.7;
+    }
+
+    .form-meta__sep {
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: var(--clr-text-3);
+    }
+
+    /* ─ Error state under form ────────────────────────────────── */
     .form-error {
-      display: none; align-items: center; gap: var(--sp-2);
+      display: none;
+      align-items: center;
+      gap: var(--sp-2);
       padding: 10px 14px;
-      background: rgba(255,79,79,0.08); border: 1px solid rgba(255,79,79,0.2);
-      border-radius: var(--radius-md); font-size: var(--fs-sm); color: var(--clr-error);
+      background: rgba(255,79,79,0.08);
+      border: 1px solid rgba(255,79,79,0.2);
+      border-radius: var(--radius-md);
+      font-size: var(--fs-sm);
+      color: var(--clr-error);
       margin-top: var(--sp-3);
     }
+
     .form-error.is-visible { display: flex; }
 
+    /* ─ Stats strip ───────────────────────────────────────────── */
     .stats-strip {
-      display: flex; gap: var(--sp-8); margin-top: var(--sp-10);
-      padding-top: var(--sp-8); border-top: 1px solid var(--clr-border-dim);
-    }
-    .stat-item__value {
-      font-family: var(--font-display); font-weight: 800;
-      font-size: var(--fs-xl); color: var(--clr-text); letter-spacing: var(--ls-tight);
-    }
-    .stat-item__value span { color: var(--clr-accent); }
-    .stat-item__label {
-      font-size: var(--fs-xs); color: var(--clr-text-3);
-      letter-spacing: var(--ls-wide); text-transform: uppercase; margin-top: 2px;
+      display: flex;
+      gap: var(--sp-8);
+      margin-top: var(--sp-10);
+      padding-top: var(--sp-8);
+      border-top: 1px solid var(--clr-border-dim);
     }
 
-    .marquee-section {
-      padding: var(--sp-12) 0; overflow: hidden;
-      border-top: 1px solid var(--clr-border-dim); border-bottom: 1px solid var(--clr-border-dim);
-      position: relative; z-index: 1;
+    .stat-item__value {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: var(--fs-xl);
+      color: var(--clr-text);
+      letter-spacing: var(--ls-tight);
     }
-    /* [FIX] الـ marquee duplicate موجود manually في الـ HTML — التعليق كان مضلّل */
+
+    .stat-item__value span {
+      color: var(--clr-accent);
+    }
+
+    .stat-item__label {
+      font-size: var(--fs-xs);
+      color: var(--clr-text-3);
+      letter-spacing: var(--ls-wide);
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    /* ─ Scrolling marquee ─────────────────────────────────────── */
+    .marquee-section {
+      padding: var(--sp-12) 0;
+      overflow: hidden;
+      border-top: 1px solid var(--clr-border-dim);
+      border-bottom: 1px solid var(--clr-border-dim);
+      position: relative;
+      z-index: 1;
+    }
+
     .marquee-track {
-      display: flex; gap: var(--sp-6); width: max-content;
+      display: flex;
+      gap: var(--sp-6);
+      width: max-content;
       animation: marquee 30s linear infinite;
     }
+
     .marquee-track:hover { animation-play-state: paused; }
+
     .marquee-item {
-      display: flex; align-items: center; gap: var(--sp-3);
-      white-space: nowrap; font-size: var(--fs-sm); color: var(--clr-text-3);
+      display: flex;
+      align-items: center;
+      gap: var(--sp-3);
+      white-space: nowrap;
+      font-size: var(--fs-sm);
+      color: var(--clr-text-3);
     }
-    .marquee-item strong { font-weight: 400; color: var(--clr-text-2); }
-    .marquee-divider { color: var(--clr-accent); opacity: 0.4; }
+
+    .marquee-item strong {
+      font-weight: 400;
+      color: var(--clr-text-2);
+    }
+
+    .marquee-divider {
+      color: var(--clr-accent);
+      opacity: 0.4;
+    }
+
     @keyframes marquee {
       from { transform: translateX(0); }
       to   { transform: translateX(-50%); }
     }
 
-    .how-section { padding: var(--sp-32) 0; position: relative; z-index: 1; }
-    .section-header { margin-bottom: var(--sp-16); }
-    .section-title {
-      font-family: var(--font-display); font-weight: 800;
-      font-size: clamp(2rem, 4vw, 3.25rem); line-height: var(--lh-tight);
-      letter-spacing: var(--ls-tight); margin-top: var(--sp-4);
+    /* ─ How It Works ──────────────────────────────────────────── */
+    .how-section {
+      padding: var(--sp-32) 0;
+      position: relative;
+      z-index: 1;
     }
-    .section-title em { font-family: var(--font-serif); font-style: italic; font-weight: 300; color: var(--clr-accent); }
-    .steps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-6); position: relative; }
+
+    .section-header {
+      margin-bottom: var(--sp-16);
+    }
+
+    .section-title {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: clamp(2rem, 4vw, 3.25rem);
+      line-height: var(--lh-tight);
+      letter-spacing: var(--ls-tight);
+      margin-top: var(--sp-4);
+    }
+
+    .section-title em {
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-weight: 300;
+      color: var(--clr-accent);
+    }
+
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--sp-6);
+      position: relative;
+    }
+
+    /* Connector line between steps */
     .steps-grid::before {
-      content: ''; position: absolute; top: 36px;
-      left: calc(33.33% - 24px); right: calc(33.33% - 24px); height: 1px;
+      content: '';
+      position: absolute;
+      top: 36px;
+      left: calc(33.33% - 24px);
+      right: calc(33.33% - 24px);
+      height: 1px;
       background: linear-gradient(90deg, var(--clr-border), var(--clr-accent) 50%, var(--clr-border));
       z-index: 0;
     }
+
     .step-card {
-      background: var(--clr-bg-3); border: 1px solid var(--clr-border-dim);
-      border-radius: var(--radius-lg); padding: var(--sp-6); position: relative;
+      background: var(--clr-bg-3);
+      border: 1px solid var(--clr-border-dim);
+      border-radius: var(--radius-lg);
+      padding: var(--sp-6);
+      position: relative;
       transition: border-color var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
     }
-    .step-card:hover { border-color: var(--clr-border); transform: translateY(-4px); }
-    .step-num {
-      width: 48px; height: 48px; background: var(--clr-bg-2);
-      border: 1px solid var(--clr-border); border-radius: var(--radius-md);
-      display: flex; align-items: center; justify-content: center;
-      font-family: var(--font-display); font-weight: 800; font-size: var(--fs-lg);
-      color: var(--clr-accent); margin-bottom: var(--sp-5); position: relative; z-index: 1;
-    }
-    .step-icon { font-size: 1.5rem; margin-bottom: var(--sp-4); }
-    .step-title { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-lg); margin-bottom: var(--sp-2); letter-spacing: var(--ls-tight); }
-    .step-desc { font-size: var(--fs-sm); color: var(--clr-text-2); line-height: var(--lh-loose); }
-    .step-code {
-      margin-top: var(--sp-4); padding: var(--sp-3) var(--sp-4);
-      background: var(--clr-bg); border: 1px solid var(--clr-border-dim);
-      border-radius: var(--radius-sm); font-size: var(--fs-xs); color: var(--clr-accent); letter-spacing: 0.02em;
+
+    .step-card:hover {
+      border-color: var(--clr-border);
+      transform: translateY(-4px);
     }
 
-    .themes-section { padding: var(--sp-32) 0; position: relative; z-index: 1; }
-    .themes-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-4); margin-top: var(--sp-10); }
+    .step-num {
+      width: 48px;
+      height: 48px;
+      background: var(--clr-bg-2);
+      border: 1px solid var(--clr-border);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: var(--fs-lg);
+      color: var(--clr-accent);
+      margin-bottom: var(--sp-5);
+      position: relative;
+      z-index: 1;
+    }
+
+    .step-icon {
+      font-size: 1.5rem;
+      margin-bottom: var(--sp-4);
+    }
+
+    .step-title {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: var(--fs-lg);
+      margin-bottom: var(--sp-2);
+      letter-spacing: var(--ls-tight);
+    }
+
+    .step-desc {
+      font-size: var(--fs-sm);
+      color: var(--clr-text-2);
+      line-height: var(--lh-loose);
+    }
+
+    .step-code {
+      margin-top: var(--sp-4);
+      padding: var(--sp-3) var(--sp-4);
+      background: var(--clr-bg);
+      border: 1px solid var(--clr-border-dim);
+      border-radius: var(--radius-sm);
+      font-size: var(--fs-xs);
+      color: var(--clr-accent);
+      letter-spacing: 0.02em;
+    }
+
+    /* ─ Themes Showcase ───────────────────────────────────────── */
+    .themes-section {
+      padding: var(--sp-32) 0;
+      position: relative;
+      z-index: 1;
+    }
+
+    .themes-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--sp-4);
+      margin-top: var(--sp-10);
+    }
+
     .theme-card {
-      border-radius: var(--radius-lg); overflow: hidden; aspect-ratio: 4/3;
-      position: relative; cursor: pointer; border: 1px solid var(--clr-border-dim);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      aspect-ratio: 4/3;
+      position: relative;
+      cursor: pointer;
+      border: 1px solid var(--clr-border-dim);
       transition: transform var(--dur-base) var(--ease-out), border-color var(--dur-base);
     }
-    .theme-card:hover { transform: scale(1.02); border-color: var(--clr-border); }
-    .theme-card__preview { width: 100%; height: 100%; position: relative; }
-    .theme-preview--light { background: #F0F4F2; }
-    .theme-preview--light .preview-nav { background: #fff; border-bottom: 1px solid #e5e9e7; }
+
+    .theme-card:hover {
+      transform: scale(1.02);
+      border-color: var(--clr-border);
+    }
+
+    .theme-card__preview {
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    /* Light theme preview */
+    .theme-preview--light {
+      background: #F0F4F2;
+    }
+    .theme-preview--light .preview-nav {
+      background: #fff;
+      border-bottom: 1px solid #e5e9e7;
+    }
     .theme-preview--light .preview-text { background: #1a1a1a; }
     .theme-preview--light .preview-text.accent { background: #16A34A; }
     .theme-preview--light .preview-card { background: #fff; border: 1px solid #e5e9e7; }
-    .theme-preview--dark { background: #0D1117; }
-    .theme-preview--dark .preview-nav { background: #0D1117; border-bottom: 1px solid #21262D; }
+
+    /* Dark theme preview */
+    .theme-preview--dark {
+      background: #0D1117;
+    }
+    .theme-preview--dark .preview-nav {
+      background: #0D1117;
+      border-bottom: 1px solid #21262D;
+    }
     .theme-preview--dark .preview-text { background: #E6EDF3; }
     .theme-preview--dark .preview-text.accent { background: #00FF88; }
     .theme-preview--dark .preview-card { background: #161B22; border: 1px solid #21262D; }
-    .theme-preview--minimal { background: #FAFAF9; }
-    .theme-preview--minimal .preview-nav { background: transparent; border-bottom: 1px solid #E7E5E4; }
+
+    /* Minimal theme preview */
+    .theme-preview--minimal {
+      background: #FAFAF9;
+    }
+    .theme-preview--minimal .preview-nav {
+      background: transparent;
+      border-bottom: 1px solid #E7E5E4;
+    }
     .theme-preview--minimal .preview-text { background: #1C1917; }
     .theme-preview--minimal .preview-text.accent { background: #1C1917; opacity: 0.3; }
-    .theme-preview--minimal .preview-card { background: transparent; border: none; border-top: 1px solid #E7E5E4; }
-    .theme-preview--glass3d { background: linear-gradient(135deg, #0F0C29, #302B63, #24243E); }
-    .theme-preview--glass3d .preview-nav { background: rgba(255,255,255,0.05); backdrop-filter: blur(8px); border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .theme-preview--minimal .preview-card {
+      background: transparent;
+      border: none;
+      border-top: 1px solid #E7E5E4;
+    }
+
+    /* Glass3D Pro preview */
+    .theme-preview--glass3d {
+      background: linear-gradient(135deg, #0F0C29, #302B63, #24243E);
+    }
+    .theme-preview--glass3d .preview-nav {
+      background: rgba(255,255,255,0.05);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
     .theme-preview--glass3d .preview-text { background: #fff; }
     .theme-preview--glass3d .preview-text.accent { background: #A78BFA; }
-    .theme-preview--glass3d .preview-card { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); backdrop-filter: blur(4px); }
-    .theme-preview--cyberpunk { background: #000; background-image: linear-gradient(rgba(0,255,200,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,200,0.05) 1px, transparent 1px); background-size: 20px 20px; }
-    .theme-preview--cyberpunk .preview-nav { background: rgba(0,0,0,0.8); border-bottom: 1px solid rgba(0,255,200,0.2); }
+    .theme-preview--glass3d .preview-card {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(4px);
+    }
+
+    /* Cyberpunk Pro preview */
+    .theme-preview--cyberpunk {
+      background: #000;
+      background-image: linear-gradient(rgba(0,255,200,0.05) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(0,255,200,0.05) 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+    .theme-preview--cyberpunk .preview-nav {
+      background: rgba(0,0,0,0.8);
+      border-bottom: 1px solid rgba(0,255,200,0.2);
+    }
     .theme-preview--cyberpunk .preview-text { background: #00FFC8; }
     .theme-preview--cyberpunk .preview-text.accent { background: #FF00A0; }
-    .theme-preview--cyberpunk .preview-card { background: rgba(0,255,200,0.04); border: 1px solid rgba(0,255,200,0.15); }
-    .theme-preview--space { background: #020409; background-image: radial-gradient(ellipse at center, #0A1628 0%, #020409 70%); }
-    .theme-preview--space::before { content: ''; position: absolute; inset: 0; background-image: radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,0.6) 0%, transparent 100%), radial-gradient(1px 1px at 60% 70%, rgba(255,255,255,0.4) 0%, transparent 100%), radial-gradient(1px 1px at 80% 20%, rgba(255,255,255,0.5) 0%, transparent 100%), radial-gradient(1px 1px at 40% 80%, rgba(255,255,255,0.3) 0%, transparent 100%), radial-gradient(2px 2px at 10% 60%, rgba(255,255,255,0.4) 0%, transparent 100%); }
-    .theme-preview--space .preview-nav { background: rgba(2,4,9,0.6); border-bottom: 1px solid rgba(100,150,255,0.15); }
+    .theme-preview--cyberpunk .preview-card {
+      background: rgba(0,255,200,0.04);
+      border: 1px solid rgba(0,255,200,0.15);
+    }
+
+    /* Space Pro preview */
+    .theme-preview--space {
+      background: #020409;
+      background-image: radial-gradient(ellipse at center, #0A1628 0%, #020409 70%);
+    }
+    .theme-preview--space::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,0.6) 0%, transparent 100%),
+                        radial-gradient(1px 1px at 60% 70%, rgba(255,255,255,0.4) 0%, transparent 100%),
+                        radial-gradient(1px 1px at 80% 20%, rgba(255,255,255,0.5) 0%, transparent 100%),
+                        radial-gradient(1px 1px at 40% 80%, rgba(255,255,255,0.3) 0%, transparent 100%),
+                        radial-gradient(2px 2px at 10% 60%, rgba(255,255,255,0.4) 0%, transparent 100%);
+    }
+    .theme-preview--space .preview-nav {
+      background: rgba(2,4,9,0.6);
+      border-bottom: 1px solid rgba(100,150,255,0.15);
+    }
     .theme-preview--space .preview-text { background: #E8F0FF; }
     .theme-preview--space .preview-text.accent { background: #6496FF; }
-    .theme-preview--space .preview-card { background: rgba(100,150,255,0.05); border: 1px solid rgba(100,150,255,0.12); }
-    .preview-nav { height: 20%; display: flex; align-items: center; padding: 0 12px; gap: 8px; }
-    .preview-dot { width: 6px; height: 6px; border-radius: 50%; }
-    .preview-body { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
-    .preview-text { height: 6px; border-radius: 3px; opacity: 0.85; }
+    .theme-preview--space .preview-card {
+      background: rgba(100,150,255,0.05);
+      border: 1px solid rgba(100,150,255,0.12);
+    }
+
+    /* Generic preview UI elements */
+    .preview-nav {
+      height: 20%;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 8px;
+    }
+
+    .preview-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    .preview-body {
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .preview-text {
+      height: 6px;
+      border-radius: 3px;
+      opacity: 0.85;
+    }
+
     .preview-text.short { width: 40%; }
     .preview-text.medium { width: 70%; }
     .preview-text.long { width: 90%; }
     .preview-text.accent { width: 30%; }
-    .preview-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 4px; }
-    .preview-card { height: 36px; border-radius: 4px; }
-    .theme-card__overlay {
-      position: absolute; inset: 0;
-      background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 60%);
-      display: flex; flex-direction: column; justify-content: flex-end;
-      padding: var(--sp-4); opacity: 0; transition: opacity var(--dur-base) var(--ease-out);
-    }
-    .theme-card:hover .theme-card__overlay { opacity: 1; }
-    .theme-card__name { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-md); color: #fff; letter-spacing: var(--ls-tight); }
-    .theme-card__badge {
-      font-size: var(--fs-xs); padding: 2px 8px; border-radius: var(--radius-full);
-      display: inline-block; margin-bottom: var(--sp-2); font-weight: 500;
-      text-transform: uppercase; letter-spacing: var(--ls-wide);
-    }
-    .badge-free { background: rgba(0,255,136,0.2); color: var(--clr-accent); border: 1px solid rgba(0,255,136,0.3); }
-    .badge-pro  { background: rgba(168,85,247,0.2); color: #C084FC; border: 1px solid rgba(168,85,247,0.3); }
-    .theme-card--pro .theme-card__preview { position: relative; }
-    .pro-lock {
-      position: absolute; top: var(--sp-3); right: var(--sp-3);
-      background: rgba(168,85,247,0.25); border: 1px solid rgba(168,85,247,0.4);
-      border-radius: var(--radius-full); padding: 4px 10px;
-      font-size: var(--fs-xs); color: #C084FC;
-      display: flex; align-items: center; gap: 4px; font-weight: 500;
-      letter-spacing: var(--ls-wide); text-transform: uppercase; backdrop-filter: blur(4px);
-    }
-    .pro-lock svg { width: 10px; height: 10px; }
 
-    .proof-section { padding: var(--sp-20) 0; position: relative; z-index: 1; }
-    .proof-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-4); }
+    .preview-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .preview-card {
+      height: 36px;
+      border-radius: 4px;
+    }
+
+    .theme-card__overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 60%);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: var(--sp-4);
+      opacity: 0;
+      transition: opacity var(--dur-base) var(--ease-out);
+    }
+
+    .theme-card:hover .theme-card__overlay {
+      opacity: 1;
+    }
+
+    .theme-card__name {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: var(--fs-md);
+      color: #fff;
+      letter-spacing: var(--ls-tight);
+    }
+
+    .theme-card__badge {
+      font-size: var(--fs-xs);
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      display: inline-block;
+      margin-bottom: var(--sp-2);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: var(--ls-wide);
+    }
+
+    .badge-free {
+      background: rgba(0,255,136,0.2);
+      color: var(--clr-accent);
+      border: 1px solid rgba(0,255,136,0.3);
+    }
+
+    .badge-pro {
+      background: rgba(168,85,247,0.2);
+      color: #C084FC;
+      border: 1px solid rgba(168,85,247,0.3);
+    }
+
+    /* Pro lock overlay */
+    .theme-card--pro .theme-card__preview {
+      position: relative;
+    }
+
+    .pro-lock {
+      position: absolute;
+      top: var(--sp-3);
+      right: var(--sp-3);
+      background: rgba(168,85,247,0.25);
+      border: 1px solid rgba(168,85,247,0.4);
+      border-radius: var(--radius-full);
+      padding: 4px 10px;
+      font-size: var(--fs-xs);
+      color: #C084FC;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-weight: 500;
+      letter-spacing: var(--ls-wide);
+      text-transform: uppercase;
+      backdrop-filter: blur(4px);
+    }
+
+    .pro-lock svg {
+      width: 10px;
+      height: 10px;
+    }
+
+    /* ─ Social Proof ──────────────────────────────────────────── */
+    .proof-section {
+      padding: var(--sp-20) 0;
+      position: relative;
+      z-index: 1;
+    }
+
+    .proof-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--sp-4);
+    }
+
     .proof-card {
-      background: var(--clr-bg-3); border: 1px solid var(--clr-border-dim);
-      border-radius: var(--radius-lg); padding: var(--sp-6);
+      background: var(--clr-bg-3);
+      border: 1px solid var(--clr-border-dim);
+      border-radius: var(--radius-lg);
+      padding: var(--sp-6);
       transition: border-color var(--dur-base) var(--ease-out);
     }
-    .proof-card:hover { border-color: var(--clr-border); }
-    .proof-quote { font-family: var(--font-serif); font-style: italic; font-size: var(--fs-md); color: var(--clr-text); line-height: var(--lh-loose); margin-bottom: var(--sp-5); }
-    .proof-author { display: flex; align-items: center; gap: var(--sp-3); }
-    .proof-avatar {
-      width: 36px; height: 36px; border-radius: 50%;
-      background: var(--clr-surface); border: 1px solid var(--clr-border-dim);
-      display: flex; align-items: center; justify-content: center;
-      font-family: var(--font-display); font-weight: 700; font-size: var(--fs-xs);
-      color: var(--clr-accent); flex-shrink: 0;
-    }
-    .proof-name { font-size: var(--fs-sm); font-weight: 500; color: var(--clr-text); }
-    .proof-handle { font-size: var(--fs-xs); color: var(--clr-text-3); }
 
-    .cta-section { padding: var(--sp-32) 0; position: relative; z-index: 1; text-align: center; }
+    .proof-card:hover {
+      border-color: var(--clr-border);
+    }
+
+    .proof-quote {
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-size: var(--fs-md);
+      color: var(--clr-text);
+      line-height: var(--lh-loose);
+      margin-bottom: var(--sp-5);
+    }
+
+    .proof-author {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-3);
+    }
+
+    .proof-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--clr-surface);
+      border: 1px solid var(--clr-border-dim);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: var(--fs-xs);
+      color: var(--clr-accent);
+      flex-shrink: 0;
+    }
+
+    .proof-name {
+      font-size: var(--fs-sm);
+      font-weight: 500;
+      color: var(--clr-text);
+    }
+
+    .proof-handle {
+      font-size: var(--fs-xs);
+      color: var(--clr-text-3);
+    }
+
+    /* ─ Final CTA ─────────────────────────────────────────────── */
+    .cta-section {
+      padding: var(--sp-32) 0;
+      position: relative;
+      z-index: 1;
+      text-align: center;
+    }
+
     .cta-section::before {
-      content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      width: 600px; height: 400px;
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 600px;
+      height: 400px;
       background: radial-gradient(ellipse, rgba(0,255,136,0.05) 0%, transparent 70%);
       pointer-events: none;
     }
-    .cta-title { font-family: var(--font-display); font-weight: 800; font-size: clamp(2.5rem, 6vw, 5rem); line-height: var(--lh-tight); letter-spacing: var(--ls-tight); margin-bottom: var(--sp-6); }
-    .cta-title em { font-family: var(--font-serif); font-style: italic; font-weight: 300; color: var(--clr-accent); }
-    .cta-sub { color: var(--clr-text-2); font-size: var(--fs-md); margin-bottom: var(--sp-10); }
-    .cta-form { display: flex; gap: var(--sp-3); max-width: 500px; margin-inline: auto; }
-    .cta-form .input { flex: 1; }
 
+    .cta-title {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: clamp(2.5rem, 6vw, 5rem);
+      line-height: var(--lh-tight);
+      letter-spacing: var(--ls-tight);
+      margin-bottom: var(--sp-6);
+    }
+
+    .cta-title em {
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-weight: 300;
+      color: var(--clr-accent);
+    }
+
+    .cta-sub {
+      color: var(--clr-text-2);
+      font-size: var(--fs-md);
+      margin-bottom: var(--sp-10);
+    }
+
+    .cta-form {
+      display: flex;
+      gap: var(--sp-3);
+      max-width: 500px;
+      margin-inline: auto;
+    }
+
+    .cta-form .input {
+      flex: 1;
+    }
+
+    /* ─ Responsive ────────────────────────────────────────────── */
     @media (max-width: 1024px) {
-      .hero__inner { grid-template-columns: 1fr; gap: var(--sp-12); }
+      .hero__inner {
+        grid-template-columns: 1fr;
+        gap: var(--sp-12);
+      }
+
       .hero__sub { max-width: 100%; }
-      .themes-grid { grid-template-columns: repeat(2, 1fr); }
-      .themes-grid > *:last-child { grid-column: 1 / -1; }
+
+      .themes-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .themes-grid > *:last-child {
+        grid-column: 1 / -1;
+      }
     }
+
     @media (max-width: 768px) {
-      .steps-grid { grid-template-columns: 1fr; }
+      .steps-grid {
+        grid-template-columns: 1fr;
+      }
+
       .steps-grid::before { display: none; }
-      .proof-grid { grid-template-columns: 1fr; }
-      .themes-grid { grid-template-columns: 1fr; }
-      .cta-form { flex-direction: column; }
-      .stats-strip { gap: var(--sp-6); }
-      .form-meta { flex-wrap: wrap; }
+
+      .proof-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .themes-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .cta-form {
+        flex-direction: column;
+      }
+
+      .stats-strip {
+        gap: var(--sp-6);
+      }
+
+      .form-meta {
+        flex-wrap: wrap;
+      }
     }
+
     @media (max-width: 480px) {
       .hero__title { font-size: clamp(2.5rem, 12vw, 4rem); }
     }
 
+    /* ── Auth hidden utility ──────────────────────────────────── */
     .hidden { display: none !important; }
   </style>
 </head>
@@ -334,6 +889,7 @@
     <div class="container">
       <div class="nav__inner">
 
+        <!-- Logo -->
         <a href="/" class="nav__logo" aria-label="Portfolio Generator home">
           <div class="nav-logo-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -344,23 +900,61 @@
           port<span>folio</span>.dev
         </a>
 
+        <!-- Links -->
         <div class="nav__links" role="list">
           <a href="#how-it-works" class="nav__link" role="listitem">How it works</a>
           <a href="#themes" class="nav__link" role="listitem">Themes</a>
           <a href="pricing.html" class="nav__link" role="listitem">Pricing</a>
         </div>
 
+        <!-- Actions -->
         <div class="nav__actions">
           <a href="#generate" class="btn btn-primary btn-sm">Try Free</a>
         </div>
 
         <!-- Auth Area -->
-        <!-- [FIX] onclick المباشر استُبدل بـ event listeners في DOMContentLoaded -->
         <div class="nav__auth-area" style="display:flex;align-items:center;gap:0.75rem;">
-          <button class="btn btn--ghost btn--sm" data-nav-signin>Sign in with GitHub</button>
-          <a href="dashboard.html" class="btn btn--ghost btn--sm hidden" data-nav-dashboard style="text-decoration:none;">Dashboard</a>
-          <img id="nav-avatar" class="nav-avatar hidden" src="" alt="Your avatar" data-nav-avatar title="Go to Dashboard" style="width:32px;height:32px;border-radius:50%;border:1.5px solid rgba(0,255,136,0.3);cursor:pointer;" />
-          <button class="btn btn--ghost btn--sm hidden" data-nav-signout>Sign Out</button>
+
+          <!-- يظهر لو مش logged in -->
+          <button
+            class="btn btn--ghost btn--sm"
+            data-nav-signin
+            onclick="Auth.signIn()"
+          >
+            Sign in with GitHub
+          </button>
+
+          <!-- يظهر لو logged in -->
+          <a
+            href="dashboard.html"
+            class="btn btn--ghost btn--sm hidden"
+            data-nav-dashboard
+            style="text-decoration:none;"
+          >
+            Dashboard
+          </a>
+
+          <!-- Avatar المستخدم -->
+          <img
+            id="nav-avatar"
+            class="nav-avatar hidden"
+            src=""
+            alt="Your avatar"
+            data-nav-avatar
+            onclick="window.location.href='dashboard.html'"
+            title="Go to Dashboard"
+            style="width:32px;height:32px;border-radius:50%;border:1.5px solid rgba(0,255,136,0.3);cursor:pointer;"
+          />
+
+          <!-- Sign out -->
+          <button
+            class="btn btn--ghost btn--sm hidden"
+            data-nav-signout
+            onclick="Auth.signOut()"
+          >
+            Sign Out
+          </button>
+
         </div>
 
       </div>
@@ -373,6 +967,7 @@
     <div class="container">
       <div class="hero__inner">
 
+        <!-- Left: Copy -->
         <div class="hero__copy">
           <div class="hero__eyebrow" data-anim="fade">
             <span class="eyebrow">AI-Powered · Zero Design Skills</span>
@@ -394,6 +989,7 @@
             <span>Average generation time: <strong style="color:var(--clr-text-2)">42 seconds</strong></span>
           </div>
 
+          <!-- Stats -->
           <div class="stats-strip" data-anim>
             <div class="stat-item">
               <div class="stat-item__value">12<span>k+</span></div>
@@ -412,14 +1008,20 @@
 
         <!-- Right: Form Card -->
         <div class="hero-form-card" id="generate" data-anim="scale">
+
+          <!-- Terminal chrome -->
           <div class="hero-form-card__header">
-            <div class="terminal-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+            <div class="terminal-dots" aria-hidden="true">
+              <span></span><span></span><span></span>
+            </div>
             <span class="terminal-title">generate.sh</span>
           </div>
 
+          <!-- Form -->
           <form id="generate-form" data-generate-form novalidate aria-label="Portfolio generation form">
             <div class="form-inputs">
 
+              <!-- GitHub Username -->
               <div class="input-group">
                 <label class="input-label" for="input-github">GitHub Username</label>
                 <div class="github-input-wrap">
@@ -429,35 +1031,63 @@
                     </svg>
                     github.com/
                   </span>
-                  <input type="text" id="input-github" class="input" data-field="github-username"
-                    placeholder="torvalds" autocomplete="off" autocorrect="off"
-                    autocapitalize="off" spellcheck="false"
-                    aria-required="true" aria-describedby="github-hint" />
+                  <input
+                    type="text"
+                    id="input-github"
+                    class="input"
+                    data-field="github-username"
+                    placeholder="torvalds"
+                    autocomplete="off"
+                    autocorrect="off"
+                    autocapitalize="off"
+                    spellcheck="false"
+                    aria-required="true"
+                    aria-describedby="github-hint"
+                  />
                 </div>
                 <p class="input-hint" id="github-hint">Public profile only — no token required</p>
               </div>
 
+              <!-- Full Name -->
               <div class="input-group">
                 <label class="input-label" for="input-name">Full Name</label>
-                <input type="text" id="input-name" class="input" data-field="name"
-                  placeholder="Linus Torvalds" autocomplete="name" aria-required="true" />
+                <input
+                  type="text"
+                  id="input-name"
+                  class="input"
+                  data-field="name"
+                  placeholder="Linus Torvalds"
+                  autocomplete="name"
+                  aria-required="true"
+                />
               </div>
 
+              <!-- Job Title -->
               <div class="input-group">
                 <label class="input-label" for="input-title">Job Title</label>
-                <input type="text" id="input-title" class="input" data-field="job-title"
-                  placeholder="Senior Software Engineer" autocomplete="organization-title" />
+                <input
+                  type="text"
+                  id="input-title"
+                  class="input"
+                  data-field="job-title"
+                  placeholder="Senior Software Engineer"
+                  autocomplete="organization-title"
+                />
               </div>
 
             </div>
 
+            <!-- Error Message -->
             <div class="form-error" id="form-error" role="alert" aria-live="polite">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
               </svg>
               <span id="form-error-text">Please fill in all required fields.</span>
             </div>
 
+            <!-- CTA Button -->
             <button type="submit" class="btn-generate" id="btn-generate" aria-label="Generate my portfolio">
               <div class="btn-generate__inner">
                 <span class="btn-generate__icon" aria-hidden="true">⚡</span>
@@ -465,36 +1095,77 @@
                 <span class="btn-generate__timer">— usually ~42s</span>
               </div>
             </button>
+
           </form>
 
-          <!-- Progress Bar -->
-          <div data-progress-container style="display:none; margin-top: var(--sp-5);"
-               aria-live="polite" aria-label="Generation progress">
-            <div style="height:3px;background:var(--clr-bg-2);border-radius:99px;overflow:hidden;margin-bottom:var(--sp-3);">
-              <div data-progress-bar role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
-                style="height:100%;width:0%;background:var(--clr-accent);border-radius:99px;transition:width 0.4s ease;box-shadow:0 0 8px rgba(0,255,136,0.5);">
-              </div>
+          <!-- Progress Bar (shown by ai.js during generation) -->
+          <div
+            data-progress-container
+            style="display:none; margin-top: var(--sp-5);"
+            aria-live="polite"
+            aria-label="Generation progress"
+          >
+            <div style="
+              height: 3px;
+              background: var(--clr-bg-2);
+              border-radius: 99px;
+              overflow: hidden;
+              margin-bottom: var(--sp-3);
+            ">
+              <div
+                data-progress-bar
+                role="progressbar"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                aria-valuenow="0"
+                style="
+                  height: 100%;
+                  width: 0%;
+                  background: var(--clr-accent);
+                  border-radius: 99px;
+                  transition: width 0.4s ease;
+                  box-shadow: 0 0 8px rgba(0,255,136,0.5);
+                "
+              ></div>
             </div>
-            <p data-progress-label style="font-size:var(--fs-xs);color:var(--clr-text-3);text-align:center;letter-spacing:var(--ls-wide);">Starting…</p>
+            <p
+              data-progress-label
+              style="
+                font-size: var(--fs-xs);
+                color: var(--clr-text-3);
+                text-align: center;
+                letter-spacing: var(--ls-wide);
+              "
+            >Starting…</p>
           </div>
 
+          <!-- Form Meta -->
           <div class="form-meta" aria-label="Trust signals">
             <div class="form-meta__item">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
               No account needed
             </div>
             <div class="form-meta__sep" aria-hidden="true"></div>
             <div class="form-meta__item">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
               Takes ~60 seconds
             </div>
             <div class="form-meta__sep" aria-hidden="true"></div>
             <div class="form-meta__item">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
               100% free to start
             </div>
           </div>
+
         </div>
+        <!-- /hero-form-card -->
 
       </div>
     </div>
@@ -504,7 +1175,11 @@
   <!-- ── Marquee ──────────────────────────────────────────────── -->
   <div class="marquee-section" aria-hidden="true">
     <div class="marquee-track" id="marquee-track">
-      <div class="marquee-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg><strong>Powered by GitHub API</strong></div>
+      <!-- Items duplicated for seamless loop (JS adds second copy) -->
+      <div class="marquee-item">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+        <strong>Powered by GitHub API</strong>
+      </div>
       <span class="marquee-divider">✦</span>
       <div class="marquee-item">Llama 4 Scout by Meta</div>
       <span class="marquee-divider">✦</span>
@@ -524,8 +1199,12 @@
       <span class="marquee-divider">✦</span>
       <div class="marquee-item">Supabase Backend</div>
       <span class="marquee-divider">✦</span>
+
       <!-- Duplicate for seamless loop -->
-      <div class="marquee-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg><strong>Powered by GitHub API</strong></div>
+      <div class="marquee-item">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+        <strong>Powered by GitHub API</strong>
+      </div>
       <span class="marquee-divider">✦</span>
       <div class="marquee-item">Llama 4 Scout by Meta</div>
       <span class="marquee-divider">✦</span>
@@ -552,91 +1231,231 @@
   <!-- ── How It Works ─────────────────────────────────────────── -->
   <section class="how-section" id="how-it-works" aria-labelledby="how-title">
     <div class="container">
+
       <div class="section-header" data-anim>
         <span class="eyebrow">Zero setup required</span>
-        <h2 class="section-title" id="how-title">Three steps.<br><em>One portfolio.</em></h2>
+        <h2 class="section-title" id="how-title">
+          Three steps.<br>
+          <em>One portfolio.</em>
+        </h2>
       </div>
+
       <div class="steps-grid">
+
         <div class="step-card" data-anim>
           <div class="step-num" aria-hidden="true">01</div>
           <div class="step-icon" aria-hidden="true">⌨️</div>
           <h3 class="step-title">Drop your username</h3>
-          <p class="step-desc">Type your GitHub handle. We read your public repos, stars, languages, and commits — no token needed.</p>
-          <div class="step-code">github.com/<strong>your-username</strong></div>
+          <p class="step-desc">
+            Type your GitHub handle. We read your public repos, stars, languages,
+            and descriptions — no OAuth token, no permissions needed.
+          </p>
+          <div class="step-code" aria-label="Example: github.com/torvalds">
+            github.com/<span style="color:var(--clr-text-2)">torvalds</span>
+          </div>
         </div>
+
         <div class="step-card" data-anim>
           <div class="step-num" aria-hidden="true">02</div>
           <div class="step-icon" aria-hidden="true">🤖</div>
-          <h3 class="step-title">AI writes your story</h3>
-          <p class="step-desc">Llama 4 analyzes your repos and generates a compelling bio + project descriptions that actually reflect your work.</p>
+          <h3 class="step-title">AI does the heavy lifting</h3>
+          <p class="step-desc">
+            Llama 4 Scout analyzes your work, writes a compelling bio, extracts
+            skills, and crafts project descriptions. Smart sorting surfaces your
+            best work first.
+          </p>
+          <div class="step-code" aria-label="AI model">
+            meta-llama/llama-4-scout-17b
+          </div>
         </div>
+
         <div class="step-card" data-anim>
           <div class="step-num" aria-hidden="true">03</div>
           <div class="step-icon" aria-hidden="true">🚀</div>
-          <h3 class="step-title">Publish & share</h3>
-          <p class="step-desc">Edit inline, pick a theme, and publish with one click. Share your link in job applications or LinkedIn.</p>
+          <h3 class="step-title">Publish in one click</h3>
+          <p class="step-desc">
+            Edit anything inline. Pick your theme. Hit publish. Get a shareable
+            URL you can put in your email signature and LinkedIn bio right now.
+          </p>
+          <div class="step-code" aria-label="Example portfolio URL">
+            portfolio.dev/p/<span style="color:var(--clr-text-2)">your-name</span>
+          </div>
         </div>
+
       </div>
     </div>
   </section>
 
 
-  <!-- ── Themes ────────────────────────────────────────────────── -->
+  <!-- ── Themes Showcase ───────────────────────────────────────── -->
   <section class="themes-section" id="themes" aria-labelledby="themes-title">
     <div class="container">
-      <div class="section-header text-center" data-anim>
-        <span class="eyebrow" style="justify-content:center;">3 free · 3 pro</span>
-        <h2 class="section-title" id="themes-title">Pick your<br><em>aesthetic.</em></h2>
+
+      <div class="section-header" data-anim>
+        <span class="eyebrow">Pick your vibe</span>
+        <h2 class="section-title" id="themes-title">
+          Six themes.<br>
+          <em>All stunning.</em>
+        </h2>
       </div>
-      <div class="themes-grid">
-        <!-- Free themes -->
-        <div class="theme-card" data-theme="light" role="button" tabindex="0" aria-label="Select Light theme">
+
+      <div class="themes-grid" data-anim>
+
+        <!-- Light (Free) -->
+        <div class="theme-card" data-theme="light" role="button" tabindex="0" aria-label="Light theme — free">
           <div class="theme-card__preview theme-preview--light">
-            <div class="preview-nav"><div class="preview-dot"></div><div class="preview-dot"></div></div>
-            <div class="preview-body"><div class="preview-text accent"></div><div class="preview-text long"></div><div class="preview-text medium"></div><div class="preview-cards"><div class="preview-card"></div><div class="preview-card"></div></div></div>
+            <div class="preview-nav">
+              <div class="preview-dot" style="background:#1a1a1a; width:40px; height:6px; border-radius:3px;"></div>
+            </div>
+            <div class="preview-body">
+              <div class="preview-text accent"></div>
+              <div class="preview-text long"></div>
+              <div class="preview-text medium"></div>
+              <div class="preview-cards">
+                <div class="preview-card"></div>
+                <div class="preview-card"></div>
+              </div>
+            </div>
           </div>
-          <div class="theme-card__overlay"><span class="theme-card__badge badge-free">Free</span><div class="theme-card__name">Light</div></div>
+          <div class="theme-card__overlay">
+            <span class="theme-card__badge badge-free">Free</span>
+            <div class="theme-card__name">Light</div>
+          </div>
         </div>
-        <div class="theme-card" data-theme="dark" role="button" tabindex="0" aria-label="Select Dark theme">
+
+        <!-- Dark (Free) -->
+        <div class="theme-card" data-theme="dark" role="button" tabindex="0" aria-label="Dark theme — free">
           <div class="theme-card__preview theme-preview--dark">
-            <div class="preview-nav"><div class="preview-dot"></div><div class="preview-dot"></div></div>
-            <div class="preview-body"><div class="preview-text accent"></div><div class="preview-text long"></div><div class="preview-text medium"></div><div class="preview-cards"><div class="preview-card"></div><div class="preview-card"></div></div></div>
+            <div class="preview-nav">
+              <div class="preview-dot" style="background:#E6EDF3; width:40px; height:6px; border-radius:3px;"></div>
+            </div>
+            <div class="preview-body">
+              <div class="preview-text accent"></div>
+              <div class="preview-text long"></div>
+              <div class="preview-text medium"></div>
+              <div class="preview-cards">
+                <div class="preview-card"></div>
+                <div class="preview-card"></div>
+              </div>
+            </div>
           </div>
-          <div class="theme-card__overlay"><span class="theme-card__badge badge-free">Free</span><div class="theme-card__name">Dark</div></div>
+          <div class="theme-card__overlay">
+            <span class="theme-card__badge badge-free">Free</span>
+            <div class="theme-card__name">Dark</div>
+          </div>
         </div>
-        <div class="theme-card" data-theme="minimal" role="button" tabindex="0" aria-label="Select Minimal theme">
+
+        <!-- Minimal (Free) -->
+        <div class="theme-card" data-theme="minimal" role="button" tabindex="0" aria-label="Minimal theme — free">
           <div class="theme-card__preview theme-preview--minimal">
-            <div class="preview-nav"><div class="preview-dot"></div><div class="preview-dot"></div></div>
-            <div class="preview-body"><div class="preview-text accent"></div><div class="preview-text long"></div><div class="preview-text medium"></div><div class="preview-cards"><div class="preview-card"></div><div class="preview-card"></div></div></div>
+            <div class="preview-nav">
+              <div class="preview-dot" style="background:#1C1917; width:40px; height:6px; border-radius:3px;"></div>
+            </div>
+            <div class="preview-body">
+              <div class="preview-text accent"></div>
+              <div class="preview-text long"></div>
+              <div class="preview-text medium"></div>
+              <div class="preview-cards">
+                <div class="preview-card"></div>
+                <div class="preview-card"></div>
+              </div>
+            </div>
           </div>
-          <div class="theme-card__overlay"><span class="theme-card__badge badge-free">Free</span><div class="theme-card__name">Minimal</div></div>
+          <div class="theme-card__overlay">
+            <span class="theme-card__badge badge-free">Free</span>
+            <div class="theme-card__name">Minimal</div>
+          </div>
         </div>
-        <!-- Pro themes -->
+
+        <!-- Glass3D (Pro) -->
         <div class="theme-card theme-card--pro" data-theme="glass3d" role="button" tabindex="0" aria-label="Glass 3D theme — Pro">
           <div class="theme-card__preview theme-preview--glass3d">
-            <span class="pro-lock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Pro</span>
-            <div class="preview-nav"><div class="preview-dot" style="background:rgba(167,139,250,0.7);width:40px;height:6px;border-radius:3px;"></div></div>
-            <div class="preview-body"><div class="preview-text accent" style="background:#A78BFA;"></div><div class="preview-text long"></div><div class="preview-text medium"></div><div class="preview-cards"><div class="preview-card"></div><div class="preview-card"></div></div></div>
+            <div class="pro-lock" aria-label="Pro feature">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+              Pro
+            </div>
+            <div class="preview-nav">
+              <div class="preview-dot" style="background:rgba(255,255,255,0.8); width:40px; height:6px; border-radius:3px;"></div>
+            </div>
+            <div class="preview-body">
+              <div class="preview-text accent" style="background:#A78BFA;"></div>
+              <div class="preview-text long" style="background:rgba(255,255,255,0.7);"></div>
+              <div class="preview-text medium" style="background:rgba(255,255,255,0.5);"></div>
+              <div class="preview-cards">
+                <div class="preview-card"></div>
+                <div class="preview-card"></div>
+              </div>
+            </div>
           </div>
-          <div class="theme-card__overlay"><span class="theme-card__badge badge-pro">Pro</span><div class="theme-card__name">Glass 3D</div></div>
+          <div class="theme-card__overlay">
+            <span class="theme-card__badge badge-pro">Pro</span>
+            <div class="theme-card__name">Glass 3D</div>
+          </div>
         </div>
+
+        <!-- Cyberpunk (Pro) -->
         <div class="theme-card theme-card--pro" data-theme="cyberpunk" role="button" tabindex="0" aria-label="Cyberpunk theme — Pro">
           <div class="theme-card__preview theme-preview--cyberpunk">
-            <span class="pro-lock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Pro</span>
-            <div class="preview-nav"><div class="preview-dot" style="background:rgba(0,255,200,0.7);width:40px;height:6px;border-radius:3px;"></div></div>
-            <div class="preview-body"><div class="preview-text accent" style="background:#FF00A0;"></div><div class="preview-text long" style="background:rgba(0,255,200,0.7);"></div><div class="preview-text medium" style="background:rgba(0,255,200,0.5);"></div><div class="preview-cards"><div class="preview-card"></div><div class="preview-card"></div></div></div>
+            <div class="pro-lock" aria-label="Pro feature">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+              Pro
+            </div>
+            <div class="preview-nav">
+              <div class="preview-dot" style="background:rgba(0,255,200,0.7); width:40px; height:6px; border-radius:3px;"></div>
+            </div>
+            <div class="preview-body">
+              <div class="preview-text accent" style="background:#FF00A0;"></div>
+              <div class="preview-text long" style="background:rgba(0,255,200,0.7);"></div>
+              <div class="preview-text medium" style="background:rgba(0,255,200,0.5);"></div>
+              <div class="preview-cards">
+                <div class="preview-card"></div>
+                <div class="preview-card"></div>
+              </div>
+            </div>
           </div>
-          <div class="theme-card__overlay"><span class="theme-card__badge badge-pro">Pro</span><div class="theme-card__name">Cyberpunk</div></div>
+          <div class="theme-card__overlay">
+            <span class="theme-card__badge badge-pro">Pro</span>
+            <div class="theme-card__name">Cyberpunk</div>
+          </div>
         </div>
+
+        <!-- Space (Pro) -->
         <div class="theme-card theme-card--pro" data-theme="space" role="button" tabindex="0" aria-label="Space theme — Pro">
           <div class="theme-card__preview theme-preview--space">
-            <span class="pro-lock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Pro</span>
-            <div class="preview-nav"><div class="preview-dot" style="background:rgba(100,150,255,0.7);width:40px;height:6px;border-radius:3px;"></div></div>
-            <div class="preview-body"><div class="preview-text accent" style="background:#6496FF;"></div><div class="preview-text long" style="background:rgba(232,240,255,0.7);"></div><div class="preview-text medium" style="background:rgba(232,240,255,0.5);"></div><div class="preview-cards"><div class="preview-card"></div><div class="preview-card"></div></div></div>
+            <div class="pro-lock" aria-label="Pro feature">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+              Pro
+            </div>
+            <div class="preview-nav">
+              <div class="preview-dot" style="background:rgba(100,150,255,0.7); width:40px; height:6px; border-radius:3px;"></div>
+            </div>
+            <div class="preview-body">
+              <div class="preview-text accent" style="background:#6496FF;"></div>
+              <div class="preview-text long" style="background:rgba(232,240,255,0.7);"></div>
+              <div class="preview-text medium" style="background:rgba(232,240,255,0.5);"></div>
+              <div class="preview-cards">
+                <div class="preview-card"></div>
+                <div class="preview-card"></div>
+              </div>
+            </div>
           </div>
-          <div class="theme-card__overlay"><span class="theme-card__badge badge-pro">Pro</span><div class="theme-card__name">Space</div></div>
+          <div class="theme-card__overlay">
+            <span class="theme-card__badge badge-pro">Pro</span>
+            <div class="theme-card__name">Space</div>
+          </div>
         </div>
+
       </div>
+
     </div>
   </section>
 
@@ -644,24 +1463,51 @@
   <!-- ── Social Proof ─────────────────────────────────────────── -->
   <section class="proof-section" aria-labelledby="proof-title">
     <div class="container">
+
       <div class="section-header text-center" data-anim>
         <span class="eyebrow" style="justify-content:center;">What developers are saying</span>
-        <h2 class="section-title" id="proof-title" style="text-align:center;"><em>Real portfolios.</em><br>Real results.</h2>
+        <h2 class="section-title" id="proof-title" style="text-align:center;">
+          <em>Real portfolios.</em><br>Real results.
+        </h2>
       </div>
+
       <div class="proof-grid" data-anim>
+
         <div class="proof-card">
           <p class="proof-quote">"Spent 3 weeks trying to build my portfolio from scratch. Used this, got it done in 48 seconds. It's embarrassingly good."</p>
-          <div class="proof-author"><div class="proof-avatar" aria-hidden="true">AR</div><div><div class="proof-name">Ahmed R.</div><div class="proof-handle">@ahmedrashad · Backend Engineer</div></div></div>
+          <div class="proof-author">
+            <div class="proof-avatar" aria-hidden="true">AR</div>
+            <div>
+              <div class="proof-name">Ahmed R.</div>
+              <div class="proof-handle">@ahmedrashad · Backend Engineer</div>
+            </div>
+          </div>
         </div>
+
         <div class="proof-card">
           <p class="proof-quote">"The AI picked up on exactly what made my projects interesting. I barely had to edit anything. The Glass3D theme is 🔥"</p>
-          <div class="proof-author"><div class="proof-avatar" aria-hidden="true">SK</div><div><div class="proof-name">Sara K.</div><div class="proof-handle">@sarakdev · Full Stack Dev</div></div></div>
+          <div class="proof-author">
+            <div class="proof-avatar" aria-hidden="true">SK</div>
+            <div>
+              <div class="proof-name">Sara K.</div>
+              <div class="proof-handle">@sarakdev · Full Stack Dev</div>
+            </div>
+          </div>
         </div>
+
         <div class="proof-card">
           <p class="proof-quote">"Sent this link in my job application instead of a resume. Got a call back the same day. Portfolio > resume, always."</p>
-          <div class="proof-author"><div class="proof-avatar" aria-hidden="true">MO</div><div><div class="proof-name">Mohamed O.</div><div class="proof-handle">@mohameddev · DevOps Engineer</div></div></div>
+          <div class="proof-author">
+            <div class="proof-avatar" aria-hidden="true">MO</div>
+            <div>
+              <div class="proof-name">Mohamed O.</div>
+              <div class="proof-handle">@mohameddev · DevOps Engineer</div>
+            </div>
+          </div>
         </div>
+
       </div>
+
     </div>
   </section>
 
@@ -669,21 +1515,35 @@
   <!-- ── Final CTA ─────────────────────────────────────────────── -->
   <section class="cta-section" id="pricing" aria-labelledby="cta-title">
     <div class="container">
+
       <div data-anim>
         <span class="eyebrow" style="justify-content:center; margin-bottom: var(--sp-4);">Free forever · No credit card</span>
-        <h2 class="cta-title" id="cta-title">Stop waiting.<br>Start <em>shipping.</em></h2>
+        <h2 class="cta-title" id="cta-title">
+          Stop waiting.<br>
+          Start <em>shipping.</em>
+        </h2>
         <p class="cta-sub">Your GitHub already has the work. We just make it look like it deserves to.</p>
       </div>
+
       <div class="cta-form" data-anim>
-        <input type="text" class="input" placeholder="your-github-username"
-          aria-label="GitHub username for portfolio generation" id="cta-input-github" />
+        <input
+          type="text"
+          class="input"
+          placeholder="your-github-username"
+          aria-label="GitHub username for portfolio generation"
+          id="cta-input-github"
+        />
         <button class="btn btn-primary btn-lg" id="cta-btn" aria-label="Generate portfolio from CTA section">
           Generate Free
         </button>
       </div>
+
       <div data-anim style="margin-top:var(--sp-6);display:flex;align-items:center;justify-content:center;gap:var(--sp-4);">
-        <a href="pricing.html" class="btn btn--ghost btn--sm" style="text-decoration:none;">View Pricing & Pro Plans →</a>
+        <a href="pricing.html" class="btn btn--ghost btn--sm" style="text-decoration:none;">
+          View Pricing & Pro Plans →
+        </a>
       </div>
+
     </div>
   </section>
 
@@ -695,12 +1555,17 @@
         <div class="nav__logo" aria-label="Portfolio Generator">
           <div class="nav-logo-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline>
+              <polyline points="16 18 22 12 16 6"></polyline>
+              <polyline points="8 6 2 12 8 18"></polyline>
             </svg>
           </div>
           port<span>folio</span>.dev
         </div>
-        <p class="footer__copy">Built with GitHub API · Groq · Supabase · Llama 4</p>
+
+        <p class="footer__copy">
+          Built with GitHub API · Groq · Supabase · Llama 4
+        </p>
+
         <div style="display:flex; gap:var(--sp-6);">
           <a href="privacy.html" class="nav__link" style="font-size:var(--fs-xs);">Privacy</a>
           <a href="terms.html" class="nav__link" style="font-size:var(--fs-xs);">Terms</a>
@@ -710,12 +1575,17 @@
     </div>
   </footer>
 
+
   <!-- ── Toast Container ──────────────────────────────────────── -->
   <div class="toast-container" id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
 
   <!-- ── Scripts ──────────────────────────────────────────────── -->
-  <!-- Supabase config — يجب أن يكون أول شيء -->
+  <!-- GSAP via CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js" defer></script>
+
+
   <script>
     window.SUPABASE_URL      = "https://zxybqbjsnriwpjehinwb.supabase.co";
     window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4eWJxYmpzbnJpd3BqZWhpbndiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMjI1NDEsImV4cCI6MjA5MDY5ODU0MX0.ED8CX81h78oga482b9pepZPsqfvX7znMqmtO0VRn3AM";
@@ -724,58 +1594,39 @@
   <!-- Supabase SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
-  <!-- [FIX] كل الـ app scripts بـ defer — بيضمن الترتيب ومش بيبلوكوا الـ HTML parsing -->
-  <script src="js/github.js" defer></script>
-  <script src="js/auth.js" defer></script>
-  <script src="js/ai.js" defer></script>
-
-  <!-- GSAP via CDN — defer -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js" defer></script>
+  <!-- App scripts (defer for performance) -->
+  <script src="js/github.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/ai.js"></script>
   <script src="js/app.js" defer></script>
 
-  <!-- Bootstrap — يشتغل بعد الـ DOM -->
+  <!-- Inline bootstrap — runs immediately for critical interactions -->
   <script>
+    /* ── Nav scroll effect ──────────────────────────────── */
+    const nav = document.getElementById('nav');
+    window.addEventListener('scroll', () => {
+      nav.classList.toggle('is-scrolled', window.scrollY > 20);
+    }, { passive: true });
+
+    /* ── CTA section → scroll to hero form ─────────────── */
     document.addEventListener('DOMContentLoaded', () => {
-
-      /* ── Nav scroll effect ──────────────────────────────── */
-      const nav = document.getElementById('nav');
-      window.addEventListener('scroll', () => {
-        nav.classList.toggle('is-scrolled', window.scrollY > 20);
-      }, { passive: true });
-
-      /* ── [FIX] Auth buttons — event listeners بدل inline onclick ── */
-      document.querySelector('[data-nav-signin]')
-        ?.addEventListener('click', () => Auth.signIn?.());
-      document.querySelector('[data-nav-signout]')
-        ?.addEventListener('click', () => Auth.signOut?.());
-      document.querySelector('[data-nav-avatar]')
-        ?.addEventListener('click', () => { window.location.href = 'dashboard.html'; });
-
-      /* ── CTA section → scroll to hero form ─────────────── */
-      const ctaBtn    = document.getElementById('cta-btn');
-      const ctaInput  = document.getElementById('cta-input-github');
+      const ctaBtn = document.getElementById('cta-btn');
+      const ctaInput = document.getElementById('cta-input-github');
       const heroInput = document.getElementById('input-github');
 
       if (ctaBtn && ctaInput && heroInput) {
-        // [FIX] أضفنا keydown على الـ CTA input — المستخدم يقدر يضغط Enter
-        const triggerGenerate = () => {
+        ctaBtn.addEventListener('click', () => {
           const val = ctaInput.value.trim();
           if (val) heroInput.value = val;
           document.getElementById('generate').scrollIntoView({ behavior: 'smooth' });
           setTimeout(() => heroInput.focus(), 600);
-        };
-
-        ctaBtn.addEventListener('click', triggerGenerate);
-        // [FIX] Enter في الـ CTA input يشغّل نفس الـ action
-        ctaInput.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') { e.preventDefault(); triggerGenerate(); }
         });
       }
 
-      /* ── Form error helpers ────────────────────────────── */
+      /* ── Form error helpers (ai.js handles submit) ────── */
       const inputGH = document.getElementById('input-github');
       const errBox  = document.getElementById('form-error');
+      const errText = document.getElementById('form-error-text');
 
       if (inputGH && errBox) {
         inputGH.addEventListener('input', () => {
@@ -788,25 +1639,29 @@
       document.querySelectorAll('.theme-card').forEach(card => {
         card.addEventListener('click', () => {
           const theme = card.dataset.theme;
+          const isPro = card.classList.contains('theme-card--pro');
 
-          try {
-            // [FIX] مفتاح واحد للكل — pg_intended_theme — بغض النظر عن free/Pro.
-            // ai.js يقرأ pg_intended_theme أولاً، لذا نكتب فيه دائماً.
-            // نحذف pg_theme القديم لو كان موجوداً لنمنع تعارض الأولوية.
+          if (isPro) {
+            // Store intended Pro theme — show upsell after generation
             sessionStorage.setItem('pg_intended_theme', theme);
-            sessionStorage.removeItem('pg_theme');
-          } catch {}
+          } else {
+            sessionStorage.setItem('pg_theme', theme);
+          }
 
           document.getElementById('generate').scrollIntoView({ behavior: 'smooth' });
           setTimeout(() => document.getElementById('input-github').focus(), 600);
         });
 
+        // Keyboard support
         card.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); card.click(); }
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            card.click();
+          }
         });
       });
 
-      /* ── Input label color on focus ──────────────────────── */
+      /* ── Subtle input animation on focus ──────────────── */
       document.querySelectorAll('.input').forEach(input => {
         input.addEventListener('focus', function() {
           this.closest('.input-group, .cta-form')
@@ -819,7 +1674,6 @@
             ?.style.removeProperty('color');
         });
       });
-
     });
   </script>
 
