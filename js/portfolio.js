@@ -53,7 +53,7 @@
   ═══════════════════════════════════════════════════════════════ */
 
   // ⚠️ غيّر الـ SECRET ده بقيمة سرية ثابتة — نفس القيمة في البوت
-  const GPORT_SECRET  = '65c021d4717e612a0af42b1feed99e8b11424314ee28f23c8d949b7b51cff70c';
+  const GPORT_SECRET  = ''; // validation moved to server
   const GPORT_PREFIX  = 'GPORT';
   const WINDOW_MS     = 48 * 60 * 60 * 1000; // 48 ساعة
 
