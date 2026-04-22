@@ -865,7 +865,7 @@ function _updateBottomNav() {
   const nextBtn = document.getElementById('next-btn');
   if (_step === TOTAL_STEPS - 1) {
     nextBtn.textContent = '✓ Save & Finish';
-    nextBtn.onclick = () => { CVBuilder.save(); window.toast?.('CV saved! ✓', 'success'); setTimeout(() => location.href = 'dashboard.html', 1200); };
+    nextBtn.onclick = () => { CVBuilder.save(); window._cvToast('CV saved! ✓', 'success'); setTimeout(() => location.href = 'dashboard.html', 1200); };
   } else {
     nextBtn.textContent = 'Next →';
     nextBtn.onclick = CVBuilder.nextStep;
@@ -1503,7 +1503,13 @@ function _renderPreview() {
 
 function save() {
   _readCurrentStep();
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(_cv)); } catch {}
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(_cv));
+  } catch (e) {
+    // localStorage ممكن يكون full أو disabled
+    console.warn('[CV Builder] Could not save to localStorage:', e.message);
+    window._cvToast?.('Could not save — storage full. Download PDF to keep your CV.', 'warn');
+  }
   _updateCompletion();
   _renderPreview();
 }
@@ -1539,10 +1545,10 @@ async function downloadPdf() {
       .from(document.getElementById('cv-preview-doc'))
       .save();
 
-    window.toast?.('CV downloaded! ✓', 'success');
+    window._cvToast('CV downloaded! ✓', 'success');
   } catch (err) {
     console.error(err);
-    window.toast?.('Failed to generate PDF', 'error');
+    window._cvToast('Failed to generate PDF', 'error');
   } finally {
     btn.disabled = false;
     btn.textContent = '⬇ Download PDF';
@@ -1568,6 +1574,15 @@ function toggleCard(header) {
 // PUBLIC API
 // ════════════════════════════════════════════════════
 
+// Toast fallback لو app.js مش محمّل في الصفحة دي
+window._cvToast = function(msg, type) {
+  if (typeof window.toast === 'function') {
+    window.toast(msg, type);
+  } else {
+    console[type === 'error' ? 'error' : 'warn']('[CV]', msg);
+  }
+};
+
 window.CVBuilder = {
   setLanguage, goToStep, nextStep, prevStep, save,
   addExperience, updateExp, removeExperience, addResp, updateResp, removeResp,
@@ -1586,7 +1601,7 @@ document.getElementById('f-summary')?.addEventListener('input', _updateSummaryCo
 // Save btn
 document.getElementById('save-btn')?.addEventListener('click', () => {
   save();
-  window.toast?.('Saved ✓', 'success');
+  window._cvToast('Saved ✓', 'success');
 });
 
 // Download PDF

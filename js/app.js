@@ -6,6 +6,14 @@
  */
 
 /* ── Wait for GSAP to load ─────────────────────────────────────── */
+// Toast يشتغل فوراً — مش بيستنى الـ load event
+// عشان ai.js وغيره يقدروا يستخدموه من أول لحظة
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initToastSystem);
+} else {
+  initToastSystem();
+}
+
 window.addEventListener('load', () => {
   if (typeof gsap === 'undefined' || typeof ScrollTrigger === 'undefined') {
     console.warn('GSAP not loaded — animations skipped');
@@ -22,7 +30,6 @@ window.addEventListener('load', () => {
 
   initAnimations();
   initScrollEffects();
-  initToastSystem();
 });
 
 /* ─────────────────────────────────────────────────────────────────

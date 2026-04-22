@@ -47,12 +47,26 @@ interface GenerateResponse {
 
 // ─── CORS Headers ────────────────────────────────────────────────────────────
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+// ⚠️ قيّد الـ CORS بـ domain بتاعك فقط — لا تستخدم "*" في Production
+const ALLOWED_ORIGINS = [
+  "https://portfolio-generator-taupe.vercel.app",
+  // أضف هنا أي domain إضافي لو محتاج (staging مثلاً)
+];
+
+function getCorsHeaders(requestOrigin: string | null): Record<string, string> {
+  const origin =
+    requestOrigin && ALLOWED_ORIGINS.includes(requestOrigin)
+      ? requestOrigin
+      : ALLOWED_ORIGINS[0]; // fallback للـ production domain
+
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Headers":
+      "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Vary": "Origin",
+  };
+}
 
 // ─── Helper: Update generation status in DB ──────────────────────────────────
 
@@ -225,6 +239,9 @@ async function callGroqAPI(
 // ─── Main Handler ─────────────────────────────────────────────────────────────
 
 serve(async (req: Request) => {
+  const requestOrigin = req.headers.get("origin");
+  const corsHeaders   = getCorsHeaders(requestOrigin);
+
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -276,7 +293,41 @@ serve(async (req: Request) => {
 
     generationId = body.generationId || "";
 
-    // ── Update status: processing ───────────────────────────────────────────
+    // ── Rate Limiting: max 3 generations per user per 24h ──────────────────
+    // بنتحقق من الـ JWT عشان نجيب الـ user_id
+    const authHeader = req.headers.get("authorization") || "";
+    const token = authHeader.replace("Bearer ", "").trim();
+
+    if (token && token !== (Deno.env.get("SUPABASE_ANON_KEY") || "")) {
+      // المستخدم logged in — نتحقق من عدد الـ generations
+      try {
+        const { data: userPayload } = await supabase.auth.getUser(token);
+        const userId = userPayload?.user?.id;
+
+        if (userId) {
+          const since24h = new Date(Date.now() - 86_400_000).toISOString();
+          const { count } = await supabase
+            .from("ai_generations")
+            .select("*", { count: "exact", head: true })
+            .eq("user_id", userId)
+            .gte("created_at", since24h);
+
+          if ((count ?? 0) >= 5) {
+            return new Response(
+              JSON.stringify({
+                success: false,
+                error: "RATE_LIMITED: You've reached the daily limit (5 generations/day). Please try again tomorrow.",
+                code: "RATE_LIMITED",
+              }),
+              { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+        }
+      } catch (rateLimitErr) {
+        // لو فشل الـ rate limit check — نكمّل بدون حجب (fail open)
+        console.warn("[generate] Rate limit check failed:", rateLimitErr);
+      }
+    }
     await updateGenerationStatus(supabase, generationId, "processing", {
       github_data: body.githubData,
     });

@@ -1,0 +1,843 @@
+/* ============================================================
+   LIQUID THEME — Organic Motion Pro
+   Aesthetic: Living fluid. Pigment in water. Physics-first UI.
+   Every surface breathes. Every interaction has weight.
+
+   Philosophy:
+   - Background: WebGL fluid sim (JS) — deep navy #0d0a1a
+   - Primary: #7c3aed violet — dominant pigment
+   - Coral:   #ff6b6b — warm contrast
+   - Cyan:    #06b6d4 — cool contrast
+   - Gold:    #f59e0b — highlight
+   - White:   #f0eeff — slightly violet-tinted
+   - Cards: frosted glass over the fluid — react to motion
+   - Borders: none — shapes defined by blur and color
+   - Everything has spring physics via JS
+
+   Works with: [data-theme="liquid"] · .theme-liquid
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Clash+Display:wght@400;500;600;700&family=Cabinet+Grotesk:wght@300;400;500;700;800&family=Satoshi:ital,wght@0,300;0,400;1,300&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:ital,wght@0,300;0,400;1,300&display=swap');
+
+[data-theme="liquid"],
+.theme-liquid {
+
+  /* ── Palette — pigments ── */
+  --lq-deep:          #0d0a1a;   /* void — darkest background */
+  --lq-deep-2:        #110d20;   /* slightly lighter layer */
+  --lq-violet:        #7c3aed;   /* primary pigment */
+  --lq-violet-light:  #a855f7;   /* diluted violet */
+  --lq-violet-dim:    rgba(124,58,237,0.18);
+  --lq-violet-ghost:  rgba(124,58,237,0.08);
+  --lq-coral:         #ff6b6b;   /* warm contrast */
+  --lq-coral-dim:     rgba(255,107,107,0.15);
+  --lq-cyan:          #06b6d4;   /* cool contrast */
+  --lq-cyan-dim:      rgba(6,182,212,0.15);
+  --lq-gold:          #f59e0b;   /* highlight */
+  --lq-gold-dim:      rgba(245,158,11,0.15);
+
+  /* ── Surface / Glass ── */
+  --lq-glass:         rgba(255,255,255,0.055);
+  --lq-glass-hover:   rgba(255,255,255,0.095);
+  --lq-glass-border:  rgba(255,255,255,0.12);
+  --lq-glass-bright:  rgba(255,255,255,0.20);
+
+  /* ── Text ── */
+  --lq-white:         #f0eeff;   /* violet-tinted white */
+  --lq-text:          rgba(240,238,255,0.90);
+  --lq-text-dim:      rgba(240,238,255,0.55);
+  --lq-text-muted:    rgba(240,238,255,0.30);
+
+  /* ── Glows ── */
+  --lq-glow-violet:   0 0 40px rgba(124,58,237,0.35), 0 0 80px rgba(124,58,237,0.15);
+  --lq-glow-coral:    0 0 30px rgba(255,107,107,0.30), 0 0 60px rgba(255,107,107,0.12);
+  --lq-glow-cyan:     0 0 30px rgba(6,182,212,0.30);
+  --lq-glow-card:     0 8px 40px rgba(0,0,0,0.45),
+                      0 1px 0 rgba(255,255,255,0.08) inset,
+                      0 0 0 1px rgba(255,255,255,0.06);
+  --lq-glow-card-h:   0 20px 60px rgba(0,0,0,0.55),
+                      0 1px 0 rgba(255,255,255,0.14) inset,
+                      0 0 40px rgba(124,58,237,0.20);
+
+  /* ── Blur ── */
+  --lq-blur-card:     blur(20px) saturate(180%);
+  --lq-blur-strong:   blur(32px) saturate(200%);
+
+  /* ── Fonts ── */
+  --lq-font-display:  'Syne', sans-serif;
+  --lq-font-body:     'DM Sans', sans-serif;
+  --lq-font-mono:     'DM Mono', monospace;
+
+  /* ── Radius — organic, nothing sharp ── */
+  --lq-r-sm:    12px;
+  --lq-r-md:    20px;
+  --lq-r-lg:    28px;
+  --lq-r-xl:    40px;
+  --lq-r-blob:  60% 40% 55% 45% / 45% 55% 40% 60%;
+}
+
+/* ══════════════════════════════════════════════════════════
+   BASE
+══════════════════════════════════════════════════════════ */
+
+[data-theme="liquid"] body,
+.theme-liquid body {
+  background-color: var(--lq-deep);
+  color: var(--lq-text);
+  font-family: var(--lq-font-body);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  background-image: none;
+}
+
+/* Remove global grid */
+[data-theme="liquid"] body::before,
+[data-theme="liquid"] body::after,
+.theme-liquid body::before,
+.theme-liquid body::after {
+  display: none;
+}
+
+[data-theme="liquid"] .portfolio-container,
+[data-theme="liquid"] .portfolio-wrapper,
+.theme-liquid .portfolio-container,
+.theme-liquid .portfolio-wrapper {
+  position: relative;
+  z-index: 2;
+}
+
+/* ══════════════════════════════════════════════════════════
+   WEBGL CANVAS — injected by LiquidFX.js
+══════════════════════════════════════════════════════════ */
+
+[data-theme="liquid"] #lq-canvas,
+.theme-liquid #lq-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 1.2s ease;
+}
+
+[data-theme="liquid"] #lq-canvas.lq-ready,
+.theme-liquid #lq-canvas.lq-ready {
+  opacity: 1;
+}
+
+/* CSS fallback gradient — shows before WebGL loads */
+[data-theme="liquid"] .lq-bg-fallback,
+.theme-liquid .lq-bg-fallback {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 60% at 15% 20%,
+      rgba(124,58,237,0.30) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 50% at 85% 75%,
+      rgba(255,107,107,0.20) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 40% at 50% 50%,
+      rgba(6,182,212,0.12) 0%, transparent 60%);
+  animation: lq-breathe 12s ease-in-out infinite alternate;
+}
+
+@keyframes lq-breathe {
+  0%   { transform: scale(1) rotate(0deg); opacity: 1; }
+  33%  { transform: scale(1.04) rotate(1deg); }
+  66%  { transform: scale(0.97) rotate(-1deg); }
+  100% { transform: scale(1.02) rotate(0.5deg); opacity: 0.85; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   HERO
+══════════════════════════════════════════════════════════ */
+
+[data-theme="liquid"] .portfolio-hero,
+.theme-liquid .portfolio-hero {
+  padding: 80px 0 68px;
+  position: relative;
+}
+
+[data-theme="liquid"] .portfolio-hero::before,
+[data-theme="liquid"] .portfolio-hero::after,
+.theme-liquid .portfolio-hero::before,
+.theme-liquid .portfolio-hero::after {
+  display: none;
+}
+
+/* Eyebrow — pill tag */
+[data-theme="liquid"] .hero-eyebrow,
+.theme-liquid .hero-eyebrow {
+  font-family: var(--lq-font-mono);
+  font-size: 0.70rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--lq-violet-light);
+  margin-bottom: 20px;
+  opacity: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--lq-violet-ghost);
+  border: 1px solid rgba(124,58,237,0.25);
+  border-radius: 999px;
+  padding: 5px 14px 5px 10px;
+}
+
+[data-theme="liquid"] .hero-eyebrow::before,
+.theme-liquid .hero-eyebrow::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--lq-violet-light);
+  box-shadow: 0 0 8px rgba(168,85,247,0.7);
+  animation: lq-dot-pulse 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes lq-dot-pulse {
+  0%,100% { transform: scale(1); opacity: 1; }
+  50%      { transform: scale(1.4); opacity: 0.7; }
+}
+
+/* Hero name — massive Syne */
+[data-theme="liquid"] .portfolio-hero__name,
+.theme-liquid .portfolio-hero__name {
+  font-family: var(--lq-font-display);
+  font-size: clamp(3.8rem, 10vw, 9rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 0.88;
+  color: var(--lq-white);
+  -webkit-text-fill-color: var(--lq-white);
+  margin-bottom: 24px;
+  position: relative;
+  /* JS will split words and apply gradient per-word */
+}
+
+/* Gradient words injected by LiquidFX.js */
+[data-theme="liquid"] .lq-word-1,
+.theme-liquid .lq-word-1 {
+  background: linear-gradient(135deg, var(--lq-white) 0%, var(--lq-violet-light) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+[data-theme="liquid"] .lq-word-2,
+.theme-liquid .lq-word-2 {
+  background: linear-gradient(135deg, var(--lq-cyan) 0%, var(--lq-white) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Job title */
+[data-theme="liquid"] .portfolio-hero__title,
+.theme-liquid .portfolio-hero__title {
+  font-family: var(--lq-font-body);
+  font-size: 1rem;
+  font-weight: 300;
+  letter-spacing: 0.01em;
+  color: var(--lq-text-dim);
+  margin-bottom: 24px;
+  opacity: 1;
+  font-style: italic;
+}
+
+/* Bio */
+[data-theme="liquid"] .portfolio-hero__bio,
+.theme-liquid .portfolio-hero__bio {
+  font-family: var(--lq-font-body);
+  font-style: normal;
+  font-size: 1rem;
+  font-weight: 300;
+  line-height: 1.80;
+  color: var(--lq-text-dim);
+  max-width: 560px;
+  margin-bottom: 40px;
+}
+
+/* Links */
+[data-theme="liquid"] .hero-link,
+.theme-liquid .hero-link {
+  font-family: var(--lq-font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.10em;
+  color: var(--lq-text-muted);
+  text-decoration: none;
+  padding: 8px 18px;
+  border: 1px solid var(--lq-glass-border);
+  border-radius: 999px;
+  background: var(--lq-glass);
+  backdrop-filter: blur(8px);
+  transition: color 0.25s, border-color 0.25s, background 0.25s, box-shadow 0.25s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+[data-theme="liquid"] .hero-link:hover,
+.theme-liquid .hero-link:hover {
+  color: var(--lq-white);
+  border-color: rgba(124,58,237,0.45);
+  background: var(--lq-violet-dim);
+  box-shadow: 0 0 20px rgba(124,58,237,0.20);
+}
+
+/* ══════════════════════════════════════════════════════════
+   SECTION LABELS
+══════════════════════════════════════════════════════════ */
+
+[data-theme="liquid"] .section-label,
+.theme-liquid .section-label {
+  font-family: var(--lq-font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--lq-text-muted);
+  margin-bottom: 32px;
+  border-top: none;
+  gap: 12px;
+  align-items: center;
+}
+
+[data-theme="liquid"] .section-label::before,
+.theme-liquid .section-label::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--lq-violet);
+  box-shadow: 0 0 12px rgba(124,58,237,0.7);
+  flex-shrink: 0;
+  animation: lq-dot-pulse 3s ease-in-out infinite;
+}
+
+[data-theme="liquid"] .section-label span,
+.theme-liquid .section-label span {
+  font-family: var(--lq-font-mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--lq-text-dim);
+  letter-spacing: 0.18em;
+}
+
+[data-theme="liquid"] .section-label::after,
+.theme-liquid .section-label::after {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg,
+    rgba(124,58,237,0.25),
+    rgba(6,182,212,0.15),
+    transparent);
+}
+
+/* ══════════════════════════════════════════════════════════
+   PROJECT CARDS — liquid glass
+══════════════════════════════════════════════════════════ */
+
+[data-theme="liquid"] .projects-grid,
+.theme-liquid .projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 16px;
+}
+
+[data-theme="liquid"] .project-card,
+.theme-liquid .project-card {
+  background: var(--lq-glass);
+  backdrop-filter: var(--lq-blur-card);
+  -webkit-backdrop-filter: var(--lq-blur-card);
+  border: 1px solid var(--lq-glass-border);
+  border-radius: var(--lq-r-lg);
+  padding: 28px 24px 22px;
+  box-shadow: var(--lq-glow-card);
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 0.5s cubic-bezier(0.16,1,0.3,1),
+    box-shadow 0.5s ease,
+    background 0.3s ease,
+    border-color 0.3s ease;
+  /* Spring applied via JS */
+  will-change: transform;
+  transform-style: preserve-3d;
+}
+
+/* Shimmer line */
+[data-theme="liquid"] .project-card::before,
+.theme-liquid .project-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 15%; right: 15%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--lq-glass-bright), transparent);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Violet glow orb that follows cursor inside card */
+[data-theme="liquid"] .project-card::after,
+.theme-liquid .project-card::after {
+  content: '';
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    rgba(124,58,237,0.12) 0%,
+    transparent 70%);
+  left: var(--lq-mx, 50%);
+  top:  var(--lq-my, 50%);
+  transform: translate(-50%,-50%);
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+[data-theme="liquid"] .project-card:hover::after,
+.theme-liquid .project-card:hover::after {
+  opacity: 1;
+}
+
+[data-theme="liquid"] .project-card:hover,
+.theme-liquid .project-card:hover {
+  background: var(--lq-glass-hover);
+  border-color: rgba(124,58,237,0.35);
+  box-shadow: var(--lq-glow-card-h);
+}
+
+/* Featured — coral accent */
+[data-theme="liquid"] .project-card--featured,
+.theme-liquid .project-card--featured {
+  border-color: rgba(255,107,107,0.30);
+  background: rgba(255,107,107,0.05);
+}
+
+[data-theme="liquid"] .project-card--featured::after,
+.theme-liquid .project-card--featured::after {
+  background: radial-gradient(circle,
+    rgba(255,107,107,0.14) 0%,
+    transparent 70%);
+}
+
+[data-theme="liquid"] .project-card--featured:hover,
+.theme-liquid .project-card--featured:hover {
+  border-color: rgba(255,107,107,0.55);
+  box-shadow: var(--lq-glow-coral);
+}
+
+/* All children above glow */
+[data-theme="liquid"] .project-card > *,
+.theme-liquid .project-card > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* Card name */
+[data-theme="liquid"] .project-card__name,
+.theme-liquid .project-card__name {
+  font-family: var(--lq-font-display);
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--lq-white);
+  margin-bottom: 8px;
+}
+
+/* Desc */
+[data-theme="liquid"] .project-card__desc,
+.theme-liquid .project-card__desc {
+  font-family: var(--lq-font-body);
+  font-size: 0.85rem;
+  line-height: 1.70;
+  color: var(--lq-text-dim);
+  font-weight: 300;
+}
+
+/* Lang */
+[data-theme="liquid"] .project-card__lang,
+.theme-liquid .project-card__lang {
+  font-family: var(--lq-font-mono);
+  font-size: 0.70rem;
+  letter-spacing: 0.08em;
+  color: var(--lq-violet-light);
+}
+
+/* Featured badge */
+[data-theme="liquid"] .featured-badge,
+.theme-liquid .featured-badge {
+  font-family: var(--lq-font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--lq-coral);
+  border: 1px solid rgba(255,107,107,0.35);
+  border-radius: 999px;
+  padding: 2px 10px;
+  background: var(--lq-coral-dim);
+}
+
+/* Footer */
+[data-theme="liquid"] .project-card__footer,
+.theme-liquid .project-card__footer {
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding-top: 12px;
+}
+
+[data-theme="liquid"] .project-stat,
+.theme-liquid .project-stat {
+  font-family: var(--lq-font-mono);
+  font-size: 0.70rem;
+  color: var(--lq-text-muted);
+  letter-spacing: 0.04em;
+}
+
+[data-theme="liquid"] .topic-chip,
+.theme-liquid .topic-chip {
+  font-family: var(--lq-font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--lq-violet-ghost);
+  border: 1px solid rgba(124,58,237,0.20);
+  color: var(--lq-violet-light);
+}
+
+/* ══════════════════════════════════════════════════════════
+   SKILLS — bubble tags with spring
+══════════════════════════════════════════════════════════ */
+
+[data-theme="liquid"] .skills-container,
+.theme-liquid .skills-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 24px 0;
+}
+
+[data-theme="liquid"] .skill-tag,
+.theme-liquid .skill-tag {
+  font-family: var(--lq-font-body);
+  font-size: 0.84rem;
+  font-weight: 400;
+  background: var(--lq-glass);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--lq-glass-border);
+  border-radius: 999px;
+  color: var(--lq-text-dim);
+  padding: 8px 18px;
+  position: relative;
+  overflow: hidden;
+  transition:
+    color 0.25s,
+    border-color 0.25s,
+    background 0.25s,
+    box-shadow 0.25s,
+    transform 0.4s cubic-bezier(0.34,1.56,0.64,1); /* spring bounce */
+  cursor: default;
+  will-change: transform;
+}
+
+/* Liquid fill on hover */
+[data-theme="liquid"] .skill-tag::before,
+.theme-liquid .skill-tag::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--lq-violet), var(--lq-cyan));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 0;
+}
+
+[data-theme="liquid"] .skill-tag:hover,
+.theme-liquid .skill-tag:hover {
+  color: var(--lq-white);
+  border-color: transparent;
+  box-shadow: 0 0 20px rgba(124,58,237,0.35);
+  transform: scale(1.08);  /* spring JS handles the real bounce */
+}
+
+[data-theme="liquid"] .skill-tag:hover::before,
+.theme-liquid .skill-tag:hover::before {
+  opacity: 1;
+}
+
+[data-theme="liquid"] .skill-tag span,
+[data-theme="liquid"] .skill-tag__delete,
+.theme-liquid .skill-tag span,
+.theme-liquid .skill-tag__delete {
+  position: relative;
+  z-index: 1;
+}
+
+[data-theme="liquid"] .skill-tag--add,
+.theme-liquid .skill-tag--add {
+  background: transparent;
+  border: 1px dashed rgba(255,255,255,0.12);
+  color: var(--lq-text-muted);
+  border-radius: 999px;
+}
+
+[data-theme="liquid"] .skill-tag--add:hover,
+.theme-liquid .skill-tag--add:hover {
+  border-color: var(--lq-violet);
+  color: var(--lq-violet-light);
+  transform: scale(1.05);
+  box-shadow: none;
+}
+
+[data-theme="liquid"] .skill-tag--add:hover::before,
+.theme-liquid .skill-tag--add:hover::before {
+  display: none;
+}
+
+/* ══════════════════════════════════════════════════════════
+   LIQUID BLOB DECORATION — injected by LiquidFX.js
+   Floating animated SVG blobs behind sections
+══════════════════════════════════════════════════════════ */
+
+[data-theme="liquid"] .lq-blob,
+.theme-liquid .lq-blob {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(60px);
+  pointer-events: none;
+  z-index: 1;
+  mix-blend-mode: screen;
+  opacity: 0.18;
+  animation: lq-blob-drift var(--blob-dur, 20s) ease-in-out infinite alternate;
+  animation-delay: var(--blob-delay, 0s);
+}
+
+@keyframes lq-blob-drift {
+  0%   { transform: translate(0,0) scale(1); }
+  25%  { transform: translate(30px,-20px) scale(1.06); }
+  50%  { transform: translate(-20px,40px) scale(0.94); }
+  75%  { transform: translate(40px,15px) scale(1.04); }
+  100% { transform: translate(-10px,-30px) scale(0.97); }
+}
+
+/* ══════════════════════════════════════════════════════════
+   BUTTONS
+══════════════════════════════════════════════════════════ */
+
+[data-theme="liquid"] .btn--primary,
+.theme-liquid .btn--primary {
+  background: linear-gradient(135deg, var(--lq-violet), var(--lq-violet-light));
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  font-family: var(--lq-font-body);
+  font-size: 0.84rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  box-shadow: 0 4px 24px rgba(124,58,237,0.40),
+              0 1px 0 rgba(255,255,255,0.15) inset;
+  transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1),
+              box-shadow 0.3s ease;
+}
+
+[data-theme="liquid"] .btn--primary:hover,
+.theme-liquid .btn--primary:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 40px rgba(124,58,237,0.55),
+              0 1px 0 rgba(255,255,255,0.20) inset;
+}
+
+[data-theme="liquid"] .btn--ghost,
+.theme-liquid .btn--ghost {
+  background: var(--lq-glass);
+  backdrop-filter: blur(10px);
+  color: var(--lq-text-dim);
+  border: 1px solid var(--lq-glass-border);
+  border-radius: 999px;
+  font-family: var(--lq-font-body);
+  font-size: 0.84rem;
+  transition: background 0.25s, border-color 0.25s, color 0.25s, transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+[data-theme="liquid"] .btn--ghost:hover,
+.theme-liquid .btn--ghost:hover {
+  background: var(--lq-glass-hover);
+  border-color: rgba(124,58,237,0.35);
+  color: var(--lq-white);
+  transform: translateY(-1px) scale(1.01);
+}
+
+/* ══════════════════════════════════════════════════════════
+   TOOLBAR / NAV
+══════════════════════════════════════════════════════════ */
+
+[data-theme="liquid"] .edit-toolbar,
+.theme-liquid .edit-toolbar {
+  background: rgba(13,10,26,0.88);
+  border-bottom: 1px solid var(--lq-glass-border);
+  backdrop-filter: blur(20px) saturate(1.8);
+}
+
+[data-theme="liquid"] .nav.is-scrolled,
+.theme-liquid .nav.is-scrolled {
+  background: rgba(13,10,26,0.85);
+  border-bottom: 1px solid var(--lq-glass-border);
+  backdrop-filter: blur(24px) saturate(1.8);
+}
+
+/* ══════════════════════════════════════════════════════════
+   ICON BUTTONS
+══════════════════════════════════════════════════════════ */
+
+[data-theme="liquid"] .icon-btn,
+.theme-liquid .icon-btn {
+  color: var(--lq-text-muted);
+  border-radius: 8px;
+  transition: color 0.2s, background 0.2s;
+}
+
+[data-theme="liquid"] .icon-btn:hover,
+.theme-liquid .icon-btn:hover {
+  color: var(--lq-violet-light);
+  background: var(--lq-violet-ghost);
+}
+
+/* ══════════════════════════════════════════════════════════
+   PRO BADGE
+══════════════════════════════════════════════════════════ */
+
+[data-theme="liquid"] .pro-status-badge--pro,
+.theme-liquid .pro-status-badge--pro {
+  color: var(--lq-violet-light);
+  border-color: rgba(124,58,237,0.35);
+  background: var(--lq-violet-ghost);
+  border-radius: 999px;
+  font-family: var(--lq-font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.10em;
+}
+
+[data-theme="liquid"] .pro-status-badge--free,
+.theme-liquid .pro-status-badge--free {
+  color: var(--lq-text-muted);
+  border-color: var(--lq-glass-border);
+  border-radius: 999px;
+  font-family: var(--lq-font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.10em;
+}
+
+/* ══════════════════════════════════════════════════════════
+   EDIT HINTS
+══════════════════════════════════════════════════════════ */
+
+[data-theme="liquid"] .is-editable:hover,
+.theme-liquid .is-editable:hover {
+  outline: 1px dashed rgba(124,58,237,0.40);
+  outline-offset: 6px;
+  border-radius: var(--lq-r-sm);
+}
+
+[data-theme="liquid"] .is-editing,
+.theme-liquid .is-editing {
+  outline: 2px solid var(--lq-violet) !important;
+  outline-offset: 6px;
+  border-radius: var(--lq-r-sm);
+  box-shadow: 0 0 20px rgba(124,58,237,0.25);
+}
+
+/* ══════════════════════════════════════════════════════════
+   THEME PANEL
+══════════════════════════════════════════════════════════ */
+
+[data-theme="liquid"] .theme-panel,
+.theme-liquid .theme-panel {
+  background: rgba(17,13,32,0.95);
+  border: 1px solid rgba(124,58,237,0.30);
+  border-radius: var(--lq-r-lg);
+  box-shadow: 0 0 60px rgba(124,58,237,0.20), 0 24px 80px rgba(0,0,0,0.70);
+  color: var(--lq-text);
+  backdrop-filter: blur(24px);
+}
+
+/* ══════════════════════════════════════════════════════════
+   SELECTION & SCROLLBAR
+══════════════════════════════════════════════════════════ */
+
+[data-theme="liquid"] ::selection,
+.theme-liquid ::selection {
+  background: rgba(124,58,237,0.30);
+  color: var(--lq-white);
+}
+
+[data-theme="liquid"] ::-webkit-scrollbar,
+.theme-liquid ::-webkit-scrollbar { width: 5px; }
+
+[data-theme="liquid"] ::-webkit-scrollbar-track,
+.theme-liquid ::-webkit-scrollbar-track { background: transparent; }
+
+[data-theme="liquid"] ::-webkit-scrollbar-thumb,
+.theme-liquid ::-webkit-scrollbar-thumb {
+  background: rgba(124,58,237,0.25);
+  border-radius: 3px;
+}
+
+[data-theme="liquid"] ::-webkit-scrollbar-thumb:hover,
+.theme-liquid ::-webkit-scrollbar-thumb:hover {
+  background: rgba(124,58,237,0.45);
+}
+
+/* ══════════════════════════════════════════════════════════
+   SAVE INDICATOR
+══════════════════════════════════════════════════════════ */
+
+[data-theme="liquid"] .save-indicator--draft,
+.theme-liquid .save-indicator--draft {
+  color: var(--lq-violet-light);
+  font-family: var(--lq-font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+}
+
+/* ══════════════════════════════════════════════════════════
+   CUSTOM CURSOR (injected by LiquidFX.js)
+══════════════════════════════════════════════════════════ */
+
+[data-theme="liquid"] body.lq-cursor-active,
+.theme-liquid body.lq-cursor-active {
+  cursor: none;
+}
+
+[data-theme="liquid"] body.lq-cursor-active *,
+.theme-liquid body.lq-cursor-active * {
+  cursor: none;
+}
+
+/* ══════════════════════════════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  [data-theme="liquid"] .portfolio-hero__name,
+  .theme-liquid .portfolio-hero__name {
+    font-size: clamp(3rem, 14vw, 5.5rem);
+  }
+  [data-theme="liquid"] .projects-grid,
+  .theme-liquid .projects-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  [data-theme="liquid"] {
+    --lq-blur-card: blur(10px) saturate(150%);
+  }
+}

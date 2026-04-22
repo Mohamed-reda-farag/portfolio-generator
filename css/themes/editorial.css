@@ -1,0 +1,800 @@
+/* ============================================================
+   EDITORIAL THEME — Typographic Pro
+   Aesthetic: Award-winning portfolio DNA.
+   Massive grotesque + italic serif contrast.
+   Cream paper, ink blacks, single amber accent.
+   Zero decoration — pure typographic hierarchy.
+   Inspired by: Awwwards SOTD typographic portfolios.
+   ============================================================ */
+
+/* ── Google Fonts — loaded in addition to main.css fonts ── */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,300;1,400;1,700&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap');
+
+[data-theme="editorial"],
+.theme-editorial {
+
+  /* ── Palette — ink on paper ── */
+  --ed-paper:         #F2EFE8;   /* warm cream — the signature */
+  --ed-paper-dark:    #E8E3D8;   /* slightly darker paper */
+  --ed-ink:           #0D0C0A;   /* near-black ink */
+  --ed-ink-mid:       #3A3830;   /* medium ink */
+  --ed-ink-light:     #7A7568;   /* faded ink */
+  --ed-ink-ghost:     rgba(13,12,10,0.08); /* barely-there */
+  --ed-amber:         #C8600A;   /* single warm accent — like ink stamp */
+  --ed-amber-light:   rgba(200, 96, 10, 0.10);
+  --ed-white:         #FAFAF7;   /* near-white for cards */
+
+  /* ── Borders ── */
+  --ed-rule:          rgba(13,12,10,0.12);  /* typographic rule */
+  --ed-rule-strong:   rgba(13,12,10,0.22);
+  --ed-rule-heavy:    #0D0C0A;
+
+  /* ── Shadows — ink press effect ── */
+  --ed-shadow-card:   0 2px 0 rgba(13,12,10,0.08), 0 1px 3px rgba(13,12,10,0.06);
+  --ed-shadow-hover:  0 8px 32px rgba(13,12,10,0.12), 0 2px 8px rgba(13,12,10,0.08);
+  --ed-shadow-lift:   0 16px 48px rgba(13,12,10,0.14);
+
+  /* ── Typography ── */
+  --ed-font-display:  'Syne', sans-serif;       /* hero name — ultra-wide */
+  --ed-font-serif:    'Playfair Display', serif; /* italic category labels */
+  --ed-font-body:     'DM Sans', sans-serif;     /* clean reading body */
+  --ed-font-mono:     'DM Mono', monospace;      /* technical labels */
+}
+
+/* ══════════════════════════════════════════════════════════
+   BASE
+══════════════════════════════════════════════════════════ */
+
+[data-theme="editorial"] body,
+.theme-editorial body {
+  background-color: var(--ed-paper);
+  color: var(--ed-ink);
+  font-family: var(--ed-font-body);
+  background-image: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Paper texture — SVG noise via CSS */
+[data-theme="editorial"] body::before,
+.theme-editorial body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.4;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23noise)' opacity='0.08'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+}
+
+/* Horizontal ruling lines — like notebook paper */
+[data-theme="editorial"] body::after,
+.theme-editorial body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 47px,
+    rgba(13,12,10,0.025) 47px,
+    rgba(13,12,10,0.025) 48px
+  );
+}
+
+[data-theme="editorial"] .portfolio-container,
+[data-theme="editorial"] .portfolio-wrapper,
+.theme-editorial .portfolio-container,
+.theme-editorial .portfolio-wrapper {
+  position: relative;
+  z-index: 1;
+}
+
+/* ══════════════════════════════════════════════════════════
+   MARQUEE TICKER — scrolls at page top below nav
+══════════════════════════════════════════════════════════ */
+
+[data-theme="editorial"] .ed-ticker,
+.theme-editorial .ed-ticker {
+  width: 100%;
+  overflow: hidden;
+  border-top: 1px solid var(--ed-rule-strong);
+  border-bottom: 1px solid var(--ed-rule-strong);
+  background: var(--ed-ink);
+  color: var(--ed-paper);
+  padding: 9px 0;
+  position: relative;
+  z-index: 1;
+  margin-bottom: 0;
+}
+
+[data-theme="editorial"] .ed-ticker__track,
+.theme-editorial .ed-ticker__track {
+  display: flex;
+  white-space: nowrap;
+  animation: ticker-scroll 28s linear infinite;
+  gap: 0;
+}
+
+[data-theme="editorial"] .ed-ticker__track:hover,
+.theme-editorial .ed-ticker__track:hover {
+  animation-play-state: paused;
+}
+
+[data-theme="editorial"] .ed-ticker__item,
+.theme-editorial .ed-ticker__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 20px;
+  padding: 0 24px;
+  font-family: var(--ed-font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+[data-theme="editorial"] .ed-ticker__item::after,
+.theme-editorial .ed-ticker__item::after {
+  content: '◆';
+  font-size: 0.4rem;
+  color: var(--ed-amber);
+  opacity: 0.8;
+}
+
+@keyframes ticker-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* ══════════════════════════════════════════════════════════
+   HERO — split name layout like nikolaradeski.com
+══════════════════════════════════════════════════════════ */
+
+[data-theme="editorial"] .portfolio-hero,
+.theme-editorial .portfolio-hero {
+  padding: 72px 0 56px;
+  position: relative;
+  border-bottom: 2px solid var(--ed-ink);
+}
+
+/* Remove the accent gradient line from base */
+[data-theme="editorial"] .portfolio-hero::after,
+.theme-editorial .portfolio-hero::after {
+  display: none;
+}
+
+/* Big horizontal rule above name */
+[data-theme="editorial"] .portfolio-hero::before,
+.theme-editorial .portfolio-hero::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--ed-ink);
+}
+
+[data-theme="editorial"] .hero-eyebrow,
+.theme-editorial .hero-eyebrow {
+  font-family: var(--ed-font-serif);
+  font-style: italic;
+  font-weight: 300;
+  font-size: 1rem;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ed-ink-mid);
+  margin-bottom: 12px;
+  opacity: 1;
+}
+[data-theme="editorial"] .hero-eyebrow::before,
+.theme-editorial .hero-eyebrow::before {
+  display: none;
+}
+
+/* THE HERO NAME — massive grotesque */
+[data-theme="editorial"] .portfolio-hero__name,
+.theme-editorial .portfolio-hero__name {
+  font-family: var(--ed-font-display);
+  font-size: clamp(4.5rem, 13vw, 11rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 0.88;
+  color: var(--ed-ink);
+  -webkit-text-fill-color: var(--ed-ink);
+  text-transform: uppercase;
+  margin-bottom: 24px;
+  /* Subtle ink texture on text */
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Job title — italic serif, small, understated */
+[data-theme="editorial"] .portfolio-hero__title,
+.theme-editorial .portfolio-hero__title {
+  font-family: var(--ed-font-serif);
+  font-style: italic;
+  font-weight: 300;
+  font-size: 1.25rem;
+  letter-spacing: 0.01em;
+  color: var(--ed-ink-mid);
+  margin-bottom: 28px;
+  opacity: 1;
+}
+
+/* Bio — clean DM Sans */
+[data-theme="editorial"] .portfolio-hero__bio,
+.theme-editorial .portfolio-hero__bio {
+  font-family: var(--ed-font-body);
+  font-style: normal;
+  font-size: 1rem;
+  font-weight: 300;
+  line-height: 1.75;
+  color: var(--ed-ink-mid);
+  max-width: 580px;
+  margin-bottom: 40px;
+}
+
+/* Links — uppercase monospace */
+[data-theme="editorial"] .hero-link,
+.theme-editorial .hero-link {
+  font-family: var(--ed-font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ed-ink-light);
+  text-decoration: none;
+  position: relative;
+  transition: color 0.2s;
+}
+[data-theme="editorial"] .hero-link::after,
+.theme-editorial .hero-link::after {
+  content: '';
+  position: absolute;
+  bottom: -2px; left: 0; right: 0;
+  height: 1px;
+  background: var(--ed-ink);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s cubic-bezier(0.16,1,0.3,1);
+}
+[data-theme="editorial"] .hero-link:hover,
+.theme-editorial .hero-link:hover {
+  color: var(--ed-ink);
+}
+[data-theme="editorial"] .hero-link:hover::after,
+.theme-editorial .hero-link:hover::after {
+  transform: scaleX(1);
+}
+
+/* ══════════════════════════════════════════════════════════
+   SECTION LABELS — masthead / magazine style
+══════════════════════════════════════════════════════════ */
+
+[data-theme="editorial"] .section-label,
+.theme-editorial .section-label {
+  font-family: var(--ed-font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ed-ink-light);
+  margin-bottom: 40px;
+  border-top: 1px solid var(--ed-rule-strong);
+  padding-top: 12px;
+  gap: 0;
+  /* Override flex gap */
+}
+[data-theme="editorial"] .section-label span,
+.theme-editorial .section-label span {
+  font-family: var(--ed-font-mono);
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--ed-amber);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  padding-right: 16px;
+}
+[data-theme="editorial"] .section-label::after,
+.theme-editorial .section-label::after {
+  flex: 1;
+  height: 1px;
+  background: var(--ed-rule);
+  margin-left: 16px;
+}
+
+/* ══════════════════════════════════════════════════════════
+   PROJECT CARDS — editorial / newspaper style
+══════════════════════════════════════════════════════════ */
+
+[data-theme="editorial"] .projects-grid,
+.theme-editorial .projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 0;
+  border-top: 1px solid var(--ed-rule-strong);
+  border-left: 1px solid var(--ed-rule-strong);
+}
+
+[data-theme="editorial"] .project-card,
+.theme-editorial .project-card {
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--ed-rule-strong);
+  border-bottom: 1px solid var(--ed-rule-strong);
+  border-radius: 0;
+  padding: 28px 24px 24px;
+  box-shadow: none;
+  position: relative;
+  overflow: hidden;
+  transition: background 0.25s ease;
+}
+
+/* No top gradient bar */
+[data-theme="editorial"] .project-card::before,
+.theme-editorial .project-card::before {
+  display: none;
+}
+
+/* Amber fill on hover — ink stamp effect */
+[data-theme="editorial"] .project-card::after,
+.theme-editorial .project-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--ed-ink);
+  transform: scaleY(0);
+  transform-origin: bottom;
+  transition: transform 0.45s cubic-bezier(0.16,1,0.3,1);
+  z-index: 0;
+}
+
+[data-theme="editorial"] .project-card:hover,
+.theme-editorial .project-card:hover {
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
+[data-theme="editorial"] .project-card:hover::after,
+.theme-editorial .project-card:hover::after {
+  transform: scaleY(1);
+}
+
+/* All card children above the fill */
+[data-theme="editorial"] .project-card > *,
+.theme-editorial .project-card > * {
+  position: relative;
+  z-index: 1;
+  transition: color 0.35s ease;
+}
+
+/* Featured card — amber left border accent */
+[data-theme="editorial"] .project-card--featured,
+.theme-editorial .project-card--featured {
+  border-left: 4px solid var(--ed-amber) !important;
+  background: rgba(200,96,10,0.02);
+}
+
+/* Card header */
+[data-theme="editorial"] .project-card__header,
+.theme-editorial .project-card__header {
+  margin-bottom: 16px;
+}
+
+/* Issue number style for featured badge */
+[data-theme="editorial"] .featured-badge,
+.theme-editorial .featured-badge {
+  font-family: var(--ed-font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ed-amber);
+  border: 1px solid var(--ed-amber);
+  border-radius: 0;
+  padding: 2px 7px;
+  background: transparent;
+}
+
+[data-theme="editorial"] .project-card:hover .featured-badge,
+.theme-editorial .project-card:hover .featured-badge {
+  color: var(--ed-amber);
+  border-color: var(--ed-amber);
+}
+
+[data-theme="editorial"] .project-card__lang,
+.theme-editorial .project-card__lang {
+  font-family: var(--ed-font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  color: var(--ed-ink-light);
+}
+
+[data-theme="editorial"] .project-card:hover .project-card__lang,
+.theme-editorial .project-card:hover .project-card__lang {
+  color: rgba(242,239,232,0.5);
+}
+
+/* Project name — bold grotesque */
+[data-theme="editorial"] .project-card__name,
+.theme-editorial .project-card__name {
+  font-family: var(--ed-font-display);
+  font-weight: 700;
+  font-size: 1.2rem;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--ed-ink);
+}
+
+[data-theme="editorial"] .project-card:hover .project-card__name,
+.theme-editorial .project-card:hover .project-card__name {
+  color: var(--ed-paper);
+}
+
+/* Description */
+[data-theme="editorial"] .project-card__desc,
+.theme-editorial .project-card__desc {
+  font-family: var(--ed-font-body);
+  font-size: 0.85rem;
+  line-height: 1.65;
+  color: var(--ed-ink-mid);
+  font-weight: 300;
+}
+
+[data-theme="editorial"] .project-card:hover .project-card__desc,
+.theme-editorial .project-card:hover .project-card__desc {
+  color: rgba(242,239,232,0.75);
+}
+
+/* Footer */
+[data-theme="editorial"] .project-card__footer,
+.theme-editorial .project-card__footer {
+  border-top: 1px solid var(--ed-rule);
+  padding-top: 12px;
+  margin-top: auto;
+}
+
+[data-theme="editorial"] .project-card:hover .project-card__footer,
+.theme-editorial .project-card:hover .project-card__footer {
+  border-color: rgba(242,239,232,0.15);
+}
+
+[data-theme="editorial"] .project-stat,
+.theme-editorial .project-stat {
+  font-family: var(--ed-font-mono);
+  font-size: 0.68rem;
+  color: var(--ed-ink-light);
+  letter-spacing: 0.06em;
+}
+
+[data-theme="editorial"] .project-card:hover .project-stat,
+.theme-editorial .project-card:hover .project-stat {
+  color: rgba(242,239,232,0.5);
+}
+
+[data-theme="editorial"] .topic-chip,
+.theme-editorial .topic-chip {
+  font-family: var(--ed-font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  padding: 2px 8px;
+  border-radius: 0;
+  background: transparent;
+  border: 1px solid var(--ed-rule-strong);
+  color: var(--ed-ink-light);
+}
+
+[data-theme="editorial"] .project-card:hover .topic-chip,
+.theme-editorial .project-card:hover .topic-chip {
+  color: rgba(242,239,232,0.5);
+  border-color: rgba(242,239,232,0.2);
+}
+
+/* Edit actions — always visible on hover bg */
+[data-theme="editorial"] .project-card:hover .project-card__actions,
+.theme-editorial .project-card:hover .project-card__actions {
+  opacity: 1;
+}
+[data-theme="editorial"] .project-card:hover .icon-btn,
+.theme-editorial .project-card:hover .icon-btn {
+  color: rgba(242,239,232,0.7);
+}
+[data-theme="editorial"] .project-card:hover .icon-btn:hover,
+.theme-editorial .project-card:hover .icon-btn:hover {
+  color: var(--ed-paper);
+  background: rgba(242,239,232,0.1);
+}
+
+/* ══════════════════════════════════════════════════════════
+   SKILLS — tag cloud with ink border
+══════════════════════════════════════════════════════════ */
+
+[data-theme="editorial"] .skills-container,
+.theme-editorial .skills-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 24px 0;
+  border-top: 1px solid var(--ed-rule);
+  border-bottom: 1px solid var(--ed-rule);
+}
+
+[data-theme="editorial"] .skill-tag,
+.theme-editorial .skill-tag {
+  font-family: var(--ed-font-body);
+  font-size: 0.82rem;
+  font-weight: 400;
+  background: transparent;
+  border: 1px solid var(--ed-rule-strong);
+  border-radius: 0;
+  color: var(--ed-ink-mid);
+  padding: 6px 14px;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+[data-theme="editorial"] .skill-tag::before,
+.theme-editorial .skill-tag::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--ed-ink);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s cubic-bezier(0.16,1,0.3,1);
+  z-index: 0;
+}
+
+[data-theme="editorial"] .skill-tag:hover,
+.theme-editorial .skill-tag:hover {
+  border-color: var(--ed-ink);
+  color: var(--ed-paper);
+}
+
+[data-theme="editorial"] .skill-tag:hover::before,
+.theme-editorial .skill-tag:hover::before {
+  transform: scaleX(1);
+}
+
+[data-theme="editorial"] .skill-tag span,
+[data-theme="editorial"] .skill-tag__delete,
+.theme-editorial .skill-tag span,
+.theme-editorial .skill-tag__delete {
+  position: relative;
+  z-index: 1;
+}
+
+[data-theme="editorial"] .skill-tag--add,
+.theme-editorial .skill-tag--add {
+  background: transparent;
+  border: 1px dashed var(--ed-rule-strong);
+  color: var(--ed-ink-light);
+  border-radius: 0;
+  font-family: var(--ed-font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+}
+
+[data-theme="editorial"] .skill-tag--add:hover,
+.theme-editorial .skill-tag--add:hover {
+  border-color: var(--ed-amber);
+  color: var(--ed-amber);
+  background: transparent;
+}
+[data-theme="editorial"] .skill-tag--add:hover::before,
+.theme-editorial .skill-tag--add:hover::before {
+  display: none;
+}
+
+/* ══════════════════════════════════════════════════════════
+   BUTTONS — ink press style
+══════════════════════════════════════════════════════════ */
+
+[data-theme="editorial"] .btn--primary,
+.theme-editorial .btn--primary {
+  background: var(--ed-ink);
+  color: var(--ed-paper);
+  border: 2px solid var(--ed-ink);
+  border-radius: 0;
+  font-family: var(--ed-font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  box-shadow: 4px 4px 0 var(--ed-ink-mid);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+[data-theme="editorial"] .btn--primary:hover,
+.theme-editorial .btn--primary:hover {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 var(--ed-ink-mid);
+}
+[data-theme="editorial"] .btn--primary:active,
+.theme-editorial .btn--primary:active {
+  transform: translate(4px, 4px);
+  box-shadow: none;
+}
+
+[data-theme="editorial"] .btn--ghost,
+.theme-editorial .btn--ghost {
+  background: transparent;
+  color: var(--ed-ink-mid);
+  border: 1px solid var(--ed-rule-strong);
+  border-radius: 0;
+  font-family: var(--ed-font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+[data-theme="editorial"] .btn--ghost:hover,
+.theme-editorial .btn--ghost:hover {
+  background: var(--ed-ink-ghost);
+  color: var(--ed-ink);
+  border-color: var(--ed-ink);
+}
+
+/* ══════════════════════════════════════════════════════════
+   EDIT TOOLBAR — clean newspaper masthead
+══════════════════════════════════════════════════════════ */
+
+[data-theme="editorial"] .edit-toolbar,
+.theme-editorial .edit-toolbar {
+  background: var(--ed-paper);
+  border-bottom: 2px solid var(--ed-ink);
+  backdrop-filter: none;
+}
+
+[data-theme="editorial"] .edit-toolbar__brand,
+.theme-editorial .edit-toolbar__brand {
+  font-family: var(--ed-font-display);
+  letter-spacing: -0.02em;
+}
+
+/* ══════════════════════════════════════════════════════════
+   ICON BUTTONS
+══════════════════════════════════════════════════════════ */
+
+[data-theme="editorial"] .icon-btn,
+.theme-editorial .icon-btn {
+  color: var(--ed-ink-light);
+  border-radius: 0;
+  transition: color 0.15s, background 0.15s;
+}
+[data-theme="editorial"] .icon-btn:hover,
+.theme-editorial .icon-btn:hover {
+  color: var(--ed-ink);
+  background: var(--ed-ink-ghost);
+}
+
+/* ══════════════════════════════════════════════════════════
+   NAV
+══════════════════════════════════════════════════════════ */
+
+[data-theme="editorial"] .nav.is-scrolled,
+.theme-editorial .nav.is-scrolled {
+  background: rgba(242, 239, 232, 0.95);
+  border-bottom: 1px solid var(--ed-rule-strong);
+  backdrop-filter: blur(8px);
+}
+
+/* ══════════════════════════════════════════════════════════
+   PRO BADGES & STATUS
+══════════════════════════════════════════════════════════ */
+
+[data-theme="editorial"] .pro-status-badge--pro,
+.theme-editorial .pro-status-badge--pro {
+  color: var(--ed-amber);
+  border-color: var(--ed-amber);
+  background: var(--ed-amber-light);
+  border-radius: 0;
+  font-family: var(--ed-font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+}
+
+[data-theme="editorial"] .pro-status-badge--free,
+.theme-editorial .pro-status-badge--free {
+  color: var(--ed-ink-light);
+  border-color: var(--ed-rule-strong);
+  border-radius: 0;
+  font-family: var(--ed-font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+}
+
+/* ══════════════════════════════════════════════════════════
+   EDIT HINTS
+══════════════════════════════════════════════════════════ */
+
+[data-theme="editorial"] .is-editable:hover,
+.theme-editorial .is-editable:hover {
+  outline: 1px dashed rgba(200,96,10,0.35);
+  outline-offset: 4px;
+  border-radius: 0;
+}
+[data-theme="editorial"] .is-editing,
+.theme-editorial .is-editing {
+  outline: 2px solid var(--ed-amber) !important;
+  outline-offset: 4px;
+  border-radius: 0;
+}
+
+/* ══════════════════════════════════════════════════════════
+   THEME PANEL
+══════════════════════════════════════════════════════════ */
+
+[data-theme="editorial"] .theme-panel,
+.theme-editorial .theme-panel {
+  background: var(--ed-paper);
+  border: 2px solid var(--ed-ink);
+  border-radius: 0;
+  box-shadow: 6px 6px 0 rgba(13,12,10,0.15);
+  color: var(--ed-ink);
+}
+
+/* ══════════════════════════════════════════════════════════
+   SAVE INDICATOR
+══════════════════════════════════════════════════════════ */
+
+[data-theme="editorial"] .save-indicator--draft,
+.theme-editorial .save-indicator--draft {
+  color: var(--ed-amber);
+  font-family: var(--ed-font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+}
+
+/* ══════════════════════════════════════════════════════════
+   SELECTION & SCROLLBAR
+══════════════════════════════════════════════════════════ */
+
+[data-theme="editorial"] ::selection,
+.theme-editorial ::selection {
+  background: var(--ed-ink);
+  color: var(--ed-paper);
+}
+
+[data-theme="editorial"] ::-webkit-scrollbar,
+.theme-editorial ::-webkit-scrollbar { width: 6px; }
+[data-theme="editorial"] ::-webkit-scrollbar-track,
+.theme-editorial ::-webkit-scrollbar-track { background: var(--ed-paper-dark); }
+[data-theme="editorial"] ::-webkit-scrollbar-thumb,
+.theme-editorial ::-webkit-scrollbar-thumb {
+  background: rgba(13,12,10,0.25);
+  border-radius: 0;
+}
+[data-theme="editorial"] ::-webkit-scrollbar-thumb:hover,
+.theme-editorial ::-webkit-scrollbar-thumb:hover { background: rgba(13,12,10,0.45); }
+
+/* ══════════════════════════════════════════════════════════
+   LINKS
+══════════════════════════════════════════════════════════ */
+
+[data-theme="editorial"] a,
+.theme-editorial a {
+  color: var(--ed-ink);
+  text-decoration: none;
+}
+
+/* ══════════════════════════════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  [data-theme="editorial"] .portfolio-hero__name,
+  .theme-editorial .portfolio-hero__name {
+    font-size: clamp(3.5rem, 16vw, 6rem);
+  }
+  [data-theme="editorial"] .projects-grid,
+  .theme-editorial .projects-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  [data-theme="editorial"] .portfolio-hero__name,
+  .theme-editorial .portfolio-hero__name {
+    font-size: clamp(2.8rem, 18vw, 4.5rem);
+  }
+}

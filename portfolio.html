@@ -1129,12 +1129,23 @@
     }
 
     // ── Supabase: Load portfolio by slug ─────────────────────────────────
+    // نستخدم singleton client بدل ما نعمل client جديد في كل call
+    let _sb = null;
+    function getSupabaseClient() {
+      if (_sb) return _sb;
+      if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) return null;
+      if (!window.supabase?.createClient) return null;
+      _sb = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+      return _sb;
+    }
+
     async function loadFromSupabase(slug) {
       if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) return null;
       if (!window.supabase?.createClient) return null;
 
       try {
-        const sb = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+        const sb = getSupabaseClient();
+        if (!sb) return null;
 
         // جيب الـ portfolio بالـ slug
         const { data: portfolio, error } = await sb
@@ -1169,26 +1180,33 @@
             url: p.repo_url || `https://github.com/${userData?.github_username}/${p.github_repo_name}`,
           }));
 
-        // جيب بيانات GitHub الحقيقية
+        // جيب بيانات GitHub الحقيقية — مع in-memory cache لتفادي rate limiting
         let githubUser = { public_repos: projects.length, followers: 0, languages: {} };
         if (userData?.github_username) {
-          try {
-            const ghRes = await fetch(
-              `https://api.github.com/users/${userData.github_username}`,
-              { headers: { 'Accept': 'application/vnd.github.v3+json' } }
-            );
-            if (ghRes.ok) {
-              const ghData = await ghRes.json();
-              githubUser = {
-                public_repos: ghData.public_repos || projects.length,
-                followers:    ghData.followers    || 0,
-                following:    ghData.following    || 0,
-                languages:    {},
-              };
+          const cacheKey = `gh_user_${userData.github_username}`;
+          const cached = sessionStorage.getItem(cacheKey);
+          if (cached) {
+            try { githubUser = JSON.parse(cached); } catch {}
+          } else {
+            try {
+              const ghRes = await fetch(
+                `https://api.github.com/users/${encodeURIComponent(userData.github_username)}`,
+                { headers: { 'Accept': 'application/vnd.github.v3+json' } }
+              );
+              if (ghRes.ok) {
+                const ghData = await ghRes.json();
+                githubUser = {
+                  public_repos: ghData.public_repos || projects.length,
+                  followers:    ghData.followers    || 0,
+                  following:    ghData.following    || 0,
+                  languages:    {},
+                };
+                // cache لـ 10 دقايق في sessionStorage
+                try { sessionStorage.setItem(cacheKey, JSON.stringify(githubUser)); } catch {}
+              }
+            } catch (e) {
+              githubUser.public_repos = projects.length;
             }
-          } catch (e) {
-            // fallback — استخدم عدد الـ projects
-            githubUser.public_repos = projects.length;
           }
         }
 

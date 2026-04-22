@@ -188,14 +188,15 @@
   }
 
   function _buildDashboardURL() {
-    // نستخدم localhost بدل 127.0.0.1 — GitHub OAuth بيقبله أحسن
-    const origin = window.location.origin.replace('127.0.0.1', 'localhost');
+    // في Production: استخدم الـ origin كما هو بدون تعديل
+    // في Development: نقبل localhost و127.0.0.1
+    const origin = window.location.origin;
     const base   = origin + window.location.pathname;
     return base.replace(/\/[^/]*$/, '/dashboard.html');
   }
 
   function _buildRelativeURL(page) {
-    const origin = window.location.origin.replace('127.0.0.1', 'localhost');
+    const origin = window.location.origin;
     const base   = window.location.pathname.replace(/\/[^/]*$/, '/');
     return origin + base + page;
   }

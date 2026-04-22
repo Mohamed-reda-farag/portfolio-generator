@@ -1,132 +1,384 @@
-/* ═══════════════════════════════════════════════════════════════
-   themes/minimal.css — Free Theme: Minimal
-   Pure typography, no decorative color, editorial feel.
-   ═══════════════════════════════════════════════════════════════ */
+/* ============================================================
+   MINIMAL THEME — Newsprint Editorial
+   Aesthetic: Serif headlines, generous white space, ink-on-paper.
+   Zero decoration. Every element earns its place.
+   Looks like a piece from a design publication.
 
-.theme-minimal,
-body.theme-minimal {
-  --color-bg:           #ffffff;
-  --color-bg-secondary: #fafafa;
-  --color-bg-card:      #ffffff;
-  --color-border:       #e5e7eb;
-  --color-text:         #111111;
-  --color-text-muted:   #6b7280;
-  --color-accent:       #111111;
-  --color-accent-muted: rgba(17, 17, 17, 0.06);
+   Works with both:
+     [data-theme="minimal"]
+     .theme-minimal
+   ============================================================ */
 
-  --shadow-card:       none;
-  --shadow-card-hover: none;
+[data-theme="minimal"],
+.theme-minimal {
+  /* ── Palette — pure black on white, no green ── */
+  --color-bg:             #FFFFFF;
+  --color-bg-secondary:   #F7F7F5;
+  --color-bg-card:        #FFFFFF;
+  --color-bg-hover:       #F2F2F0;
 
-  /* Override font sizes for editorial feel */
-  --font-display: 'Newsreader', Georgia, serif;
+  /* ── Text — rich ink tones ── */
+  --color-text-primary:   #121212;
+  --color-text-secondary: #484848;
+  --color-text-tertiary:  #888888;
+  --color-text-inverse:   #FFFFFF;
+
+  /* ── Accent — almost no color, except sparingly ── */
+  --color-accent:         #121212;   /* black is the accent */
+  --color-accent-hover:   #2a2a2a;
+  --color-accent-subtle:  rgba(18,18,18,0.04);
+  --color-accent-border:  rgba(18,18,18,0.12);
+
+  /* ── Borders — hairlines ── */
+  --color-border:         rgba(18,18,18,0.08);
+  --color-border-strong:  rgba(18,18,18,0.14);
+  --color-border-rule:    rgba(18,18,18,0.10);
+
+  /* ── Shadows — none intentionally ── */
+  --shadow-card:          none;
+  --shadow-card-hover:    none;
+  --shadow-lg:            0 4px 24px rgba(0,0,0,0.06);
 }
 
-body.theme-minimal {
+/* ── Base ── */
+[data-theme="minimal"] body,
+.theme-minimal body {
   background-color: var(--color-bg);
-  color: var(--color-text);
+  color: var(--color-text-primary);
+  font-family: 'Newsreader', Georgia, serif;
   background-image: none;
 }
 
-/* Typography overrides — editorial */
-body.theme-minimal h1,
-body.theme-minimal h2,
-body.theme-minimal h3 {
-  font-family: var(--font-display);
-  font-style: italic;
-  font-weight: 400;
-  letter-spacing: -0.02em;
+/* Remove the grid texture — clean white only */
+[data-theme="minimal"] body::before,
+.theme-minimal body::before {
+  display: none;
 }
 
-body.theme-minimal .portfolio-hero__name {
-  font-size: clamp(2.5rem, 7vw, 5rem);
+[data-theme="minimal"] body::after,
+.theme-minimal body::after {
+  display: none;
+}
+
+/* ── Typography — editorial override ── */
+[data-theme="minimal"] .portfolio-hero__name,
+.theme-minimal .portfolio-hero__name {
+  font-family: 'Newsreader', Georgia, serif;
+  font-style: italic;
+  font-weight: 300;
+  letter-spacing: -0.03em;
+  line-height: 0.92;
+  color: var(--color-text-primary);
+  -webkit-text-fill-color: var(--color-text-primary);
+}
+
+[data-theme="minimal"] .portfolio-hero__title,
+.theme-minimal .portfolio-hero__title {
+  font-family: 'DM Mono', monospace;
+  font-style: normal;
+  font-size: 0.85rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+  opacity: 1;
+}
+
+[data-theme="minimal"] .portfolio-hero__bio,
+.theme-minimal .portfolio-hero__bio {
+  font-family: 'Newsreader', Georgia, serif;
+  font-style: normal;
+  font-weight: 400;
+  font-size: clamp(1rem, 2vw, 1.15rem);
+  line-height: 1.75;
+  color: var(--color-text-secondary);
+}
+
+/* ── Hero decoration — remove the glowing line ── */
+[data-theme="minimal"] .portfolio-hero::after,
+.theme-minimal .portfolio-hero::after {
+  background: var(--color-border-rule);
+  opacity: 1;
+  height: 1px;
+}
+
+/* Hide the eyebrow glowing line */
+[data-theme="minimal"] .hero-eyebrow,
+.theme-minimal .hero-eyebrow {
+  color: var(--color-text-tertiary);
+  font-family: 'DM Mono', monospace;
+}
+[data-theme="minimal"] .hero-eyebrow::before,
+.theme-minimal .hero-eyebrow::before {
+  background: var(--color-border-rule);
+}
+
+[data-theme="minimal"] .hero-link,
+.theme-minimal .hero-link {
+  color: var(--color-text-tertiary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--color-border-rule);
+}
+[data-theme="minimal"] .hero-link:hover,
+.theme-minimal .hero-link:hover {
+  color: var(--color-text-primary);
+  text-decoration-color: var(--color-text-primary);
+}
+
+/* ── Section Labels — masthead style ── */
+[data-theme="minimal"] .section-label,
+.theme-minimal .section-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+  border-top: 2px solid var(--color-text-primary);
+  padding-top: 8px;
+  margin-bottom: 32px;
+}
+[data-theme="minimal"] .section-label span,
+.theme-minimal .section-label span {
+  font-family: 'DM Mono', monospace;
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+[data-theme="minimal"] .section-label::after,
+.theme-minimal .section-label::after {
+  background: var(--color-border-rule);
+}
+
+/* ── Project Cards — border only, flat ── */
+[data-theme="minimal"] .project-card,
+.theme-minimal .project-card {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+[data-theme="minimal"] .project-card:hover,
+.theme-minimal .project-card:hover {
+  border-color: var(--color-text-primary);
+  box-shadow: none;
+  transform: none;
+}
+
+/* No gradient top bar in minimal */
+[data-theme="minimal"] .project-card::before,
+.theme-minimal .project-card::before {
+  display: none;
+}
+
+[data-theme="minimal"] .project-card--featured,
+.theme-minimal .project-card--featured {
+  border-color: var(--color-border-strong);
+  background: var(--color-bg-secondary);
+  border-left: 3px solid var(--color-text-primary);
+}
+[data-theme="minimal"] .project-card--featured::before,
+.theme-minimal .project-card--featured::before {
+  display: none;
+}
+
+[data-theme="minimal"] .project-card__name,
+.theme-minimal .project-card__name {
+  font-family: 'Newsreader', Georgia, serif;
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--color-text-primary);
+}
+
+[data-theme="minimal"] .project-card__desc,
+.theme-minimal .project-card__desc {
+  font-family: 'Newsreader', Georgia, serif;
+  color: var(--color-text-secondary);
+  line-height: 1.65;
+}
+
+[data-theme="minimal"] .project-card__lang,
+.theme-minimal .project-card__lang {
+  font-family: 'DM Mono', monospace;
+  color: var(--color-text-tertiary);
+  font-size: 0.72rem;
+}
+
+[data-theme="minimal"] .featured-badge,
+.theme-minimal .featured-badge {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--color-text-tertiary);
+  border-color: var(--color-border-strong);
+  border-radius: 0;
+  background: transparent;
+}
+
+[data-theme="minimal"] .project-stat,
+.theme-minimal .project-stat {
+  font-family: 'DM Mono', monospace;
+  color: var(--color-text-tertiary);
+  font-size: 0.72rem;
+}
+
+[data-theme="minimal"] .topic-chip,
+.theme-minimal .topic-chip {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-tertiary);
+  border-radius: 0;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.68rem;
+}
+
+/* ── Skills — text list style ── */
+[data-theme="minimal"] .skill-tag,
+.theme-minimal .skill-tag {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  border-radius: 0;
   font-family: 'Newsreader', Georgia, serif;
   font-style: italic;
 }
 
-/* Cards — border only, no background difference */
-body.theme-minimal .project-card {
+[data-theme="minimal"] .skill-tag:hover,
+.theme-minimal .skill-tag:hover {
+  border-color: var(--color-text-primary);
+  color: var(--color-text-primary);
   background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: 0;
-  box-shadow: none;
-  padding: 1.5rem;
-  transition: border-color 0.2s;
-}
-
-body.theme-minimal .project-card:hover {
-  border-color: var(--color-text);
-  transform: none;
   box-shadow: none;
 }
 
-/* Skills — text only */
-body.theme-minimal .skill-tag {
+[data-theme="minimal"] .skill-tag--add,
+.theme-minimal .skill-tag--add {
   background: transparent;
-  border-color: var(--color-border);
-  color: var(--color-text-muted);
+  border: 1px dashed var(--color-border-strong);
+  color: var(--color-text-tertiary);
   border-radius: 0;
-  font-style: italic;
+  font-style: normal;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.75rem;
+}
+[data-theme="minimal"] .skill-tag--add:hover,
+.theme-minimal .skill-tag--add:hover {
+  border-color: var(--color-text-primary);
+  color: var(--color-text-primary);
 }
 
-body.theme-minimal .skill-tag:hover {
-  border-color: var(--color-text);
-  color: var(--color-text);
-}
-
-/* Topics — understated */
-body.theme-minimal .topic-chip {
-  background: transparent;
-  border: 1px solid var(--color-border);
-  color: var(--color-text-muted);
-  font-size: 0.7rem;
-}
-
-/* Stats bar — text list */
-body.theme-minimal .stats-bar {
-  background: transparent;
-  border: none;
-  border-top: 1px solid var(--color-border);
+/* ── Buttons ── */
+[data-theme="minimal"] .btn--primary,
+.theme-minimal .btn--primary {
+  background: var(--color-text-primary);
+  color: var(--color-text-inverse);
+  border-color: var(--color-text-primary);
   border-radius: 0;
-  padding: 1rem 0;
+  box-shadow: none;
+  font-family: 'DM Mono', monospace;
+  font-weight: 500;
+}
+[data-theme="minimal"] .btn--primary:hover,
+.theme-minimal .btn--primary:hover {
+  background: var(--color-accent-hover);
+  box-shadow: none;
 }
 
-/* Accent — black, no green */
-body.theme-minimal .featured-badge {
-  color: var(--color-text);
-  border-color: var(--color-text);
+[data-theme="minimal"] .btn--ghost,
+.theme-minimal .btn--ghost {
+  background: transparent;
+  color: var(--color-text-secondary);
+  border-color: var(--color-border-strong);
+  border-radius: 0;
+  font-family: 'DM Mono', monospace;
+}
+[data-theme="minimal"] .btn--ghost:hover,
+.theme-minimal .btn--ghost:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+  border-color: var(--color-text-primary);
 }
 
-body.theme-minimal .portfolio-hero__avatar {
-  filter: grayscale(100%);
+/* ── Edit Toolbar — clean strip ── */
+[data-theme="minimal"] .edit-toolbar,
+.theme-minimal .edit-toolbar {
+  background: rgba(255,255,255,0.96);
+  border-bottom: 1px solid var(--color-border);
+  backdrop-filter: blur(8px);
 }
 
-/* Horizontal rules as section dividers */
-body.theme-minimal .portfolio-section + .portfolio-section {
-  border-top: 1px solid var(--color-border);
-  padding-top: 3rem;
+/* ── Icon buttons ── */
+[data-theme="minimal"] .icon-btn,
+.theme-minimal .icon-btn {
+  color: var(--color-text-tertiary);
+  border-radius: 0;
+}
+[data-theme="minimal"] .icon-btn:hover,
+.theme-minimal .icon-btn:hover {
+  color: var(--color-text-primary);
+  background: var(--color-bg-hover);
 }
 
-/* Links — underline style */
-body.theme-minimal a {
-  color: var(--color-text);
+/* ── Nav ── */
+[data-theme="minimal"] .nav.is-scrolled,
+.theme-minimal .nav.is-scrolled {
+  background: rgba(255,255,255,0.95);
+  border-bottom-color: var(--color-border);
+  backdrop-filter: blur(8px);
+}
+
+/* ── Edit hints ── */
+[data-theme="minimal"] .is-editable:hover,
+.theme-minimal .is-editable:hover {
+  outline: 1px dashed rgba(18,18,18,0.25);
+  outline-offset: 4px;
+  border-radius: 0;
+}
+[data-theme="minimal"] .is-editing,
+.theme-minimal .is-editing {
+  outline: 1px solid var(--color-text-primary) !important;
+  outline-offset: 4px;
+  border-radius: 0;
+}
+
+/* ── Selection ── */
+[data-theme="minimal"] ::selection,
+.theme-minimal ::selection {
+  background: rgba(18,18,18,0.08);
+  color: var(--color-text-primary);
+}
+
+/* ── Scrollbar ── */
+[data-theme="minimal"] ::-webkit-scrollbar,
+.theme-minimal ::-webkit-scrollbar { width: 4px; }
+[data-theme="minimal"] ::-webkit-scrollbar-track,
+.theme-minimal ::-webkit-scrollbar-track { background: transparent; }
+[data-theme="minimal"] ::-webkit-scrollbar-thumb,
+.theme-minimal ::-webkit-scrollbar-thumb {
+  background: rgba(18,18,18,0.15);
+  border-radius: 0;
+}
+[data-theme="minimal"] ::-webkit-scrollbar-thumb:hover,
+.theme-minimal ::-webkit-scrollbar-thumb:hover { background: rgba(18,18,18,0.28); }
+
+/* ── Theme panel ── */
+[data-theme="minimal"] .theme-panel,
+.theme-minimal .theme-panel {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-strong);
+  box-shadow: var(--shadow-lg);
+  color: var(--color-text-primary);
+  border-radius: 0;
+}
+
+/* ── Links ── */
+[data-theme="minimal"] a,
+.theme-minimal a {
+  color: var(--color-text-primary);
   text-decoration: underline;
   text-underline-offset: 3px;
-  text-decoration-color: var(--color-border);
+  text-decoration-color: var(--color-border-rule);
 }
-
-body.theme-minimal a:hover {
-  text-decoration-color: var(--color-text);
-}
-
-/* Scrollbar */
-body.theme-minimal {
-  scrollbar-color: #d1d5db transparent;
-}
-
-/* Theme preview card */
-.theme-preview-card[data-theme-name="minimal"] {
-  background: #ffffff;
-  color: #111111;
-  font-family: Georgia, serif;
-  font-style: italic;
+[data-theme="minimal"] a:hover,
+.theme-minimal a:hover {
+  text-decoration-color: var(--color-text-primary);
 }

@@ -18,12 +18,17 @@
     free: [
       { id: 'light',    label: 'Light',    icon: '☀️' },
       { id: 'dark',     label: 'Dark',     icon: '🌙' },
-      { id: 'minimal',  label: 'Minimal',  icon: '◻' },
+      { id: 'minimal',  label: 'Minimal',  icon: '◻'  },
     ],
     pro: [
-      { id: 'glass3d',  label: 'Glass 3D',  icon: '💎' },
-      { id: 'cyberpunk',label: 'Cyberpunk', icon: '⚡' },
-      { id: 'space',    label: 'Space',     icon: '🚀' },
+      { id: 'editorial', label: 'Editorial', icon: '📰' },
+      { id: 'noir',      label: 'Noir',      icon: '◼'  },
+      { id: 'blueprint', label: 'Blueprint', icon: '📐' },
+      { id: 'terminal',  label: 'Terminal',  icon: '>_' },
+      { id: 'liquid',    label: 'Liquid',    icon: '💧' },
+      { id: 'glass3d',   label: 'Glass 3D',  icon: '💎' },
+      { id: 'cyberpunk', label: 'Cyberpunk', icon: '⚡' },
+      { id: 'space',     label: 'Space',     icon: '🚀' },
     ],
   };
 
@@ -31,99 +36,35 @@
   const AUTOSAVE_DEBOUNCE = 600; // ms
 
   /* ═══════════════════════════════════════════════════════════════
-     HMAC CODE SYSTEM
+     CODE VALIDATION
      ────────────────────────────────────────────────────────────
-     كل كود بيتكون من 3 أجزاء:
-       GPORT  +  HMAC_PREFIX  +  RANDOM_SUFFIX
-       4 chars    4 chars         بيتحدد بالطول الكلي
-
-     الطول الكلي بيحدد نوع الكود:
-       16 chars → Pro Full  (100%)
-       14 chars → Ref 60%
-       12 chars → Ref 40%
-       10 chars → Ref 20%
-
-     الـ HMAC_PREFIX بيتحسب من:
-       HMAC-SHA256(GPORT_SECRET, floor(timestamp / WINDOW_MS))
-       → أول 4 chars من النتيجة بالـ HEX
-
-     الـ WINDOW_MS = 48 ساعة
-     الموقع بيقبل الـ window الحالية والـ window اللي قبلها
-     (عشان الكود ما ينتهيش فجأة لو الـ window اتقلبت)
+     التحقق من الكود يحصل كلياً server-side في Supabase (activate_pro).
+     الـ client بيتحقق من الـ format الأساسي فقط (prefix + length)
+     قبل ما يبعت للـ server — لتوفير request غير ضروري.
   ═══════════════════════════════════════════════════════════════ */
 
-  // ⚠️ غيّر الـ SECRET ده بقيمة سرية ثابتة — نفس القيمة في البوت
-  const GPORT_SECRET  = ''; // validation moved to server
-  const GPORT_PREFIX  = 'GPORT';
-  const WINDOW_MS     = 48 * 60 * 60 * 1000; // 48 ساعة
-
-  const CODE_TYPES = {
-    16: { type: 'monthly', label: 'شهري (شهر كامل)'   },
-    14: { type: 'yearly',  label: 'سنوي (سنة كاملة)'  },
-  };
+  const GPORT_PREFIX = 'GPORT';
+  const CODE_LENGTHS = new Set([16, 14]); // 16=monthly, 14=yearly
 
   /**
-   * حساب الـ HMAC prefix لـ time window معين
-   * @param {number} windowIndex - رقم الـ window (floor(Date.now() / WINDOW_MS))
-   * @returns {Promise<string>} 4-char hex prefix
+   * تحقق سريع من الـ format فقط (offline — لا يغني عن server validation)
+   * @param {string} code
+   * @returns {{ valid: boolean, type?: string, error?: string }}
    */
-  async function _computeHmacPrefix(windowIndex) {
-    const encoder = new TextEncoder();
-    const keyData = encoder.encode(GPORT_SECRET);
-    const message = encoder.encode(String(windowIndex));
-
-    const cryptoKey = await crypto.subtle.importKey(
-      'raw', keyData,
-      { name: 'HMAC', hash: 'SHA-256' },
-      false, ['sign']
-    );
-
-    const signature = await crypto.subtle.sign('HMAC', cryptoKey, message);
-    const hexArray  = Array.from(new Uint8Array(signature));
-    const hexString = hexArray.map(b => b.toString(16).padStart(2, '0')).join('');
-
-    return hexString.slice(0, 4).toUpperCase();
-  }
-
-  /**
-   * التحقق من صحة الكود
-   * @param {string} code - الكود المدخل من المستخدم
-   * @returns {Promise<{valid: boolean, type?: string, discount?: number, label?: string, error?: string}>}
-   */
-  async function _verifyCode(code) {
+  function _checkCodeFormat(code) {
     const clean = code.trim().toUpperCase();
 
-    // تحقق من الـ prefix الثابت
     if (!clean.startsWith(GPORT_PREFIX)) {
       return { valid: false, error: 'Invalid code format' };
     }
-
-    // تحديد النوع من الطول
-    const codeType = CODE_TYPES[clean.length];
-    if (!codeType) {
+    if (!CODE_LENGTHS.has(clean.length)) {
       return { valid: false, error: 'Invalid code length' };
     }
-
-    // استخراج الـ HMAC prefix من الكود (الـ 4 chars بعد GPORT)
-    const codeHmacPart = clean.slice(GPORT_PREFIX.length, GPORT_PREFIX.length + 4);
-
-    // حساب الـ window الحالية والسابقة
-    const currentWindow = Math.floor(Date.now() / WINDOW_MS);
-    const windows       = [currentWindow, currentWindow - 1]; // نقبل الاتنين
-
-    for (const w of windows) {
-      const expectedPrefix = await _computeHmacPrefix(w);
-      if (codeHmacPart === expectedPrefix) {
-        return {
-          valid: true,
-          code:  clean,
-          type:  codeType.type,
-          label: codeType.label,
-        };
-      }
-    }
-
-    return { valid: false, error: 'Code expired or invalid' };
+    return {
+      valid: true,
+      code:  clean,
+      type:  clean.length === 14 ? 'yearly' : 'monthly',
+    };
   }
 
   /* ═══════════════════════════════════════════════════════════════
@@ -688,8 +629,17 @@
         const userId = authData?.user?.id;
 
         if (userId) {
-          const slug = (draft.githubUsername || draft.githubUser?.login || userId.slice(0, 8))
-            .toLowerCase().replace(/[^a-z0-9-]/g, '-');
+          // ── Slug: يتبنى من الـ GitHub username مع validation صارم ──────────
+          const rawSlug = (draft.githubUsername || draft.githubUser?.login || '').toLowerCase();
+          if (!rawSlug) {
+            throw new Error('Cannot determine GitHub username for slug.');
+          }
+          // يسمح بـ alphanumeric وhyphens فقط — نفس قواعد GitHub usernames
+          const slug = rawSlug
+            .replace(/[^a-z0-9-]/g, '-')  // استبدل أي حرف غير مسموح
+            .replace(/-+/g, '-')           // ازل hyphens متتالية
+            .replace(/^-|-$/g, '')         // ازل hyphens في البداية والنهاية
+            .slice(0, 39);                 // GitHub max username length
 
           await sb.from('users').upsert({
             id: userId, email: authData.user.email || '',
@@ -846,7 +796,7 @@
                 <span style="background:rgba(0,255,136,0.15);color:#00FF88;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:700;flex-shrink:0;margin-top:1px;">1</span>
                 <span style="font-size:0.8rem;color:#A8C0B0;line-height:1.5;">
                   حوّل ${priceDisplay} على InstaPay أو فودافون كاش
-                  <br><span style="color:#00FF88;font-size:0.78rem;">📱 01096952150</span>
+                  <br><span style="color:#00FF88;font-size:0.78rem;">📱 01095499556</span>
                 </span>
               </div>
               <div style="display:flex;gap:0.75rem;align-items:flex-start;">
@@ -960,13 +910,13 @@
     applyBtn.textContent = '...';
     _setCodeMsg(msgEl, 'loading', 'Verifying code…');
 
-    // 1. HMAC verification (offline — no server needed)
-    const result = await _verifyCode(code);
+    // 1. Format check فقط (offline) — التحقق الحقيقي server-side
+    const formatResult = _checkCodeFormat(code);
 
-    if (!result.valid) {
+    if (!formatResult.valid) {
       applyBtn.disabled = false;
       applyBtn.textContent = 'Activate';
-      _setCodeMsg(msgEl, 'error', result.error || 'Invalid or expired code. Please try again.');
+      _setCodeMsg(msgEl, 'error', formatResult.error || 'Invalid code format.');
       _shakeInput(modal);
       return;
     }
@@ -977,8 +927,8 @@
       if (!sb) throw new Error('Not connected');
 
       const { data, error } = await sb.rpc('activate_pro', {
-        p_code:      result.code,
-        p_code_type: result.type,
+        p_code:      formatResult.code,
+        p_code_type: formatResult.type,
         p_discount:  0,
       });
 
@@ -1064,24 +1014,64 @@
   ═══════════════════════════════════════════════════════════════ */
 
   function _setupProThemeElements(themeId) {
+    // ── Cleanup: شيل كل الـ elements الخاصة بكل theme ──────────
+    // Editorial
+    document.querySelector('.ed-ticker')?.remove();
+    document.getElementById('ed-ink-cursor')?.remove();
+    document.getElementById('ed-ink-ring')?.remove();
+    // Noir
+    document.querySelector('.nr-band')?.remove();
+    document.getElementById('nr-cursor-ring')?.remove();
+    document.getElementById('nr-cursor-dot')?.remove();
+    document.body.classList.remove('nr-cursor-active');
+    // Blueprint
+    document.querySelector('.bp-titleblock')?.remove();
+    document.getElementById('bp-h-line')?.remove();
+    document.getElementById('bp-v-line')?.remove();
+    document.getElementById('bp-cursor-dot')?.remove();
+    document.getElementById('bp-coords')?.remove();
+    document.querySelectorAll('.bp-brackets,.bp-dimensions').forEach(el => el.remove());
+    document.body.classList.remove('bp-cursor-active');
+    // Terminal
+    document.querySelector('.tm-window')?.remove();
+    document.querySelector('.tm-neofetch')?.remove();
+    document.getElementById('tm-boot')?.remove();
+    document.getElementById('tm-matrix')?.remove();
+    document.getElementById('tm-name-cursor')?.remove();
+    document.getElementById('tm-edit-cursor')?.remove();
+    document.body.classList.remove('tm-cursor-active');
+    // Liquid
+    document.getElementById('lq-canvas')?.remove();
+    document.getElementById('lq-cursor-outer')?.remove();
+    document.getElementById('lq-cursor-dot')?.remove();
+    document.querySelectorAll('.lq-bg-fallback,.lq-blob').forEach(el => el.remove());
+    document.body.classList.remove('lq-cursor-active');
+    // Glass3D v2
+    document.getElementById('gl-canvas')?.remove();
+    document.getElementById('gl-filters')?.remove();
+    document.getElementById('gl-prism')?.remove();
+    document.getElementById('gl-reveal-style')?.remove();
+    document.getElementById('gl-ca-style')?.remove();
+    document.body.classList.remove('gl-cursor-active');
+    document.querySelectorAll('.gl-orb,.gl-bg').forEach(el => el.remove());
+    // Cyberpunk v2
+    ['cb-stream','cb-glitch-canvas','cb-reticle','cb-scan-label',
+     'cb-reveal-style','cb-boot'].forEach(id => document.getElementById(id)?.remove());
+    document.querySelectorAll(
+      '.cb-alert,.cb-status,.cb-scanlines,.cb-grid-a,.cb-grid-b,.cb-grid-persp'
+    ).forEach(el => el.remove());
+    document.body.classList.remove('cb-cursor-active');
+    document.body.style.filter = '';
+    document.body.style.cursor = '';
+    // Space v2
+    ['sp-stars-far','sp-stars-mid','sp-stars-near','sp-warp','sp-nebula',
+     'sp-reticle','sp-coords','sp-reveal-style'].forEach(id => document.getElementById(id)?.remove());
+    document.querySelector('.sp-hud')?.remove();
+    document.body.classList.remove('sp-cursor-active');
+    // Legacy (backward compat)
     document.getElementById('glass-orb-3')?.remove();
     document.querySelector('.glass-particles')?.remove();
     document.querySelector('.space-nebula-layer')?.remove();
-
-    if (themeId === 'glass3d') {
-      const orb = document.createElement('div');
-      orb.id = 'glass-orb-3';
-      document.body.appendChild(orb);
-      const particles = document.createElement('div');
-      particles.className = 'glass-particles';
-      document.body.appendChild(particles);
-    }
-
-    if (themeId === 'space') {
-      const nebula = document.createElement('div');
-      nebula.className = 'space-nebula-layer';
-      document.body.appendChild(nebula);
-    }
   }
 
   /* ═══════════════════════════════════════════════════════════════
@@ -1155,9 +1145,14 @@
   ═══════════════════════════════════════════════════════════════ */
 
   const PRO_THEME_SCRIPTS = {
-    cyberpunk: { src: 'js/themes/cyberpunk.js', global: 'CyberpunkFX', loaded: false },
-    space:     { src: 'js/themes/three-scene.js', global: 'SpaceFX', loaded: false },
-    glass3d:   { src: null, global: null, loaded: true },
+    editorial: { src: 'js/themes/editorial.js',  global: 'EditorialFX', loaded: false },
+    noir:      { src: 'js/themes/noir.js',        global: 'NoirFX',      loaded: false },
+    blueprint: { src: 'js/themes/blueprint.js',   global: 'BlueprintFX', loaded: false },
+    terminal:  { src: 'js/themes/terminal.js',    global: 'TerminalFX',  loaded: false },
+    liquid:    { src: 'js/themes/liquid.js',       global: 'LiquidFX',   loaded: false },
+    glass3d:   { src: 'js/themes/glass3d.js',     global: 'GlassFX',    loaded: false },
+    cyberpunk: { src: 'js/themes/cyberpunk.js',   global: 'CyberpunkFX', loaded: false },
+    space:     { src: 'js/themes/space.js',        global: 'SpaceFX',    loaded: false },
   };
 
   let _currentProFX = null;
@@ -1203,7 +1198,7 @@
   }
 
   const FREE_THEMES = new Set(['light', 'dark', 'minimal']);
-  const PRO_THEMES  = new Set(['glass3d', 'cyberpunk', 'space']);
+  const PRO_THEMES  = new Set(['editorial','noir','blueprint','terminal','liquid','glass3d','cyberpunk','space']);
 
   async function handleThemeScriptLifecycle(themeName) {
     if (FREE_THEMES.has(themeName)) { deactivateCurrentProTheme(); return; }

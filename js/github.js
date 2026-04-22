@@ -326,7 +326,7 @@ async function fetchRepoReadme(fullName, defaultBranch = 'main') {
 function stripMarkdown(md) {
   return md
     .replace(/!\[.*?\]\(.*?\)/g, '')          // images
-    .replace(/\[.*?\]\(.*?\)/g, '$1')         // links → text
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1') // links → text only
     .replace(/```[\s\S]*?```/g, '')           // code blocks
     .replace(/`[^`]*`/g, '')                  // inline code
     .replace(/^#{1,6}\s+/gm, '')             // headers
@@ -496,6 +496,17 @@ async function fetchGitHubData(username, onProgress) {
 
   // Normalise username
   username = username.trim().replace(/^@/, '');
+
+  // Validate: GitHub usernames are 1-39 chars, alphanumeric + hyphens only
+  if (!username) {
+    throw new GitHubError('Please enter a GitHub username.', 'INVALID_USERNAME');
+  }
+  if (username.length > 39) {
+    throw new GitHubError('GitHub username is too long (max 39 characters).', 'INVALID_USERNAME');
+  }
+  if (!/^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$/.test(username)) {
+    throw new GitHubError('Invalid GitHub username. Only letters, numbers, and hyphens are allowed.', 'INVALID_USERNAME');
+  }
 
   // ── Step 1/4: User profile ─────────────────────────────
   progress(5, 'Fetching GitHub profile…');

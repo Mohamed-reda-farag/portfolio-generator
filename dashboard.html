@@ -324,7 +324,7 @@
         </ul>
       </div>
       <div class="upgrade-section__actions">
-        <a href="https://t.me/GPortBot" target="_blank" rel="noopener"
+        <a href="https://t.me/GPORT_Payment_BOT" target="_blank" rel="noopener"
            id="upgrade-telegram-btn" class="upgrade-btn">
           Upgrade via Telegram ⚡
         </a>
@@ -503,41 +503,22 @@
   ;(function () {
     'use strict';
 
-    // ─── HMAC Verification (نفس portfolio.js) ────────────────
-    const GPORT_SECRET  = ''; // validation moved to server
-    const WINDOW_MS     = 48 * 60 * 60 * 1000;
-    const CODE_TYPES    = {
-      16: { type: 'pro_full', discount: 100 },
-      14: { type: 'ref_60',   discount: 60  },
-      12: { type: 'ref_40',   discount: 40  },
-      10: { type: 'ref_20',   discount: 20  },
-    };
+    // ─── Code Format Check (server-side validation via activate_pro) ──
+    // التحقق الحقيقي بيحصل في Supabase activate_pro فقط.
+    // هنا بنتحقق من الـ format الأساسي بس قبل ما نبعت للـ server.
+    const GPORT_PREFIX  = 'GPORT';
+    const CODE_LENGTHS  = new Set([16, 14]); // 16=monthly, 14=yearly
 
-    async function _computeHmacPrefix(windowIndex) {
-      const encoder  = new TextEncoder();
-      const keyData  = encoder.encode(GPORT_SECRET);
-      const message  = encoder.encode(String(windowIndex));
-      const cryptoKey = await crypto.subtle.importKey(
-        'raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
-      );
-      const signature = await crypto.subtle.sign('HMAC', cryptoKey, message);
-      const hex = Array.from(new Uint8Array(signature))
-        .map(b => b.toString(16).padStart(2, '0')).join('');
-      return hex.slice(0, 4).toUpperCase();
-    }
-
-    async function verifyCode(code) {
+    function verifyCode(code) {
       const clean = code.trim().toUpperCase();
-      if (!clean.startsWith(GPORT_PREFIX)) return { valid: false, error: 'Invalid format' };
-      const codeType = CODE_TYPES[clean.length];
-      if (!codeType) return { valid: false, error: 'Invalid code length' };
-      const codeHmac = clean.slice(GPORT_PREFIX.length, GPORT_PREFIX.length + 4);
-      const current  = Math.floor(Date.now() / WINDOW_MS);
-      for (const w of [current, current - 1]) {
-        const expected = await _computeHmacPrefix(w);
-        if (codeHmac === expected) return { valid: true, code: clean, ...codeType };
+      if (!clean.startsWith(GPORT_PREFIX)) {
+        return { valid: false, error: 'Invalid code format' };
       }
-      return { valid: false, error: 'Code expired or invalid' };
+      if (!CODE_LENGTHS.has(clean.length)) {
+        return { valid: false, error: 'Invalid code length' };
+      }
+      const type = clean.length === 14 ? 'yearly' : 'monthly';
+      return { valid: true, code: clean, type, discount: 0 };
     }
 
     // ─── Helpers ─────────────────────────────────────────────
@@ -834,7 +815,7 @@
       msg.style.color = '#8A9E90';
       msg.textContent = 'Verifying…';
 
-      const result = await verifyCode(code);
+      const result = verifyCode(code);
 
       if (!result.valid) {
         btn.disabled    = false;
@@ -945,7 +926,11 @@
 
       // Greeting
       const name = user.name?.split(' ')[0] || user.githubUsername || 'Developer';
-      $('greeting-text').innerHTML = `Hey, <span>${name}</span> 👋`;
+      const greetEl = $('greeting-text');
+      greetEl.textContent = '';
+      const span = document.createElement('span');
+      span.textContent = name;
+      greetEl.append('Hey, ', span, ' 👋');
       $('greeting-sub').textContent = portfolios.length === 0
         ? 'Generate your first portfolio below.'
         : `You have ${portfolios.length} portfolio${portfolios.length !== 1 ? 's' : ''} · ${user.githubUsername}`;

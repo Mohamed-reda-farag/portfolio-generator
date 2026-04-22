@@ -1,70 +1,323 @@
-/* ═══════════════════════════════════════════════════════════════
-   themes/dark.css — Free Theme: Dark
-   ═══════════════════════════════════════════════════════════════ */
+/* ============================================================
+   DARK THEME — Obsidian
+   Aesthetic: Deep black, emerald glow, precision lines.
+   The serious developer's default. Clean signal, no noise.
 
-.theme-dark,
-body.theme-dark {
-  /* Colors */
-  --color-bg:           #0d1117;
-  --color-bg-secondary: #161b22;
-  --color-bg-card:      #1c2128;
-  --color-border:       rgba(255, 255, 255, 0.08);
-  --color-text:         #e6edf3;
-  --color-text-muted:   #8b949e;
-  --color-accent:       #00FF88;
-  --color-accent-muted: rgba(0, 255, 136, 0.12);
+   Works with both:
+     [data-theme="dark"]  (set by applyTheme())
+     .theme-dark          (class also set by applyTheme())
+   ============================================================ */
 
-  /* Shadows */
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.04);
-  --shadow-card-hover: 0 8px 24px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(0, 255, 136, 0.15);
+[data-theme="dark"],
+.theme-dark {
+  /* ── Core Palette ── */
+  --color-bg:             #080C0A;
+  --color-bg-secondary:   #0D1410;
+  --color-bg-card:        #111A14;
+  --color-bg-elevated:    #162019;
+  --color-bg-hover:       rgba(0, 255, 136, 0.04);
+
+  /* ── Text ── */
+  --color-text-primary:   #E8F0EB;
+  --color-text-secondary: #8A9E90;
+  --color-text-tertiary:  #4A5E52;
+  --color-text-inverse:   #080C0A;
+
+  /* ── Accent — Terminal Green ── */
+  --color-accent:         #00FF88;
+  --color-accent-hover:   #00E87B;
+  --color-accent-subtle:  rgba(0, 255, 136, 0.07);
+  --color-accent-border:  rgba(0, 255, 136, 0.18);
+  --color-accent-glow:    rgba(0, 255, 136, 0.25);
+
+  /* ── Borders ── */
+  --color-border:         rgba(0, 255, 136, 0.08);
+  --color-border-strong:  rgba(0, 255, 136, 0.16);
+  --color-border-dim:     rgba(255, 255, 255, 0.04);
+
+  /* ── Shadows ── */
+  --shadow-card:          0 1px 3px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03);
+  --shadow-card-hover:    0 8px 32px rgba(0,0,0,0.65), 0 0 0 1px rgba(0,255,136,0.14);
+  --shadow-glow:          0 0 24px rgba(0,255,136,0.18);
 }
 
-.theme-dark body,
-body.theme-dark {
+/* ── Base ── */
+[data-theme="dark"] body,
+.theme-dark body {
   background-color: var(--color-bg);
-  color: var(--color-text);
+  color: var(--color-text-primary);
+}
+
+/* The global grid from main.css already works — just tune opacity */
+[data-theme="dark"] body::before,
+.theme-dark body::before {
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+    linear-gradient(rgba(0,255,136,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,255,136,0.025) 1px, transparent 1px);
   background-size: 60px 60px;
 }
 
-body.theme-dark .project-card,
-body.theme-dark .card {
+[data-theme="dark"] body::after,
+.theme-dark body::after {
+  background:
+    radial-gradient(ellipse 80% 60% at 10% -10%, rgba(0,255,136,0.045) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 90% 110%, rgba(0,255,136,0.025) 0%, transparent 60%);
+}
+
+/* ── Hero ── */
+[data-theme="dark"] .portfolio-hero::after,
+.theme-dark .portfolio-hero::after {
+  background: linear-gradient(90deg, var(--color-accent), transparent);
+  opacity: 0.12;
+}
+
+[data-theme="dark"] .hero-eyebrow,
+.theme-dark .hero-eyebrow {
+  color: var(--color-accent);
+}
+[data-theme="dark"] .hero-eyebrow::before,
+.theme-dark .hero-eyebrow::before {
+  background: var(--color-accent);
+}
+
+[data-theme="dark"] .portfolio-hero__name,
+.theme-dark .portfolio-hero__name {
+  color: var(--color-text-primary);
+  -webkit-text-fill-color: var(--color-text-primary);
+}
+
+[data-theme="dark"] .portfolio-hero__title,
+.theme-dark .portfolio-hero__title {
+  color: var(--color-accent);
+}
+
+[data-theme="dark"] .portfolio-hero__bio,
+.theme-dark .portfolio-hero__bio {
+  color: var(--color-text-secondary);
+}
+
+[data-theme="dark"] .hero-link,
+.theme-dark .hero-link {
+  color: var(--color-text-tertiary);
+}
+[data-theme="dark"] .hero-link:hover,
+.theme-dark .hero-link:hover {
+  color: var(--color-accent);
+}
+
+/* ── Section Labels ── */
+[data-theme="dark"] .section-label,
+.theme-dark .section-label {
+  color: var(--color-text-tertiary);
+}
+[data-theme="dark"] .section-label span,
+.theme-dark .section-label span {
+  color: var(--color-accent);
+}
+[data-theme="dark"] .section-label::after,
+.theme-dark .section-label::after {
+  background: var(--color-border);
+}
+
+/* ── Project Cards ── */
+[data-theme="dark"] .project-card,
+.theme-dark .project-card {
   background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
+  border-color: var(--color-border-dim);
   box-shadow: var(--shadow-card);
-  transition: transform 0.2s, box-shadow 0.2s;
 }
 
-body.theme-dark .project-card:hover {
-  transform: translateY(-3px);
+[data-theme="dark"] .project-card:hover,
+.theme-dark .project-card:hover {
+  border-color: var(--color-border-strong);
   box-shadow: var(--shadow-card-hover);
+  transform: translateY(-3px);
 }
 
-body.theme-dark .skill-tag {
-  background: rgba(0, 255, 136, 0.06);
-  border-color: rgba(0, 255, 136, 0.18);
+[data-theme="dark"] .project-card::before,
+.theme-dark .project-card::before {
+  background: linear-gradient(90deg, var(--color-accent), transparent);
 }
 
-body.theme-dark .topic-chip {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--color-text-muted);
+[data-theme="dark"] .project-card--featured,
+.theme-dark .project-card--featured {
+  border-color: rgba(0,255,136,0.12);
+  background: linear-gradient(135deg, var(--color-bg-card), var(--color-bg-elevated));
+}
+[data-theme="dark"] .project-card--featured::before,
+.theme-dark .project-card--featured::before {
+  opacity: 0.4;
 }
 
-body.theme-dark .stats-bar {
+[data-theme="dark"] .project-card__name,
+.theme-dark .project-card__name {
+  color: var(--color-text-primary);
+}
+
+[data-theme="dark"] .project-card__desc,
+.theme-dark .project-card__desc {
+  color: var(--color-text-secondary);
+}
+
+[data-theme="dark"] .project-card__lang,
+.theme-dark .project-card__lang {
+  color: var(--color-text-tertiary);
+}
+
+[data-theme="dark"] .featured-badge,
+.theme-dark .featured-badge {
+  color: var(--color-accent);
+  border-color: rgba(0,255,136,0.25);
+}
+
+[data-theme="dark"] .project-stat,
+.theme-dark .project-stat {
+  color: var(--color-text-tertiary);
+}
+
+[data-theme="dark"] .topic-chip,
+.theme-dark .topic-chip {
+  background: rgba(0,255,136,0.05);
+  border-color: rgba(0,255,136,0.12);
+  color: var(--color-text-secondary);
+}
+
+/* ── Skills ── */
+[data-theme="dark"] .skill-tag,
+.theme-dark .skill-tag {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-dim);
+  color: var(--color-text-secondary);
+}
+
+[data-theme="dark"] .skill-tag:hover,
+.theme-dark .skill-tag:hover {
+  border-color: var(--color-accent-border);
+  color: var(--color-accent);
+  background: var(--color-accent-subtle);
+  box-shadow: 0 0 12px rgba(0,255,136,0.08);
+}
+
+[data-theme="dark"] .skill-tag--add,
+.theme-dark .skill-tag--add {
+  background: transparent;
+  border: 1px dashed var(--color-border);
+  color: var(--color-text-tertiary);
+}
+[data-theme="dark"] .skill-tag--add:hover,
+.theme-dark .skill-tag--add:hover {
+  border-color: var(--color-accent-border);
+  color: var(--color-accent);
+}
+
+/* ── Buttons ── */
+[data-theme="dark"] .btn--primary,
+.theme-dark .btn--primary {
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 16px rgba(0,255,136,0.2);
+}
+[data-theme="dark"] .btn--primary:hover,
+.theme-dark .btn--primary:hover {
+  box-shadow: 0 0 24px rgba(0,255,136,0.35);
+}
+
+[data-theme="dark"] .btn--ghost,
+.theme-dark .btn--ghost {
+  background: transparent;
+  color: var(--color-text-secondary);
+  border-color: var(--color-border);
+}
+[data-theme="dark"] .btn--ghost:hover,
+.theme-dark .btn--ghost:hover {
+  border-color: var(--color-accent-border);
+  color: var(--color-accent);
+  background: var(--color-accent-subtle);
+}
+
+/* ── Edit Toolbar ── */
+[data-theme="dark"] .edit-toolbar,
+.theme-dark .edit-toolbar {
+  background: rgba(8, 12, 10, 0.92);
+  border-bottom: 1px solid var(--color-border);
+  backdrop-filter: blur(16px) saturate(1.4);
+}
+
+/* ── Icon buttons ── */
+[data-theme="dark"] .icon-btn,
+.theme-dark .icon-btn {
+  color: var(--color-text-tertiary);
+}
+[data-theme="dark"] .icon-btn:hover,
+.theme-dark .icon-btn:hover {
+  color: var(--color-accent);
+  background: var(--color-accent-subtle);
+}
+
+/* ── Nav ── */
+[data-theme="dark"] .nav.is-scrolled,
+.theme-dark .nav.is-scrolled {
+  background: rgba(8, 12, 10, 0.88);
+  border-bottom-color: var(--color-border);
+}
+
+/* ── Pro Badge ── */
+[data-theme="dark"] .pro-status-badge--free,
+.theme-dark .pro-status-badge--free {
+  color: var(--color-text-tertiary);
+  border-color: var(--color-border-dim);
+}
+[data-theme="dark"] .pro-status-badge--pro,
+.theme-dark .pro-status-badge--pro {
+  color: var(--color-accent);
+  border-color: rgba(0,255,136,0.25);
+  background: rgba(0,255,136,0.06);
+}
+
+/* ── Edit hints ── */
+[data-theme="dark"] .is-editable:hover,
+.theme-dark .is-editable:hover {
+  outline: 2px dashed rgba(0,255,136,0.25);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+[data-theme="dark"] .is-editing,
+.theme-dark .is-editing {
+  outline: 2px solid var(--color-accent) !important;
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+/* ── Selection ── */
+[data-theme="dark"] ::selection,
+.theme-dark ::selection {
+  background: rgba(0, 255, 136, 0.15);
+  color: var(--color-accent);
+}
+
+/* ── Scrollbar ── */
+[data-theme="dark"] ::-webkit-scrollbar,
+.theme-dark ::-webkit-scrollbar { width: 6px; }
+[data-theme="dark"] ::-webkit-scrollbar-track,
+.theme-dark ::-webkit-scrollbar-track { background: transparent; }
+[data-theme="dark"] ::-webkit-scrollbar-thumb,
+.theme-dark ::-webkit-scrollbar-thumb {
+  background: rgba(0,255,136,0.12);
+  border-radius: 3px;
+}
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover,
+.theme-dark ::-webkit-scrollbar-thumb:hover { background: rgba(0,255,136,0.22); }
+
+/* ── Save indicator ── */
+[data-theme="dark"] .save-indicator--draft,
+.theme-dark .save-indicator--draft { color: var(--color-accent); }
+
+/* ── Theme panel ── */
+[data-theme="dark"] .theme-panel,
+.theme-dark .theme-panel {
   background: var(--color-bg-secondary);
   border: 1px solid var(--color-border);
-}
-
-/* Scrollbar */
-body.theme-dark {
-  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
-}
-
-/* Theme preview card in index.html */
-.theme-preview-card[data-theme-name="dark"] {
-  background: #0d1117;
-  color: #e6edf3;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+  color: var(--color-text-primary);
 }

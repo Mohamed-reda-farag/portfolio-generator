@@ -1,0 +1,801 @@
+/* ============================================================
+   BLUEPRINT THEME — Technical Drawing Pro
+   Aesthetic: Prussian blue engineering paper.
+   Every element is a technical specification.
+   White ink on blueprint paper. Dimension annotations.
+   Corner brackets. Crosshair cursor. Grid overlay.
+
+   Philosophy:
+   - Background: #0a1628 (Prussian blue — classic blueprint)
+   - Lines:      rgba(74,158,255,0.13) — hairline grid
+   - Text:       #e8f4ff — white-blue ink
+   - Accent:     #4a9eff — electric blueprint blue
+   - Yellow:     #ffd600 — annotation / dimension color
+   - All shapes have corner brackets, not border-radius
+   - Everything looks like it was drawn with a technical pen
+
+   Works with: [data-theme="blueprint"] · .theme-blueprint
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600&family=Orbitron:wght@400;700&display=swap');
+
+[data-theme="blueprint"],
+.theme-blueprint {
+
+  /* ── Palette ── */
+  --bp-paper:         #0a1628;   /* Prussian blue — the blueprint */
+  --bp-paper-light:   #0d1e36;   /* slightly lighter layer */
+  --bp-paper-card:    rgba(255, 255, 255, 0.04);
+  --bp-paper-card-h:  rgba(255, 255, 255, 0.07);
+
+  /* ── Lines ── */
+  --bp-grid-minor:    rgba(74, 158, 255, 0.10);  /* fine grid */
+  --bp-grid-major:    rgba(74, 158, 255, 0.20);  /* major grid every 5 */
+  --bp-line:          rgba(74, 158, 255, 0.30);  /* component borders */
+  --bp-line-bright:   rgba(74, 158, 255, 0.60);  /* active borders */
+  --bp-line-dim:      rgba(74, 158, 255, 0.15);
+
+  /* ── Ink ── */
+  --bp-white:         #e8f4ff;   /* blueprint white */
+  --bp-white-dim:     rgba(232, 244, 255, 0.55);
+  --bp-white-ghost:   rgba(232, 244, 255, 0.25);
+
+  /* ── Accent ── */
+  --bp-blue:          #4a9eff;   /* electric blue */
+  --bp-blue-glow:     rgba(74, 158, 255, 0.30);
+  --bp-blue-dim:      rgba(74, 158, 255, 0.10);
+
+  /* ── Annotation yellow ── */
+  --bp-yellow:        #ffd600;
+  --bp-yellow-dim:    rgba(255, 214, 0, 0.15);
+  --bp-yellow-glow:   rgba(255, 214, 0, 0.35);
+
+  /* ── Fonts ── */
+  --bp-font-tech:     'Share Tech Mono', monospace;   /* primary — like CAD labels */
+  --bp-font-head:     'Rajdhani', sans-serif;          /* hero name */
+  --bp-font-data:     'Orbitron', sans-serif;          /* stat numbers */
+  --bp-font-body:     'Rajdhani', sans-serif;
+  --bp-font-mono:     'Share Tech Mono', monospace;
+
+  /* ── Shadows ── */
+  --bp-glow-card:     0 0 0 1px var(--bp-line),
+                      0 0 20px rgba(74,158,255,0.08);
+  --bp-glow-hover:    0 0 0 1px var(--bp-line-bright),
+                      0 0 40px rgba(74,158,255,0.18),
+                      inset 0 0 20px rgba(74,158,255,0.04);
+}
+
+/* ══════════════════════════════════════════════════════════
+   BASE — the paper itself
+══════════════════════════════════════════════════════════ */
+
+[data-theme="blueprint"] body,
+.theme-blueprint body {
+  background-color: var(--bp-paper);
+  color: var(--bp-white);
+  font-family: var(--bp-font-tech);
+  -webkit-font-smoothing: antialiased;
+  background-image: none;
+  overflow-x: hidden;
+}
+
+/* ── Fine grid (minor lines every 20px) ── */
+[data-theme="blueprint"] body::before,
+.theme-blueprint body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    linear-gradient(var(--bp-grid-minor) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bp-grid-minor) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* ── Major grid (every 100px) + corner vignette ── */
+[data-theme="blueprint"] body::after,
+.theme-blueprint body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    linear-gradient(var(--bp-grid-major) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bp-grid-major) 1px, transparent 1px);
+  background-size: 100px 100px;
+}
+
+/* ── All content above grid ── */
+[data-theme="blueprint"] .portfolio-container,
+[data-theme="blueprint"] .portfolio-wrapper,
+.theme-blueprint .portfolio-container,
+.theme-blueprint .portfolio-wrapper {
+  position: relative;
+  z-index: 1;
+}
+
+/* ══════════════════════════════════════════════════════════
+   SPEC HEADER — title block injected by BlueprintFX.js
+   (looks like an engineering drawing title block)
+══════════════════════════════════════════════════════════ */
+
+[data-theme="blueprint"] .bp-titleblock,
+.theme-blueprint .bp-titleblock {
+  background: transparent;
+  border-bottom: 1px solid var(--bp-line);
+  padding: 0 28px;
+  display: flex;
+  align-items: stretch;
+  position: relative;
+  z-index: 2;
+  min-height: 48px;
+}
+
+[data-theme="blueprint"] .bp-titleblock__cell,
+.theme-blueprint .bp-titleblock__cell {
+  border-right: 1px solid var(--bp-line-dim);
+  padding: 8px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+
+[data-theme="blueprint"] .bp-titleblock__cell:last-child,
+.theme-blueprint .bp-titleblock__cell:last-child {
+  border-right: none;
+  margin-left: auto;
+}
+
+[data-theme="blueprint"] .bp-titleblock__label,
+.theme-blueprint .bp-titleblock__label {
+  font-family: var(--bp-font-tech);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--bp-white-ghost);
+}
+
+[data-theme="blueprint"] .bp-titleblock__value,
+.theme-blueprint .bp-titleblock__value {
+  font-family: var(--bp-font-tech);
+  font-size: 11px;
+  letter-spacing: 0.10em;
+  color: var(--bp-blue);
+  text-transform: uppercase;
+}
+
+[data-theme="blueprint"] .bp-titleblock__value--yellow,
+.theme-blueprint .bp-titleblock__value--yellow {
+  color: var(--bp-yellow);
+}
+
+/* ══════════════════════════════════════════════════════════
+   HERO
+══════════════════════════════════════════════════════════ */
+
+[data-theme="blueprint"] .portfolio-hero,
+.theme-blueprint .portfolio-hero {
+  padding: 64px 0 56px;
+  position: relative;
+  border-bottom: 1px solid var(--bp-line);
+}
+
+/* Remove default base styles */
+[data-theme="blueprint"] .portfolio-hero::before,
+.theme-blueprint .portfolio-hero::before {
+  display: none;
+}
+
+[data-theme="blueprint"] .portfolio-hero::after,
+.theme-blueprint .portfolio-hero::after {
+  display: none;
+}
+
+/* Eyebrow — annotation tag */
+[data-theme="blueprint"] .hero-eyebrow,
+.theme-blueprint .hero-eyebrow {
+  font-family: var(--bp-font-tech);
+  font-size: 10px;
+  letter-spacing: 0.20em;
+  text-transform: uppercase;
+  color: var(--bp-yellow);
+  margin-bottom: 18px;
+  opacity: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+[data-theme="blueprint"] .hero-eyebrow::before,
+.theme-blueprint .hero-eyebrow::before {
+  content: '';
+  width: 28px;
+  height: 1px;
+  background: var(--bp-yellow);
+  flex-shrink: 0;
+}
+
+[data-theme="blueprint"] .hero-eyebrow::after,
+.theme-blueprint .hero-eyebrow::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border: 1px solid var(--bp-yellow);
+  transform: rotate(45deg);
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+
+/* Name — Rajdhani bold, like a spec title */
+[data-theme="blueprint"] .portfolio-hero__name,
+.theme-blueprint .portfolio-hero__name {
+  font-family: var(--bp-font-head);
+  font-size: clamp(3.5rem, 10vw, 8rem);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  line-height: 0.92;
+  color: var(--bp-white);
+  -webkit-text-fill-color: var(--bp-white);
+  text-transform: uppercase;
+  margin-bottom: 24px;
+  position: relative;
+}
+
+/* Job title — Orbitron small caps */
+[data-theme="blueprint"] .portfolio-hero__title,
+.theme-blueprint .portfolio-hero__title {
+  font-family: var(--bp-font-data);
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--bp-blue);
+  margin-bottom: 24px;
+  opacity: 1;
+  text-shadow: 0 0 12px var(--bp-blue-glow);
+}
+
+/* Bio — tech mono */
+[data-theme="blueprint"] .portfolio-hero__bio,
+.theme-blueprint .portfolio-hero__bio {
+  font-family: var(--bp-font-tech);
+  font-style: normal;
+  font-size: 0.85rem;
+  font-weight: 400;
+  line-height: 1.80;
+  color: var(--bp-white-dim);
+  max-width: 580px;
+  margin-bottom: 36px;
+  border-left: 2px solid var(--bp-line);
+  padding-left: 16px;
+}
+
+/* Links */
+[data-theme="blueprint"] .hero-link,
+.theme-blueprint .hero-link {
+  font-family: var(--bp-font-tech);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bp-white-ghost);
+  text-decoration: none;
+  padding: 6px 12px;
+  border: 1px solid var(--bp-line-dim);
+  position: relative;
+  transition: color 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+
+[data-theme="blueprint"] .hero-link:hover,
+.theme-blueprint .hero-link:hover {
+  color: var(--bp-blue);
+  border-color: var(--bp-blue);
+  box-shadow: 0 0 14px var(--bp-blue-glow);
+  text-shadow: 0 0 10px var(--bp-blue-glow);
+}
+
+/* ══════════════════════════════════════════════════════════
+   SECTION LABELS — drawing annotation style
+══════════════════════════════════════════════════════════ */
+
+[data-theme="blueprint"] .section-label,
+.theme-blueprint .section-label {
+  font-family: var(--bp-font-tech);
+  font-size: 9px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--bp-white-ghost);
+  margin-bottom: 32px;
+  padding-top: 0;
+  border-top: none;
+  gap: 0;
+  align-items: center;
+  position: relative;
+}
+
+/* Left tick mark */
+[data-theme="blueprint"] .section-label::before,
+.theme-blueprint .section-label::before {
+  content: '◈';
+  font-size: 10px;
+  color: var(--bp-yellow);
+  margin-right: 10px;
+  text-shadow: 0 0 8px var(--bp-yellow-glow);
+}
+
+[data-theme="blueprint"] .section-label span,
+.theme-blueprint .section-label span {
+  font-family: var(--bp-font-tech);
+  font-size: 9px;
+  font-weight: 400;
+  color: var(--bp-yellow);
+  letter-spacing: 0.25em;
+  padding-right: 12px;
+  text-shadow: 0 0 8px var(--bp-yellow-glow);
+}
+
+[data-theme="blueprint"] .section-label::after,
+.theme-blueprint .section-label::after {
+  flex: 1;
+  height: 1px;
+  background: var(--bp-line-dim);
+  margin-left: 12px;
+}
+
+/* ══════════════════════════════════════════════════════════
+   PROJECT CARDS — technical spec boxes
+   Corner brackets drawn via JS SVG injection
+   Dimension lines drawn along card edges
+══════════════════════════════════════════════════════════ */
+
+[data-theme="blueprint"] .project-card,
+.theme-blueprint .project-card {
+  background: var(--bp-paper-card);
+  border: 1px solid var(--bp-line);
+  border-radius: 0;
+  padding: 28px 24px 22px;
+  box-shadow: var(--bp-glow-card);
+  position: relative;
+  overflow: visible; /* brackets extend outside */
+  transition: background 0.25s, box-shadow 0.3s, border-color 0.25s;
+}
+
+/* Remove default pseudo-elements */
+[data-theme="blueprint"] .project-card::before,
+.theme-blueprint .project-card::before {
+  display: none;
+}
+
+/* Blueprint scan line on hover */
+[data-theme="blueprint"] .project-card::after,
+.theme-blueprint .project-card::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg,
+    transparent,
+    var(--bp-blue),
+    rgba(74,158,255,0.4),
+    transparent);
+  top: var(--bp-scan, -10px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  z-index: 3;
+}
+
+[data-theme="blueprint"] .project-card:hover::after,
+.theme-blueprint .project-card:hover::after {
+  opacity: 1;
+  animation: bp-scan 1.2s ease-in-out infinite;
+}
+
+@keyframes bp-scan {
+  0%   { top: 0%; opacity: 0.8; }
+  50%  { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+[data-theme="blueprint"] .project-card:hover,
+.theme-blueprint .project-card:hover {
+  background: var(--bp-paper-card-h);
+  border-color: var(--bp-blue);
+  box-shadow: var(--bp-glow-hover);
+}
+
+/* Featured — yellow accent */
+[data-theme="blueprint"] .project-card--featured,
+.theme-blueprint .project-card--featured {
+  border-color: var(--bp-yellow);
+  box-shadow:
+    0 0 0 1px var(--bp-yellow),
+    0 0 30px rgba(255,214,0,0.10);
+}
+
+[data-theme="blueprint"] .project-card--featured:hover,
+.theme-blueprint .project-card--featured:hover {
+  box-shadow:
+    0 0 0 1px var(--bp-yellow),
+    0 0 50px rgba(255,214,0,0.18);
+}
+
+/* Card name */
+[data-theme="blueprint"] .project-card__name,
+.theme-blueprint .project-card__name {
+  font-family: var(--bp-font-head);
+  font-weight: 600;
+  font-size: 1.15rem;
+  letter-spacing: 0.10em;
+  line-height: 1.2;
+  color: var(--bp-white);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+/* Card desc */
+[data-theme="blueprint"] .project-card__desc,
+.theme-blueprint .project-card__desc {
+  font-family: var(--bp-font-tech);
+  font-size: 0.78rem;
+  line-height: 1.70;
+  color: var(--bp-white-dim);
+}
+
+/* Card lang */
+[data-theme="blueprint"] .project-card__lang,
+.theme-blueprint .project-card__lang {
+  font-family: var(--bp-font-tech);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--bp-blue);
+  text-transform: uppercase;
+  text-shadow: 0 0 8px var(--bp-blue-glow);
+}
+
+/* Featured badge */
+[data-theme="blueprint"] .featured-badge,
+.theme-blueprint .featured-badge {
+  font-family: var(--bp-font-tech);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bp-yellow);
+  border: 1px solid var(--bp-yellow);
+  border-radius: 0;
+  padding: 2px 7px;
+  background: var(--bp-yellow-dim);
+  text-shadow: 0 0 8px var(--bp-yellow-glow);
+}
+
+/* Footer */
+[data-theme="blueprint"] .project-card__footer,
+.theme-blueprint .project-card__footer {
+  border-top: 1px solid var(--bp-line-dim);
+  padding-top: 12px;
+}
+
+[data-theme="blueprint"] .project-stat,
+.theme-blueprint .project-stat {
+  font-family: var(--bp-font-tech);
+  font-size: 9px;
+  color: var(--bp-white-ghost);
+  letter-spacing: 0.08em;
+}
+
+[data-theme="blueprint"] .topic-chip,
+.theme-blueprint .topic-chip {
+  font-family: var(--bp-font-tech);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  padding: 2px 8px;
+  border-radius: 0;
+  background: var(--bp-blue-dim);
+  border: 1px solid var(--bp-line);
+  color: var(--bp-blue);
+}
+
+/* ══════════════════════════════════════════════════════════
+   SKILLS
+══════════════════════════════════════════════════════════ */
+
+[data-theme="blueprint"] .skills-container,
+.theme-blueprint .skills-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 24px 0;
+}
+
+[data-theme="blueprint"] .skill-tag,
+.theme-blueprint .skill-tag {
+  font-family: var(--bp-font-tech);
+  font-size: 11px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid var(--bp-line);
+  border-radius: 0;
+  color: var(--bp-white-dim);
+  padding: 6px 14px;
+  position: relative;
+  overflow: hidden;
+  transition: color 0.2s, border-color 0.2s, box-shadow 0.2s, text-shadow 0.2s;
+  cursor: default;
+}
+
+/* Blueprint glow fill on hover */
+[data-theme="blueprint"] .skill-tag::before,
+.theme-blueprint .skill-tag::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--bp-blue-dim);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s cubic-bezier(0.16,1,0.3,1);
+  z-index: 0;
+}
+
+[data-theme="blueprint"] .skill-tag:hover,
+.theme-blueprint .skill-tag:hover {
+  color: var(--bp-blue);
+  border-color: var(--bp-blue);
+  box-shadow: 0 0 12px var(--bp-blue-glow), inset 0 0 12px rgba(74,158,255,0.05);
+  text-shadow: 0 0 10px var(--bp-blue-glow);
+}
+
+[data-theme="blueprint"] .skill-tag:hover::before,
+.theme-blueprint .skill-tag:hover::before {
+  transform: scaleX(1);
+}
+
+[data-theme="blueprint"] .skill-tag span,
+[data-theme="blueprint"] .skill-tag__delete,
+.theme-blueprint .skill-tag span,
+.theme-blueprint .skill-tag__delete {
+  position: relative;
+  z-index: 1;
+}
+
+[data-theme="blueprint"] .skill-tag--add,
+.theme-blueprint .skill-tag--add {
+  background: transparent;
+  border: 1px dashed var(--bp-line-dim);
+  color: var(--bp-white-ghost);
+  border-radius: 0;
+}
+
+[data-theme="blueprint"] .skill-tag--add:hover,
+.theme-blueprint .skill-tag--add:hover {
+  border-color: var(--bp-yellow);
+  color: var(--bp-yellow);
+  box-shadow: 0 0 10px var(--bp-yellow-glow);
+  text-shadow: none;
+  background: transparent;
+}
+
+[data-theme="blueprint"] .skill-tag--add:hover::before,
+.theme-blueprint .skill-tag--add:hover::before {
+  display: none;
+}
+
+/* ══════════════════════════════════════════════════════════
+   BUTTONS — technical spec buttons
+══════════════════════════════════════════════════════════ */
+
+[data-theme="blueprint"] .btn--primary,
+.theme-blueprint .btn--primary {
+  background: var(--bp-blue);
+  color: var(--bp-paper);
+  border: 1px solid var(--bp-blue);
+  border-radius: 0;
+  font-family: var(--bp-font-tech);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  box-shadow: 0 0 20px var(--bp-blue-glow),
+              inset 0 0 20px rgba(255,255,255,0.05);
+  transition: box-shadow 0.2s, transform 0.15s;
+}
+
+[data-theme="blueprint"] .btn--primary:hover,
+.theme-blueprint .btn--primary:hover {
+  box-shadow: 0 0 40px var(--bp-blue-glow),
+              0 0 80px rgba(74,158,255,0.15),
+              inset 0 0 30px rgba(255,255,255,0.08);
+  transform: translateY(-1px);
+}
+
+[data-theme="blueprint"] .btn--ghost,
+.theme-blueprint .btn--ghost {
+  background: transparent;
+  color: var(--bp-white-dim);
+  border: 1px solid var(--bp-line);
+  border-radius: 0;
+  font-family: var(--bp-font-tech);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition: color 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+
+[data-theme="blueprint"] .btn--ghost:hover,
+.theme-blueprint .btn--ghost:hover {
+  color: var(--bp-blue);
+  border-color: var(--bp-blue);
+  box-shadow: 0 0 14px var(--bp-blue-glow);
+}
+
+/* ══════════════════════════════════════════════════════════
+   TOOLBAR / NAV
+══════════════════════════════════════════════════════════ */
+
+[data-theme="blueprint"] .edit-toolbar,
+.theme-blueprint .edit-toolbar {
+  background: rgba(10, 22, 40, 0.95);
+  border-bottom: 1px solid var(--bp-line);
+  backdrop-filter: blur(12px);
+}
+
+[data-theme="blueprint"] .nav.is-scrolled,
+.theme-blueprint .nav.is-scrolled {
+  background: rgba(10, 22, 40, 0.92);
+  border-bottom: 1px solid var(--bp-line);
+  backdrop-filter: blur(16px);
+}
+
+/* ══════════════════════════════════════════════════════════
+   ICON BUTTONS
+══════════════════════════════════════════════════════════ */
+
+[data-theme="blueprint"] .icon-btn,
+.theme-blueprint .icon-btn {
+  color: var(--bp-white-ghost);
+  border-radius: 0;
+  transition: color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+[data-theme="blueprint"] .icon-btn:hover,
+.theme-blueprint .icon-btn:hover {
+  color: var(--bp-blue);
+  background: var(--bp-blue-dim);
+  box-shadow: 0 0 8px var(--bp-blue-glow);
+}
+
+/* ══════════════════════════════════════════════════════════
+   PRO BADGE
+══════════════════════════════════════════════════════════ */
+
+[data-theme="blueprint"] .pro-status-badge--pro,
+.theme-blueprint .pro-status-badge--pro {
+  color: var(--bp-yellow);
+  border-color: var(--bp-yellow);
+  background: var(--bp-yellow-dim);
+  border-radius: 0;
+  font-family: var(--bp-font-tech);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-shadow: 0 0 6px var(--bp-yellow-glow);
+}
+
+[data-theme="blueprint"] .pro-status-badge--free,
+.theme-blueprint .pro-status-badge--free {
+  color: var(--bp-white-ghost);
+  border-color: var(--bp-line-dim);
+  border-radius: 0;
+  font-family: var(--bp-font-tech);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+}
+
+/* ══════════════════════════════════════════════════════════
+   EDIT HINTS
+══════════════════════════════════════════════════════════ */
+
+[data-theme="blueprint"] .is-editable:hover,
+.theme-blueprint .is-editable:hover {
+  outline: 1px dashed var(--bp-yellow);
+  outline-offset: 4px;
+  border-radius: 0;
+}
+
+[data-theme="blueprint"] .is-editing,
+.theme-blueprint .is-editing {
+  outline: 1px solid var(--bp-yellow) !important;
+  outline-offset: 4px;
+  border-radius: 0;
+  box-shadow: 0 0 12px var(--bp-yellow-glow);
+}
+
+/* ══════════════════════════════════════════════════════════
+   THEME PANEL
+══════════════════════════════════════════════════════════ */
+
+[data-theme="blueprint"] .theme-panel,
+.theme-blueprint .theme-panel {
+  background: #0d1e36;
+  border: 1px solid var(--bp-line-bright);
+  border-radius: 0;
+  box-shadow: 0 0 40px rgba(74,158,255,0.15), 0 20px 60px rgba(0,0,0,0.6);
+  color: var(--bp-white);
+}
+
+/* ══════════════════════════════════════════════════════════
+   SELECTION & SCROLLBAR
+══════════════════════════════════════════════════════════ */
+
+[data-theme="blueprint"] ::selection,
+.theme-blueprint ::selection {
+  background: var(--bp-blue-dim);
+  color: var(--bp-blue);
+}
+
+[data-theme="blueprint"] ::-webkit-scrollbar,
+.theme-blueprint ::-webkit-scrollbar { width: 4px; }
+
+[data-theme="blueprint"] ::-webkit-scrollbar-track,
+.theme-blueprint ::-webkit-scrollbar-track { background: var(--bp-paper); }
+
+[data-theme="blueprint"] ::-webkit-scrollbar-thumb,
+.theme-blueprint ::-webkit-scrollbar-thumb {
+  background: var(--bp-line);
+  border-radius: 0;
+}
+
+[data-theme="blueprint"] ::-webkit-scrollbar-thumb:hover,
+.theme-blueprint ::-webkit-scrollbar-thumb:hover {
+  background: var(--bp-line-bright);
+}
+
+/* ══════════════════════════════════════════════════════════
+   SAVE INDICATOR
+══════════════════════════════════════════════════════════ */
+
+[data-theme="blueprint"] .save-indicator--draft,
+.theme-blueprint .save-indicator--draft {
+  color: var(--bp-blue);
+  font-family: var(--bp-font-tech);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-shadow: 0 0 8px var(--bp-blue-glow);
+}
+
+/* ══════════════════════════════════════════════════════════
+   CUSTOM CURSOR — crosshair (injected by BlueprintFX.js)
+══════════════════════════════════════════════════════════ */
+
+[data-theme="blueprint"] body.bp-cursor-active,
+.theme-blueprint body.bp-cursor-active {
+  cursor: none;
+}
+
+[data-theme="blueprint"] body.bp-cursor-active *,
+.theme-blueprint body.bp-cursor-active * {
+  cursor: none;
+}
+
+/* ══════════════════════════════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  [data-theme="blueprint"] .portfolio-hero__name,
+  .theme-blueprint .portfolio-hero__name {
+    font-size: clamp(2.8rem, 14vw, 5rem);
+  }
+  [data-theme="blueprint"] .projects-grid,
+  .theme-blueprint .projects-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  [data-theme="blueprint"] .portfolio-hero__name,
+  .theme-blueprint .portfolio-hero__name {
+    font-size: clamp(2.2rem, 16vw, 3.5rem);
+  }
+}

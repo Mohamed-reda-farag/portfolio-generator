@@ -1,0 +1,876 @@
+/* ============================================================
+   TERMINAL THEME — Shell Session Pro
+   Aesthetic: You opened a terminal and typed your portfolio.
+   Phosphor green on near-black. CRT scanlines. Cursor blink.
+   Every element is a shell command or its output.
+
+   Philosophy:
+   - #0c0c0c — not pure black, CRT black
+   - #39ff14 — phosphor green (NEC PC-88 / IBM 5151 color)
+   - #00ff88 — brighter green for active/accent
+   - #666666 — gray for comments and dimmed output
+   - Amber #ffb700 — warnings / featured
+   - ALL text is monospace, NO exceptions
+   - Zero border-radius anywhere
+   - Scanline overlay = identity, not decoration
+   - Cards look like git log entries
+   - Skills look like package manager output
+
+   Works with: [data-theme="terminal"] · .theme-terminal
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,700;1,300&family=VT323&display=swap');
+
+[data-theme="terminal"],
+.theme-terminal {
+
+  /* ── Palette ── */
+  --tm-black:       #0c0c0c;
+  --tm-bg:          #0f0f0f;
+  --tm-bg-card:     #141414;
+  --tm-bg-card-h:   #1a1a1a;
+  --tm-bg-input:    #111111;
+
+  /* ── Phosphor greens ── */
+  --tm-green:       #39ff14;   /* classic phosphor */
+  --tm-green-bright:#00ff88;   /* accent / active */
+  --tm-green-dim:   rgba(57,255,20,0.45);
+  --tm-green-ghost: rgba(57,255,20,0.15);
+  --tm-green-line:  rgba(57,255,20,0.12);
+
+  /* ── Text ── */
+  --tm-text:        #c8ffc8;   /* slightly warm white-green */
+  --tm-text-dim:    rgba(200,255,200,0.50);
+  --tm-text-muted:  rgba(200,255,200,0.28);
+  --tm-comment:     #555f55;   /* # comments */
+
+  /* ── Accent ── */
+  --tm-amber:       #ffb700;   /* warnings / featured */
+  --tm-amber-dim:   rgba(255,183,0,0.18);
+  --tm-red:         #ff4444;   /* errors */
+  --tm-cyan:        #00d4ff;   /* paths / links */
+
+  /* ── Glow ── */
+  --tm-glow-sm:     0 0 8px rgba(57,255,20,0.40);
+  --tm-glow-md:     0 0 16px rgba(57,255,20,0.35), 0 0 40px rgba(57,255,20,0.12);
+  --tm-glow-lg:     0 0 24px rgba(57,255,20,0.45), 0 0 60px rgba(57,255,20,0.18);
+  --tm-glow-amber:  0 0 10px rgba(255,183,0,0.45), 0 0 30px rgba(255,183,0,0.18);
+
+  /* ── Fonts ── */
+  --tm-font:        'JetBrains Mono', 'Courier New', monospace;
+  --tm-font-vt:     'VT323', monospace;   /* for decorative headers */
+}
+
+/* ══════════════════════════════════════════════════════════
+   BASE
+══════════════════════════════════════════════════════════ */
+
+[data-theme="terminal"] body,
+.theme-terminal body {
+  background-color: var(--tm-black);
+  color: var(--tm-text);
+  font-family: var(--tm-font);
+  -webkit-font-smoothing: antialiased;
+  background-image: none;
+  overflow-x: hidden;
+}
+
+/* CRT flicker — very subtle, barely perceptible */
+@keyframes tm-flicker {
+  0%, 97%, 100% { opacity: 1; }
+  98%            { opacity: 0.97; }
+  99%            { opacity: 1; }
+}
+
+[data-theme="terminal"] body,
+.theme-terminal body {
+  animation: tm-flicker 8s ease-in-out infinite;
+}
+
+/* ── Remove dark global grid ── */
+[data-theme="terminal"] body::before,
+.theme-terminal body::before {
+  background-image: none;
+  background: none;
+  display: none;
+}
+
+/* ── CRT Scanlines ── */
+[data-theme="terminal"] body::after,
+.theme-terminal body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.28) 2px,
+    rgba(0, 0, 0, 0.28) 4px
+  );
+  animation: tm-scan-drift 20s linear infinite;
+}
+
+@keyframes tm-scan-drift {
+  0%   { background-position: 0 0; }
+  100% { background-position: 0 120px; }
+}
+
+[data-theme="terminal"] .portfolio-container,
+[data-theme="terminal"] .portfolio-wrapper,
+.theme-terminal .portfolio-container,
+.theme-terminal .portfolio-wrapper {
+  position: relative;
+  z-index: 1;
+}
+
+/* ══════════════════════════════════════════════════════════
+   WINDOW CHROME — injected by TerminalFX.js
+   Looks like a real terminal app window (title bar + tabs)
+══════════════════════════════════════════════════════════ */
+
+[data-theme="terminal"] .tm-window,
+.theme-terminal .tm-window {
+  background: #1a1a1a;
+  border-bottom: 1px solid #2a2a2a;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  position: relative;
+  z-index: 2;
+  padding: 0;
+  min-height: 38px;
+}
+
+/* Traffic lights */
+[data-theme="terminal"] .tm-dots,
+.theme-terminal .tm-dots {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 16px;
+  border-right: 1px solid #222;
+  height: 38px;
+}
+
+[data-theme="terminal"] .tm-dot,
+.theme-terminal .tm-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+[data-theme="terminal"] .tm-dot--close,
+.theme-terminal .tm-dot--close  { background: #ff5f57; }
+[data-theme="terminal"] .tm-dot--min,
+.theme-terminal .tm-dot--min    { background: #febc2e; }
+[data-theme="terminal"] .tm-dot--max,
+.theme-terminal .tm-dot--max    { background: #28c840; }
+
+/* Tab */
+[data-theme="terminal"] .tm-tab,
+.theme-terminal .tm-tab {
+  padding: 0 24px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--tm-black);
+  border-right: 1px solid #222;
+  font-family: var(--tm-font);
+  font-size: 11px;
+  color: var(--tm-text-dim);
+  letter-spacing: 0.04em;
+}
+
+[data-theme="terminal"] .tm-tab__dot,
+.theme-terminal .tm-tab__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--tm-green);
+  box-shadow: var(--tm-glow-sm);
+  animation: tm-blink 2.5s step-end infinite;
+}
+
+@keyframes tm-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+/* Window title */
+[data-theme="terminal"] .tm-title,
+.theme-terminal .tm-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--tm-font);
+  font-size: 11px;
+  color: var(--tm-text-muted);
+  letter-spacing: 0.08em;
+  pointer-events: none;
+}
+
+/* ══════════════════════════════════════════════════════════
+   PROMPT LINE — reusable across sections
+══════════════════════════════════════════════════════════ */
+
+/* Prompt structure: user@host:~$ command */
+[data-theme="terminal"] .tm-prompt,
+.theme-terminal .tm-prompt {
+  font-family: var(--tm-font);
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--tm-text-muted);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: baseline;
+  gap: 0;
+  flex-wrap: wrap;
+}
+
+[data-theme="terminal"] .tm-prompt__user,
+.theme-terminal .tm-prompt__user {
+  color: var(--tm-green-bright);
+  text-shadow: var(--tm-glow-sm);
+}
+
+[data-theme="terminal"] .tm-prompt__at,
+.theme-terminal .tm-prompt__at { color: var(--tm-text-muted); }
+
+[data-theme="terminal"] .tm-prompt__host,
+.theme-terminal .tm-prompt__host {
+  color: var(--tm-cyan);
+}
+
+[data-theme="terminal"] .tm-prompt__path,
+.theme-terminal .tm-prompt__path {
+  color: var(--tm-amber);
+}
+
+[data-theme="terminal"] .tm-prompt__dollar,
+.theme-terminal .tm-prompt__dollar {
+  color: var(--tm-green);
+  margin: 0 6px;
+  text-shadow: var(--tm-glow-sm);
+}
+
+[data-theme="terminal"] .tm-prompt__cmd,
+.theme-terminal .tm-prompt__cmd {
+  color: var(--tm-text);
+  font-weight: 400;
+}
+
+[data-theme="terminal"] .tm-prompt__arg,
+.theme-terminal .tm-prompt__arg {
+  color: var(--tm-green-dim);
+}
+
+/* ══════════════════════════════════════════════════════════
+   HERO — whoami + neofetch style output
+══════════════════════════════════════════════════════════ */
+
+[data-theme="terminal"] .portfolio-hero,
+.theme-terminal .portfolio-hero {
+  padding: 40px 0 40px;
+  position: relative;
+  border-bottom: 1px solid var(--tm-green-line);
+}
+
+/* Remove default decorations */
+[data-theme="terminal"] .portfolio-hero::before,
+[data-theme="terminal"] .portfolio-hero::after,
+.theme-terminal .portfolio-hero::before,
+.theme-terminal .portfolio-hero::after {
+  display: none;
+}
+
+/* Eyebrow — looks like a comment line */
+[data-theme="terminal"] .hero-eyebrow,
+.theme-terminal .hero-eyebrow {
+  font-family: var(--tm-font);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: var(--tm-comment);
+  margin-bottom: 12px;
+  opacity: 1;
+  font-style: italic;
+}
+
+[data-theme="terminal"] .hero-eyebrow::before,
+.theme-terminal .hero-eyebrow::before {
+  content: '# ';
+  color: var(--tm-comment);
+  width: auto;
+  height: auto;
+  background: none;
+  font-style: normal;
+}
+
+/* THE NAME — VT323 display font, like ASCII banner */
+[data-theme="terminal"] .portfolio-hero__name,
+.theme-terminal .portfolio-hero__name {
+  font-family: var(--tm-font-vt);
+  font-size: clamp(3.5rem, 9vw, 7.5rem);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  line-height: 0.95;
+  color: var(--tm-green);
+  -webkit-text-fill-color: var(--tm-green);
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  text-shadow: var(--tm-glow-md);
+  /* JS adds typewriter class */
+}
+
+/* Job title — command output line */
+[data-theme="terminal"] .portfolio-hero__title,
+.theme-terminal .portfolio-hero__title {
+  font-family: var(--tm-font);
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  color: var(--tm-cyan);
+  margin-bottom: 20px;
+  opacity: 1;
+}
+
+[data-theme="terminal"] .portfolio-hero__title::before,
+.theme-terminal .portfolio-hero__title::before {
+  content: '→ ';
+  color: var(--tm-green-dim);
+}
+
+/* Bio — indented output block */
+[data-theme="terminal"] .portfolio-hero__bio,
+.theme-terminal .portfolio-hero__bio {
+  font-family: var(--tm-font);
+  font-style: normal;
+  font-size: 0.80rem;
+  font-weight: 300;
+  line-height: 1.85;
+  color: var(--tm-text-dim);
+  max-width: 620px;
+  margin-bottom: 32px;
+  padding-left: 20px;
+  border-left: 2px solid var(--tm-green-line);
+  position: relative;
+}
+
+/* Links — looks like clickable paths */
+[data-theme="terminal"] .hero-link,
+.theme-terminal .hero-link {
+  font-family: var(--tm-font);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  color: var(--tm-cyan);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(0,212,255,0.3);
+  transition: color 0.15s, text-shadow 0.15s, text-decoration-color 0.15s;
+}
+
+[data-theme="terminal"] .hero-link::before,
+.theme-terminal .hero-link::before {
+  content: '~/ ';
+  color: var(--tm-text-muted);
+  text-decoration: none;
+}
+
+[data-theme="terminal"] .hero-link:hover,
+.theme-terminal .hero-link:hover {
+  color: var(--tm-green-bright);
+  text-shadow: var(--tm-glow-sm);
+  text-decoration-color: var(--tm-green-dim);
+}
+
+/* ══════════════════════════════════════════════════════════
+   SECTION LABELS — look like shell commands being typed
+══════════════════════════════════════════════════════════ */
+
+[data-theme="terminal"] .section-label,
+.theme-terminal .section-label {
+  font-family: var(--tm-font);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: var(--tm-text-muted);
+  margin-bottom: 20px;
+  padding-top: 0;
+  border-top: none;
+  gap: 0;
+  display: block;
+  line-height: 1.8;
+}
+
+/* The $ prompt part */
+[data-theme="terminal"] .section-label::before,
+.theme-terminal .section-label::before {
+  content: 'dev@portfolio:~$ ';
+  color: var(--tm-green-dim);
+}
+
+/* The command itself */
+[data-theme="terminal"] .section-label span,
+.theme-terminal .section-label span {
+  font-family: var(--tm-font);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--tm-text);
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+
+/* Hide the default rule line */
+[data-theme="terminal"] .section-label::after,
+.theme-terminal .section-label::after {
+  display: none;
+}
+
+/* ══════════════════════════════════════════════════════════
+   PROJECT CARDS — git log --pretty=format style
+   Each card = one commit / repo entry
+══════════════════════════════════════════════════════════ */
+
+[data-theme="terminal"] .projects-grid,
+.theme-terminal .projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 2px;
+  background: var(--tm-green-line);
+  border: 1px solid var(--tm-green-line);
+}
+
+[data-theme="terminal"] .project-card,
+.theme-terminal .project-card {
+  background: var(--tm-bg-card);
+  border: none;
+  border-radius: 0;
+  padding: 20px 20px 18px;
+  box-shadow: none;
+  position: relative;
+  overflow: hidden;
+  transition: background 0.15s;
+}
+
+/* Remove default pseudo-elements */
+[data-theme="terminal"] .project-card::before,
+.theme-terminal .project-card::before {
+  display: none;
+}
+
+/* Active line indicator — blinking left border */
+[data-theme="terminal"] .project-card::after,
+.theme-terminal .project-card::after {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--tm-green);
+  box-shadow: var(--tm-glow-sm);
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform 0.3s cubic-bezier(0.16,1,0.3,1);
+}
+
+[data-theme="terminal"] .project-card:hover::after,
+.theme-terminal .project-card:hover::after {
+  transform: scaleY(1);
+}
+
+[data-theme="terminal"] .project-card:hover,
+.theme-terminal .project-card:hover {
+  background: var(--tm-bg-card-h);
+}
+
+/* Featured card — amber, like a pinned/starred repo */
+[data-theme="terminal"] .project-card--featured,
+.theme-terminal .project-card--featured {
+  background: rgba(255,183,0,0.04);
+  border-left: 3px solid var(--tm-amber) !important;
+}
+
+[data-theme="terminal"] .project-card--featured::after,
+.theme-terminal .project-card--featured::after {
+  background: var(--tm-amber);
+  box-shadow: var(--tm-glow-amber);
+}
+
+/* Card name — repo/project name */
+[data-theme="terminal"] .project-card__name,
+.theme-terminal .project-card__name {
+  font-family: var(--tm-font);
+  font-weight: 700;
+  font-size: 0.92rem;
+  letter-spacing: 0.04em;
+  line-height: 1.3;
+  color: var(--tm-green-bright);
+  text-shadow: var(--tm-glow-sm);
+  margin-bottom: 2px;
+}
+
+/* Name prefix */
+[data-theme="terminal"] .project-card__name::before,
+.theme-terminal .project-card__name::before {
+  content: '▸ ';
+  color: var(--tm-green-dim);
+  font-weight: 400;
+}
+
+/* Description */
+[data-theme="terminal"] .project-card__desc,
+.theme-terminal .project-card__desc {
+  font-family: var(--tm-font);
+  font-size: 0.76rem;
+  line-height: 1.70;
+  color: var(--tm-text-dim);
+  font-weight: 300;
+  padding-left: 16px;
+}
+
+/* Lang */
+[data-theme="terminal"] .project-card__lang,
+.theme-terminal .project-card__lang {
+  font-family: var(--tm-font);
+  font-size: 0.70rem;
+  letter-spacing: 0.04em;
+  color: var(--tm-cyan);
+}
+
+[data-theme="terminal"] .project-card__lang::before,
+.theme-terminal .project-card__lang::before {
+  content: '[';
+  color: var(--tm-text-muted);
+}
+
+[data-theme="terminal"] .project-card__lang::after,
+.theme-terminal .project-card__lang::after {
+  content: ']';
+  color: var(--tm-text-muted);
+}
+
+/* Featured badge */
+[data-theme="terminal"] .featured-badge,
+.theme-terminal .featured-badge {
+  font-family: var(--tm-font);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--tm-amber);
+  border: 1px solid rgba(255,183,0,0.4);
+  border-radius: 0;
+  padding: 1px 7px;
+  background: var(--tm-amber-dim);
+  text-shadow: var(--tm-glow-amber);
+}
+
+[data-theme="terminal"] .featured-badge::before,
+.theme-terminal .featured-badge::before {
+  content: '★ ';
+  font-size: 0.60rem;
+}
+
+/* Footer */
+[data-theme="terminal"] .project-card__footer,
+.theme-terminal .project-card__footer {
+  border-top: 1px solid rgba(57,255,20,0.08);
+  padding-top: 10px;
+}
+
+[data-theme="terminal"] .project-stat,
+.theme-terminal .project-stat {
+  font-family: var(--tm-font);
+  font-size: 0.70rem;
+  color: var(--tm-text-muted);
+  letter-spacing: 0.02em;
+}
+
+[data-theme="terminal"] .topic-chip,
+.theme-terminal .topic-chip {
+  font-family: var(--tm-font);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  padding: 1px 7px;
+  border-radius: 0;
+  background: rgba(57,255,20,0.05);
+  border: 1px solid rgba(57,255,20,0.18);
+  color: var(--tm-green-dim);
+}
+
+/* Card edit actions */
+[data-theme="terminal"] .project-card:hover .project-card__actions,
+.theme-terminal .project-card:hover .project-card__actions {
+  opacity: 1;
+}
+
+/* ══════════════════════════════════════════════════════════
+   SKILLS — npm ls / pip list style output
+══════════════════════════════════════════════════════════ */
+
+[data-theme="terminal"] .skills-container,
+.theme-terminal .skills-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 16px 0 24px;
+}
+
+[data-theme="terminal"] .skill-tag,
+.theme-terminal .skill-tag {
+  font-family: var(--tm-font);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  background: transparent;
+  border: 1px solid rgba(57,255,20,0.18);
+  border-radius: 0;
+  color: var(--tm-text-dim);
+  padding: 4px 12px;
+  position: relative;
+  transition: color 0.15s, border-color 0.15s, background 0.15s, text-shadow 0.15s, box-shadow 0.15s;
+  cursor: default;
+}
+
+[data-theme="terminal"] .skill-tag::before,
+.theme-terminal .skill-tag::before {
+  content: none;
+}
+
+/* Package version style prefix — injected by JS */
+[data-theme="terminal"] .skill-tag:hover,
+.theme-terminal .skill-tag:hover {
+  color: var(--tm-green);
+  border-color: var(--tm-green-dim);
+  background: var(--tm-green-ghost);
+  text-shadow: var(--tm-glow-sm);
+  box-shadow: 0 0 8px rgba(57,255,20,0.12);
+}
+
+[data-theme="terminal"] .skill-tag--add,
+.theme-terminal .skill-tag--add {
+  background: transparent;
+  border: 1px dashed rgba(57,255,20,0.18);
+  color: var(--tm-comment);
+  border-radius: 0;
+  font-size: 0.72rem;
+}
+
+[data-theme="terminal"] .skill-tag--add:hover,
+.theme-terminal .skill-tag--add:hover {
+  border-color: var(--tm-green-dim);
+  color: var(--tm-green-dim);
+  background: transparent;
+  box-shadow: none;
+  text-shadow: none;
+}
+
+/* ══════════════════════════════════════════════════════════
+   BUTTONS — terminal style
+══════════════════════════════════════════════════════════ */
+
+[data-theme="terminal"] .btn--primary,
+.theme-terminal .btn--primary {
+  background: var(--tm-green);
+  color: var(--tm-black);
+  border: 1px solid var(--tm-green);
+  border-radius: 0;
+  font-family: var(--tm-font);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  box-shadow: var(--tm-glow-sm);
+  transition: box-shadow 0.2s, background 0.15s;
+}
+
+[data-theme="terminal"] .btn--primary:hover,
+.theme-terminal .btn--primary:hover {
+  background: var(--tm-green-bright);
+  border-color: var(--tm-green-bright);
+  box-shadow: var(--tm-glow-lg);
+}
+
+[data-theme="terminal"] .btn--ghost,
+.theme-terminal .btn--ghost {
+  background: transparent;
+  color: var(--tm-text-dim);
+  border: 1px solid rgba(57,255,20,0.25);
+  border-radius: 0;
+  font-family: var(--tm-font);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: color 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+[data-theme="terminal"] .btn--ghost:hover,
+.theme-terminal .btn--ghost:hover {
+  color: var(--tm-green);
+  border-color: var(--tm-green-dim);
+  box-shadow: 0 0 10px rgba(57,255,20,0.12);
+}
+
+/* ══════════════════════════════════════════════════════════
+   EDIT TOOLBAR
+══════════════════════════════════════════════════════════ */
+
+[data-theme="terminal"] .edit-toolbar,
+.theme-terminal .edit-toolbar {
+  background: rgba(12,12,12,0.96);
+  border-bottom: 1px solid var(--tm-green-line);
+  backdrop-filter: blur(8px);
+}
+
+[data-theme="terminal"] .nav.is-scrolled,
+.theme-terminal .nav.is-scrolled {
+  background: rgba(12,12,12,0.94);
+  border-bottom: 1px solid var(--tm-green-line);
+  backdrop-filter: blur(8px);
+}
+
+/* ══════════════════════════════════════════════════════════
+   ICON BUTTONS
+══════════════════════════════════════════════════════════ */
+
+[data-theme="terminal"] .icon-btn,
+.theme-terminal .icon-btn {
+  color: var(--tm-text-muted);
+  border-radius: 0;
+  transition: color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+[data-theme="terminal"] .icon-btn:hover,
+.theme-terminal .icon-btn:hover {
+  color: var(--tm-green);
+  background: var(--tm-green-ghost);
+  box-shadow: 0 0 6px rgba(57,255,20,0.15);
+}
+
+/* ══════════════════════════════════════════════════════════
+   PRO BADGE
+══════════════════════════════════════════════════════════ */
+
+[data-theme="terminal"] .pro-status-badge--pro,
+.theme-terminal .pro-status-badge--pro {
+  color: var(--tm-green);
+  border-color: rgba(57,255,20,0.35);
+  background: var(--tm-green-ghost);
+  border-radius: 0;
+  font-family: var(--tm-font);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-shadow: var(--tm-glow-sm);
+}
+
+[data-theme="terminal"] .pro-status-badge--free,
+.theme-terminal .pro-status-badge--free {
+  color: var(--tm-comment);
+  border-color: rgba(57,255,20,0.12);
+  border-radius: 0;
+  font-family: var(--tm-font);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+}
+
+/* ══════════════════════════════════════════════════════════
+   THEME PANEL
+══════════════════════════════════════════════════════════ */
+
+[data-theme="terminal"] .theme-panel,
+.theme-terminal .theme-panel {
+  background: #111;
+  border: 1px solid var(--tm-green-dim);
+  border-radius: 0;
+  box-shadow: 0 0 40px rgba(57,255,20,0.15), 0 20px 60px rgba(0,0,0,0.8);
+  color: var(--tm-text);
+}
+
+/* ══════════════════════════════════════════════════════════
+   EDIT HINTS
+══════════════════════════════════════════════════════════ */
+
+[data-theme="terminal"] .is-editable:hover,
+.theme-terminal .is-editable:hover {
+  outline: 1px dashed rgba(57,255,20,0.35);
+  outline-offset: 4px;
+  border-radius: 0;
+}
+
+[data-theme="terminal"] .is-editing,
+.theme-terminal .is-editing {
+  outline: 1px solid var(--tm-green) !important;
+  outline-offset: 4px;
+  border-radius: 0;
+  box-shadow: 0 0 10px rgba(57,255,20,0.2);
+}
+
+/* ══════════════════════════════════════════════════════════
+   SELECTION & SCROLLBAR
+══════════════════════════════════════════════════════════ */
+
+[data-theme="terminal"] ::selection,
+.theme-terminal ::selection {
+  background: rgba(57,255,20,0.25);
+  color: var(--tm-green);
+}
+
+[data-theme="terminal"] ::-webkit-scrollbar,
+.theme-terminal ::-webkit-scrollbar { width: 4px; }
+
+[data-theme="terminal"] ::-webkit-scrollbar-track,
+.theme-terminal ::-webkit-scrollbar-track { background: var(--tm-black); }
+
+[data-theme="terminal"] ::-webkit-scrollbar-thumb,
+.theme-terminal ::-webkit-scrollbar-thumb {
+  background: rgba(57,255,20,0.2);
+  border-radius: 0;
+}
+
+[data-theme="terminal"] ::-webkit-scrollbar-thumb:hover,
+.theme-terminal ::-webkit-scrollbar-thumb:hover {
+  background: rgba(57,255,20,0.4);
+}
+
+/* ══════════════════════════════════════════════════════════
+   SAVE INDICATOR
+══════════════════════════════════════════════════════════ */
+
+[data-theme="terminal"] .save-indicator--draft,
+.theme-terminal .save-indicator--draft {
+  color: var(--tm-green);
+  font-family: var(--tm-font);
+  font-size: 0.70rem;
+  letter-spacing: 0.06em;
+  text-shadow: var(--tm-glow-sm);
+}
+
+/* ══════════════════════════════════════════════════════════
+   CURSOR (set by TerminalFX.js)
+══════════════════════════════════════════════════════════ */
+
+[data-theme="terminal"] body.tm-cursor-active,
+.theme-terminal body.tm-cursor-active {
+  cursor: none;
+}
+
+[data-theme="terminal"] body.tm-cursor-active *,
+.theme-terminal body.tm-cursor-active * {
+  cursor: none;
+}
+
+/* ══════════════════════════════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  [data-theme="terminal"] .portfolio-hero__name,
+  .theme-terminal .portfolio-hero__name {
+    font-size: clamp(2.8rem, 16vw, 5rem);
+  }
+  [data-theme="terminal"] .projects-grid,
+  .theme-terminal .projects-grid {
+    grid-template-columns: 1fr;
+  }
+}

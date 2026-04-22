@@ -305,7 +305,6 @@
   <script src="js/auth.js"></script>
   <script src="js/ai.js"></script>
   <script src="js/portfolio.js"></script>
-  <script src="js/pdf.js"></script>
 
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
@@ -420,20 +419,14 @@
         `;
       }
 
-      // 4.5 — Expose Supabase client على window.supabase
-      // portfolio.js بيستخدم window.supabase.auth.getUser() مباشرة
-      // لكن الـ initialized client في window._supabaseClient
-      if (window._supabaseClient && !window.supabase?.auth) {
-        // الـ SDK موجود في window.supabase لكن الـ initialized client في _supabaseClient
-        // نعمل wrapper يحل المشكلة
-        window.supabase = window._supabaseClient;
-      } else if (!window._supabaseClient && window.supabase?.createClient) {
-        // أنشئ client جديد واحفظه
+      // 4.5 — تأكد إن الـ shared Supabase client موجود
+      // نستخدم window._supabaseClient كـ single source of truth
+      // بدون ما نعمل override على window.supabase (SDK object)
+      if (!window._supabaseClient && window.supabase?.createClient) {
         window._supabaseClient = window.supabase.createClient(
           window.SUPABASE_URL,
           window.SUPABASE_ANON_KEY
         );
-        window.supabase = window._supabaseClient;
       }
 
       // 5. Normalise draft:

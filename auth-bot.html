@@ -244,7 +244,7 @@
           الرابط ده مش صح أو انتهت صلاحيته.<br>
           ارجع للبوت واكتب <strong>/start</strong> تاني.
         </p>
-        <a href="https://t.me/GPortBot" class="btn-ghost" id="back-to-bot-btn">
+        <a href="https://t.me/GPORT_Payment_BOT" class="btn-ghost" id="back-to-bot-btn">
           ← ارجع للبوت
         </a>
       </div>
@@ -325,7 +325,7 @@
         <div class="auth-step__icon">❌</div>
         <h2 class="auth-step__title">حصل خطأ</h2>
         <div class="error-box" id="error-msg">حصل خطأ غير متوقع.</div>
-        <a href="https://t.me/GPortBot" class="btn-ghost" id="error-back-btn">
+        <a href="https://t.me/GPORT_Payment_BOT" class="btn-ghost" id="error-back-btn">
           ← ارجع للبوت
         </a>
       </div>
@@ -340,8 +340,8 @@
   ;(function () {
     'use strict';
 
-    const ORIGINAL_PRICE     = 99;
-    const BOT_USERNAME       = 'GPortBot'; // ⚠️ غيّره للـ username الحقيقي
+    const ORIGINAL_PRICE     = 200;  // نفس السعر في portfolio.js والبوت
+    const BOT_USERNAME       = 'GPORT_Payment_BOT'; // اسم البوت الحقيقي
 
     // ─── Helpers ──────────────────────────────────────────────
     function showStep(id) {
@@ -361,7 +361,7 @@
       const discount = parseInt(params.get('discount') || '0', 10);
 
       // تحديث رابط البوت
-      document.querySelectorAll('[href*="GPortBot"]').forEach(el => {
+      document.querySelectorAll('[href*="GPORT_Payment_BOT"]').forEach(el => {
         el.href = `https://t.me/${BOT_USERNAME}`;
       });
       const backSuccess = document.getElementById('back-to-bot-success');
