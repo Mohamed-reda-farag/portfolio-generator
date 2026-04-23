@@ -497,7 +497,7 @@
 .theme-liquid .project-stat {
   font-family: var(--lq-font-mono);
   font-size: 0.70rem;
-  color: var(--lq-text-muted);
+  color: rgba(240, 238, 255, 0.55); /* was 0.30 (--lq-text-muted, contrast 2.4) — raised for AA */
   letter-spacing: 0.04em;
 }
 

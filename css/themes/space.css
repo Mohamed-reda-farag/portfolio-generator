@@ -493,7 +493,7 @@
   font-family: var(--sp-font-body);
   font-size: 0.88rem;
   line-height: 1.70;
-  color: var(--sp-text-dim);
+  color: rgba(232, 244, 255, 0.65); /* was 0.50 (--sp-text-dim, 4.85:1) — raised to 0.65 for comfort at small size */
   font-weight: 300;
 }
 

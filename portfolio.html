@@ -18,7 +18,7 @@
 
   <!-- ─── Main CSS ────────────────────────────────────────────────────────── -->
   <link rel="stylesheet" href="css/main.css" />
-  <link rel="stylesheet" href="css/themes/light.css" />
+  <link id="portfolio-theme-css" rel="stylesheet" href="" />
 
   <!-- ─── Portfolio Page Styles ───────────────────────────────────────────── -->
   <style>
@@ -601,6 +601,46 @@
       border-radius: 4px;
     }
 
+    /* ── FEATURE 3: Project Image ─────────────────────────────────────────── */
+    .p-project-img-wrap {
+      overflow: hidden;
+      border-radius: 6px 6px 0 0;
+      margin: calc(var(--card-pad, 20px) * -1) calc(var(--card-pad, 20px) * -1) var(--card-pad, 20px);
+      border-bottom: 1px solid var(--border);
+    }
+    .p-project-img {
+      width: 100%;
+      max-height: 200px;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.4s ease;
+    }
+    .p-project-card:hover .p-project-img { transform: scale(1.03); }
+
+    /* ── FEATURE 1: Social Links ──────────────────────────────────────────── */
+    .p-hero-link--social {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+    }
+    #hero-social-links {
+      margin-top: 6px;
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+    #hero-social-links.revealed { opacity: 1; transform: translateY(0); }
+
+    /* ── FEATURE 2: Custom Section Content ────────────────────────────────── */
+    .p-custom-section-content {
+      font-size: var(--fs-sm, 14px);
+      color: var(--ink-2);
+      line-height: 1.75;
+      white-space: pre-wrap;
+      max-width: 680px;
+    }
+
     /* ── FOOTER ─────────────────────────────────────────────────────────── */
     .p-footer {
       border-top: 1px solid var(--border);
@@ -739,6 +779,8 @@
             GitHub
           </a>
         </div>
+        <!-- Feature 1: Social Links (LinkedIn + Gmail) — populated by renderSocialLinks() -->
+        <div class="p-hero-links" id="hero-social-links" aria-label="Social links"></div>
       </div>
 
       <!-- Avatar -->
@@ -957,25 +999,37 @@
 
       count.textContent = `${projects.length} project${projects.length !== 1 ? 's' : ''}`;
 
-      // Merge AI descriptions with GitHub repo data
       const merged = projects.map((p, idx) => {
         const repo = (githubRepos || []).find(
           (r) => r.name === p.repo_name || r.name?.toLowerCase() === p.repo_name?.toLowerCase()
         ) || {};
-
         return {
-          name: p.repo_name,
+          name:        p.repo_name,
           description: p.description || repo.description || '—',
-          url: repo.url || `https://github.com/${p.repo_name}`,
-          stars: repo.stars || 0,
-          language: repo.language || null,
-          topics: repo.topics || [],
-          featured: idx === 0, // أول project = featured
+          url:         p.url || repo.url || `https://github.com/${p.repo_name}`,
+          stars:       p.stars || repo.stars || 0,
+          language:    p.language || repo.language || null,
+          topics:      p.topics || repo.topics || [],
+          featured:    idx === 0,
+          imageUrl:    p.imageUrl || null,
         };
       });
 
-      grid.innerHTML = merged.map((proj, i) => `
+      grid.innerHTML = merged.map((proj) => `
         <article class="p-project-card${proj.featured ? ' featured' : ''}" role="article">
+
+          ${proj.imageUrl ? `
+            <div class="p-project-img-wrap">
+              <img
+                src="${esc(proj.imageUrl)}"
+                alt="${esc(proj.name)} preview"
+                class="p-project-img"
+                loading="lazy"
+                onerror="this.parentElement.style.display='none'"
+              />
+            </div>
+          ` : ''}
+
           <div class="p-project-head">
             <div>
               ${proj.featured ? `<div class="p-featured-badge">★ Featured</div><br/>` : ''}
@@ -988,7 +1042,6 @@
               class="p-project-link"
               aria-label="View ${esc(proj.name)} on GitHub"
             >
-              <!-- External link icon -->
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
                 <polyline points="15 3 21 3 21 9"/>
@@ -1006,7 +1059,6 @@
                 ${esc(proj.language)}
               </span>
             ` : ''}
-
             ${proj.stars > 0 ? `
               <span class="p-project-stars">
                 <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -1015,7 +1067,6 @@
                 ${fmtNum(proj.stars)}
               </span>
             ` : ''}
-
             ${proj.topics?.length ? `
               <div class="p-project-topics">
                 ${proj.topics.slice(0, 3).map((t) => `<span class="p-topic">${esc(t)}</span>`).join('')}
@@ -1025,9 +1076,63 @@
         </article>
       `).join('');
 
-      // Stagger reveal
       const cards = grid.querySelectorAll('.p-project-card');
       setTimeout(() => staggerReveal([...cards], 200, 100), 200);
+    }
+
+    // ── Feature 1: Render Social Links ─────────────────────────────────────
+    function renderSocialLinks(linkedinUrl, gmailAddress) {
+      const container = document.getElementById('hero-social-links');
+      if (!container) return;
+      const links = [];
+      if (linkedinUrl) {
+        const url = linkedinUrl.startsWith('http') ? linkedinUrl : `https://${linkedinUrl}`;
+        links.push(`
+          <a href="${esc(url)}" target="_blank" rel="noopener noreferrer"
+             class="p-hero-link p-hero-link--social" aria-label="LinkedIn profile">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z"/>
+              <circle cx="4" cy="4" r="2"/>
+            </svg>
+            LinkedIn
+          </a>`);
+      }
+      if (gmailAddress) {
+        const email = gmailAddress.includes('@') ? gmailAddress : `${gmailAddress}@gmail.com`;
+        links.push(`
+          <a href="mailto:${esc(email)}"
+             class="p-hero-link p-hero-link--social" aria-label="Send email">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+              <polyline points="22,6 12,13 2,6"/>
+            </svg>
+            ${esc(email)}
+          </a>`);
+      }
+      container.innerHTML = links.join('');
+      if (links.length) container.classList.add('revealed');
+    }
+
+    // ── Feature 2: Render Custom Sections ──────────────────────────────────
+    function renderCustomSections(sections) {
+      document.querySelectorAll('.p-custom-section').forEach(el => el.remove());
+      if (!sections?.length) return;
+      const anchor = document.getElementById('p-projects-section');
+      if (!anchor) return;
+      sections.forEach(sec => {
+        if (!sec?.title && !sec?.content) return;
+        const section = document.createElement('section');
+        section.className = 'p-section p-reveal-section p-custom-section';
+        section.setAttribute('aria-label', sec.title || 'Section');
+        section.innerHTML = `
+          <div class="p-section-header">
+            <h2 class="p-section-title">${esc(sec.title || '')}</h2>
+          </div>
+          <div class="p-custom-section-content">${esc(sec.content || '').replace(/\n/g, '<br/>')}</div>
+        `;
+        anchor.insertAdjacentElement('afterend', section);
+        setTimeout(() => section.classList.add('revealed'), 100);
+      });
     }
 
     // ── Render stats bar ──────────────────────────────────────────────────
@@ -1094,6 +1199,8 @@
         githubUser, githubRepos,
         fullName, jobTitle,
         githubUsername,
+        linkedinUrl, gmailAddress,
+        custom_sections,
       } = draft;
 
       // ─ Hero text
@@ -1112,6 +1219,9 @@
       if (navGhUser)  navGhUser.textContent = `@${githubUsername}`;
       if (linkGithub) { linkGithub.href = ghUrl; }
 
+      // ─ Feature 1: Social Links — LinkedIn + Gmail
+      renderSocialLinks(linkedinUrl, gmailAddress);
+
       // ─ Avatar
       loadAvatar(githubUsername, fullName);
 
@@ -1123,6 +1233,9 @@
 
       // ─ Projects
       renderProjects(projects, githubRepos);
+
+      // ─ Feature 2: Custom Sections
+      renderCustomSections(custom_sections || []);
 
       // ─ Meta
       updateMeta(fullName || githubUsername, jobTitle, bio);
@@ -1152,8 +1265,8 @@
           .from('portfolios')
           .select(`
             id, bio, skills, theme, slug, is_published,
-            user_id,
-            projects ( github_repo_name, ai_description, stars, language, topics, sort_order, repo_url, is_featured )
+            user_id, linkedin_url, gmail_address, custom_sections,
+            projects ( github_repo_name, ai_description, stars, language, topics, sort_order, repo_url, is_featured, image_url )
           `)
           .eq('slug', slug)
           .eq('is_published', true)
@@ -1178,6 +1291,7 @@
             language: p.language,
             topics: p.topics || [],
             url: p.repo_url || `https://github.com/${userData?.github_username}/${p.github_repo_name}`,
+            imageUrl: p.image_url || null,
           }));
 
         // جيب بيانات GitHub الحقيقية — مع in-memory cache لتفادي rate limiting
@@ -1220,6 +1334,9 @@
           theme:          portfolio.theme || 'dark',
           githubUser,
           githubRepos:    projects,
+          linkedinUrl:    portfolio.linkedin_url   || '',
+          gmailAddress:   portfolio.gmail_address  || '',
+          custom_sections: portfolio.custom_sections || [],
           _fromSupabase:  true,
         };
       } catch (err) {
@@ -1267,6 +1384,12 @@
 
       // Set theme attributes
       const theme = draft.theme || 'dark';
+
+      // تحميل الـ theme CSS ديناميكياً
+      const themeLink = document.getElementById('portfolio-theme-css');
+      if (themeLink) {
+        themeLink.href = `css/themes/${theme}.css`;
+      }
       document.documentElement.setAttribute('data-theme', theme);
       document.body.setAttribute('data-theme', theme);
       document.body.classList.add(`theme-${theme}`);

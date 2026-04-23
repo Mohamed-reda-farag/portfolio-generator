@@ -111,6 +111,13 @@
     if (titleEl) titleEl.textContent = draft.jobTitle || '';
     const nameEl = $('[data-edit="name"]');
     if (nameEl) nameEl.textContent = draft.name || '';
+    // Feature 1: Social Links
+    const linkedinEl = $('[data-edit="linkedinUrl"]');
+    if (linkedinEl) linkedinEl.textContent = draft.linkedinUrl || '';
+    const gmailEl = $('[data-edit="gmailAddress"]');
+    if (gmailEl) gmailEl.textContent = draft.gmailAddress || '';
+    // Feature 2: Custom Sections
+    _renderCustomSections(draft.custom_sections || []);
   }
 
   /* ═══════════════════════════════════════════════════════════════
@@ -273,6 +280,11 @@
       </div>
     `;
 
+    // Feature 3: أضف image block بعد الـ header مباشرةً
+    const header = card.querySelector('.project-card__header');
+    const imageBlock = _buildProjectImageBlock(proj, index, card);
+    header.insertAdjacentElement('afterend', imageBlock);
+
     const nameEl = card.querySelector('[data-edit="projectName"]');
     nameEl.addEventListener('blur', () => {
       const before = snapshot(); pushUndo(before);
@@ -304,6 +316,185 @@
     _draft.projects[index] = _draft.projects[newIndex];
     _draft.projects[newIndex] = temp;
     _renderProjects(_draft.projects);
+    _scheduleAutosave();
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     FEATURE 3: PROJECT IMAGE URL — helper لـ _buildProjectCard
+  ═══════════════════════════════════════════════════════════════ */
+
+  function _buildProjectImageBlock(proj, index, card) {
+    // Wrapper يحتوي الصورة + حقل الـ URL
+    const wrap = document.createElement('div');
+    wrap.className = 'project-image-wrap';
+    wrap.style.cssText = 'margin-bottom: var(--sp-3);';
+
+    // الصورة — تظهر فقط لو في URL
+    const img = document.createElement('img');
+    img.className = 'project-card__img';
+    img.style.cssText = `
+      width: 100%; max-height: 200px; object-fit: cover;
+      border-radius: var(--radius-md, 8px); margin-bottom: var(--sp-2);
+      display: ${proj.imageUrl ? 'block' : 'none'};
+      border: 1px solid var(--clr-border-dim);
+    `;
+    img.alt = proj.github_repo_name || 'Project image';
+    if (proj.imageUrl) img.src = proj.imageUrl;
+
+    img.onerror = () => { img.style.display = 'none'; };
+
+    // حقل إدخال الـ URL
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'project-image-input';
+    input.placeholder = '🖼 Image URL (optional)';
+    input.value = proj.imageUrl || '';
+    input.setAttribute('aria-label', 'Project image URL');
+    input.style.cssText = `
+      width: 100%; background: var(--clr-bg-2);
+      border: 1px dashed var(--clr-border-dim);
+      border-radius: var(--radius-sm, 4px);
+      padding: 6px 10px; font-size: var(--fs-xs);
+      color: var(--clr-text-3); font-family: var(--font-body);
+      outline: none; transition: border-color var(--dur-fast);
+    `;
+
+    input.addEventListener('focus', () => {
+      input.style.borderColor = 'var(--clr-accent)';
+    });
+    input.addEventListener('blur', () => {
+      input.style.borderColor = 'var(--clr-border-dim)';
+    });
+
+    input.addEventListener('input', () => {
+      const url = input.value.trim();
+      const before = snapshot(); pushUndo(before);
+      _draft.projects[index].imageUrl = url || null;
+      if (url) {
+        img.src = url;
+        img.style.display = 'block';
+      } else {
+        img.style.display = 'none';
+      }
+      _scheduleAutosave();
+    });
+
+    wrap.appendChild(img);
+    wrap.appendChild(input);
+    return wrap;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     FEATURE 2: CUSTOM SECTIONS
+  ═══════════════════════════════════════════════════════════════ */
+
+  function _renderCustomSections(sections) {
+    const container = $('[data-custom-sections]');
+    if (!container) return;
+    container.innerHTML = '';
+
+    (sections || []).forEach((sec, i) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'custom-section-block';
+      wrap.setAttribute('data-section-index', i);
+      wrap.style.cssText = 'position: relative; padding: var(--sp-4); background: var(--clr-bg-3); border: 1px solid var(--clr-border-dim); border-radius: var(--radius-lg); margin-bottom: var(--sp-4);';
+
+      // زرار حذف
+      const delBtn = document.createElement('button');
+      delBtn.className = 'icon-btn';
+      delBtn.title = 'Remove section';
+      delBtn.setAttribute('aria-label', 'Remove section');
+      delBtn.innerHTML = '×';
+      delBtn.style.cssText = 'position: absolute; top: var(--sp-3); right: var(--sp-3); font-size: 1.1rem; line-height:1; opacity: 0.5;';
+      delBtn.addEventListener('click', () => _removeCustomSection(i));
+      delBtn.addEventListener('mouseenter', () => { delBtn.style.opacity = '1'; });
+      delBtn.addEventListener('mouseleave', () => { delBtn.style.opacity = '0.5'; });
+
+      // عنوان الـ section
+      const titleEl = document.createElement('div');
+      titleEl.className = 'section-label';
+      titleEl.style.cssText = 'margin-bottom: var(--sp-4);';
+      const titleSpan = document.createElement('span');
+      titleSpan.setAttribute('contenteditable', 'true');
+      titleSpan.setAttribute('spellcheck', 'false');
+      titleSpan.setAttribute('aria-label', 'Edit section title');
+      titleSpan.style.cssText = 'color: var(--clr-accent); font-family: var(--font-display); font-weight: 700; font-size: var(--fs-sm); outline: none; cursor: text; min-width: 60px; display: inline-block;';
+      titleSpan.textContent = sec.title || 'Section Title';
+      titleSpan.addEventListener('blur', () => {
+        const before = snapshot(); pushUndo(before);
+        _draft.custom_sections[i].title = titleSpan.textContent.trim() || 'Section Title';
+        _scheduleAutosave();
+      });
+      titleSpan.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); titleSpan.blur(); } });
+      titleEl.appendChild(titleSpan);
+      titleEl.insertAdjacentHTML('beforeend', '<span style="flex:1;height:1px;background:var(--clr-border-dim);display:inline-block;vertical-align:middle;margin-left:var(--sp-4);"></span>');
+
+      // محتوى الـ section
+      const contentEl = document.createElement('div');
+      contentEl.setAttribute('contenteditable', 'true');
+      contentEl.setAttribute('spellcheck', 'false');
+      contentEl.setAttribute('aria-label', 'Edit section content');
+      contentEl.style.cssText = 'min-height: 60px; font-size: var(--fs-sm); color: var(--clr-text-2); line-height: var(--lh-loose); outline: none; cursor: text; white-space: pre-wrap;';
+      contentEl.textContent = sec.content || '';
+      contentEl.setAttribute('data-placeholder', 'Write your content here…');
+
+      contentEl.addEventListener('blur', () => {
+        const before = snapshot(); pushUndo(before);
+        _draft.custom_sections[i].content = contentEl.textContent.trim();
+        _scheduleAutosave();
+      });
+
+      // Placeholder CSS
+      if (!document.getElementById('custom-section-placeholder-style')) {
+        const style = document.createElement('style');
+        style.id = 'custom-section-placeholder-style';
+        style.textContent = `
+          [data-placeholder]:empty::before {
+            content: attr(data-placeholder);
+            color: var(--clr-text-3);
+            pointer-events: none;
+            font-style: italic;
+          }
+        `;
+        document.head.appendChild(style);
+      }
+
+      wrap.appendChild(delBtn);
+      wrap.appendChild(titleEl);
+      wrap.appendChild(contentEl);
+      container.appendChild(wrap);
+    });
+  }
+
+  function _addCustomSection() {
+    const before = snapshot(); pushUndo(before);
+    if (!_draft.custom_sections) _draft.custom_sections = [];
+    _draft.custom_sections.push({ title: 'New Section', content: '' });
+    _renderCustomSections(_draft.custom_sections);
+    _scheduleAutosave();
+
+    // Focus على عنوان الـ section الجديد
+    setTimeout(() => {
+      const sections = $$('[data-custom-sections] [data-section-index]');
+      const last = sections[sections.length - 1];
+      if (last) {
+        const titleSpan = last.querySelector('[contenteditable]');
+        if (titleSpan) {
+          titleSpan.focus();
+          const range = document.createRange();
+          range.selectNodeContents(titleSpan);
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+        }
+      }
+    }, 50);
+  }
+
+  function _removeCustomSection(index) {
+    const before = snapshot(); pushUndo(before);
+    _draft.custom_sections.splice(index, 1);
+    _renderCustomSections(_draft.custom_sections);
     _scheduleAutosave();
   }
 
@@ -652,6 +843,9 @@
             user_id: userId, bio: draft.bio,
             skills: draft.skills || [], theme: draft.theme || 'dark',
             slug, is_published: true, updated_at: new Date().toISOString(),
+            linkedin_url: draft.linkedinUrl || null,
+            gmail_address: draft.gmailAddress || null,
+            custom_sections: draft.custom_sections || [],
           }, { onConflict: 'user_id' });
 
           if (portError) throw portError;
@@ -667,6 +861,7 @@
               ai_description: p.ai_description || p.description || '',
               stars: p.stars || 0, language: p.language || null,
               topics: p.topics || [], sort_order: i, is_featured: i === 0,
+              image_url: p.imageUrl || null,
             }));
             await sb.from('projects').delete().eq('portfolio_id', portData.id);
             await sb.from('projects').insert(projectsPayload);
@@ -1225,6 +1420,8 @@
     activateProTheme,
     deactivateCurrentProTheme,
     handleThemeScriptLifecycle,
+    // Feature 2: Custom Sections
+    _addCustomSection,
   };
 
 })();

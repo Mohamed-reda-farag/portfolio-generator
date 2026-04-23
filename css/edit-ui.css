@@ -282,6 +282,47 @@
   background-image: repeating-linear-gradient(0deg, rgba(0,0,0,0.04) 0px, rgba(0,0,0,0.04) 1px, transparent 1px, transparent 20px);
 }
 
+/* ── Pro theme swatch previews ── */
+
+.theme-swatch__preview--editorial {
+  background: #F2EFE8;
+  background-image:
+    repeating-linear-gradient(0deg, transparent, transparent 9px, rgba(13,12,10,0.07) 9px, rgba(13,12,10,0.07) 10px),
+    linear-gradient(90deg, #C8600A 3px, transparent 3px);
+  background-size: 100% 10px, 100% 100%;
+  box-shadow: inset 0 0 0 1px rgba(13,12,10,0.10);
+}
+
+.theme-swatch__preview--noir {
+  background: #FFFFFF;
+  background-image:
+    linear-gradient(180deg, #FFFFFF 55%, #000000 55%);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.10);
+}
+
+.theme-swatch__preview--blueprint {
+  background: #0a1628;
+  background-image:
+    linear-gradient(rgba(74,158,255,0.25) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(74,158,255,0.25) 1px, transparent 1px);
+  background-size: 8px 8px;
+  box-shadow: inset 0 0 10px rgba(74,158,255,0.15);
+}
+
+.theme-swatch__preview--terminal {
+  background: #0f0f0f;
+  background-image:
+    repeating-linear-gradient(0deg, transparent, transparent 5px, rgba(57,255,20,0.08) 5px, rgba(57,255,20,0.08) 6px);
+  box-shadow: inset 0 0 10px rgba(57,255,20,0.12), inset 2px 6px 0 rgba(57,255,20,0.25);
+}
+
+.theme-swatch__preview--liquid {
+  background: #0d0a1a;
+  background-image:
+    radial-gradient(ellipse 80% 60% at 30% 40%, rgba(124,58,237,0.55) 0%, transparent 65%),
+    radial-gradient(ellipse 60% 50% at 75% 65%, rgba(255,107,107,0.35) 0%, transparent 60%);
+}
+
 .theme-swatch__preview--glass3d {
   background: linear-gradient(135deg, rgba(100,200,255,0.3), rgba(200,100,255,0.3));
   backdrop-filter: blur(4px);

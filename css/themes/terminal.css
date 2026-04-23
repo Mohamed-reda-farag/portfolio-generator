@@ -584,7 +584,7 @@
 .theme-terminal .project-stat {
   font-family: var(--tm-font);
   font-size: 0.70rem;
-  color: var(--tm-text-muted);
+  color: rgba(200, 255, 200, 0.50); /* was 0.28 (--tm-text-muted, contrast 2.32) — raised for AA */
   letter-spacing: 0.02em;
 }
 

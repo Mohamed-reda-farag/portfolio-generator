@@ -273,6 +273,30 @@
            aria-label="Your bio — click to edit"></p>
 
         <div class="hero-links" id="hero-links"></div>
+
+        <!-- Feature 1: Social Links — editable fields -->
+        <div class="hero-social-inputs" style="display:flex; flex-wrap:wrap; gap:var(--sp-3); margin-top:var(--sp-4);">
+          <div style="display:flex; align-items:center; gap:var(--sp-2); background:var(--clr-bg-3); border:1px dashed var(--clr-border-dim); border-radius:var(--radius-md); padding:var(--sp-2) var(--sp-3); min-width:220px; flex:1;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0; color:var(--clr-text-3);" aria-hidden="true">
+              <path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/>
+            </svg>
+            <span style="font-size:var(--fs-xs); color:var(--clr-text-3); letter-spacing:var(--ls-wide); text-transform:uppercase; flex-shrink:0;">LinkedIn</span>
+            <span data-edit="linkedinUrl"
+                  aria-label="LinkedIn URL — click to edit"
+                  style="flex:1; font-size:var(--fs-sm); color:var(--clr-text-2); min-width:80px; outline:none;"
+                  title="Click to edit LinkedIn URL"></span>
+          </div>
+          <div style="display:flex; align-items:center; gap:var(--sp-2); background:var(--clr-bg-3); border:1px dashed var(--clr-border-dim); border-radius:var(--radius-md); padding:var(--sp-2) var(--sp-3); min-width:220px; flex:1;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0; color:var(--clr-text-3);" aria-hidden="true">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
+            </svg>
+            <span style="font-size:var(--fs-xs); color:var(--clr-text-3); letter-spacing:var(--ls-wide); text-transform:uppercase; flex-shrink:0;">Gmail</span>
+            <span data-edit="gmailAddress"
+                  aria-label="Gmail address — click to edit"
+                  style="flex:1; font-size:var(--fs-sm); color:var(--clr-text-2); min-width:80px; outline:none;"
+                  title="Click to edit Gmail address"></span>
+          </div>
+        </div>
       </header>
 
       <section class="portfolio-section" aria-labelledby="skills-label">
@@ -283,6 +307,22 @@
       <section class="portfolio-section" aria-labelledby="projects-label">
         <div class="section-label" id="projects-label"><span>Projects</span></div>
         <div class="projects-grid" data-projects-grid></div>
+      </section>
+
+      <!-- Feature 2: Custom Sections -->
+      <section class="portfolio-section" aria-label="Custom sections">
+        <div data-custom-sections></div>
+        <button
+          id="add-custom-section-btn"
+          class="skill-tag skill-tag--add"
+          aria-label="Add a new custom section"
+          style="margin-top: var(--sp-2); display:flex; align-items:center; gap:var(--sp-2); font-size:var(--fs-sm);"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Add Section
+        </button>
       </section>
 
     </div>
@@ -330,8 +370,8 @@
           if (sb) {
             const { data: portfolio } = await sb
               .from('portfolios')
-              .select(`id, bio, skills, theme, slug, user_id,
-                projects ( github_repo_name, ai_description, stars, language, topics, sort_order, repo_url, is_featured )`)
+              .select(`id, bio, skills, theme, slug, user_id, linkedin_url, gmail_address, custom_sections,
+                projects ( github_repo_name, ai_description, stars, language, topics, sort_order, repo_url, is_featured, image_url )`)
               .eq('id', portfolioId)
               .single();
 
@@ -353,6 +393,7 @@
                   language:         p.language,
                   topics:           p.topics || [],
                   repo_url:         p.repo_url || `https://github.com/${userData?.github_username}/${p.github_repo_name}`,
+                  imageUrl:         p.image_url || null,
                 }));
 
               rawDraft = {
@@ -367,6 +408,9 @@
                 githubUser:     {},
                 githubRepos:    projects,
                 portfolioId,
+                linkedinUrl:    portfolio.linkedin_url || '',
+                gmailAddress:   portfolio.gmail_address || '',
+                custom_sections: portfolio.custom_sections || [],
               };
 
               // حفظ في sessionStorage عشان portfolio.js يقدر يقراه
@@ -435,6 +479,9 @@
         ...rawDraft,
         name:     rawDraft.fullName || rawDraft.githubUser?.name || '',
         fullName: rawDraft.fullName || rawDraft.githubUser?.name || '',
+        linkedinUrl:     rawDraft.linkedinUrl     || '',
+        gmailAddress:    rawDraft.gmailAddress    || '',
+        custom_sections: rawDraft.custom_sections || [],
         // projects: normalise field names
         projects: (rawDraft.projects || []).map(p => ({
           ...p,
@@ -452,6 +499,7 @@
           topics: p.topics
             || rawDraft.githubRepos?.find(r => r.name === (p.repo_name || p.github_repo_name))?.topics
             || [],
+          imageUrl: p.imageUrl || null,
         })),
       };
 
@@ -473,6 +521,11 @@
 
       // 6. Init Portfolio editor with normalised draft
       window.Portfolio?.init({ draft });
+
+      // Feature 2: Add Section button listener
+      document.getElementById('add-custom-section-btn')?.addEventListener('click', () => {
+        window.Portfolio?._addCustomSection?.() || window._portfolioAddSection?.();
+      });
 
       // Re-trigger app.js animations if GSAP loaded after window.load
       if (typeof gsap !== 'undefined' && typeof ScrollTrigger === 'undefined') {

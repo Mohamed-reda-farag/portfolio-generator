@@ -460,7 +460,7 @@
   font-family: var(--nr-font-mono);
   font-size: 10px;
   letter-spacing: 0.08em;
-  color: var(--nr-gray-30);
+  color: var(--nr-gray-55); /* was --nr-gray-30 (2.12:1 on white) — gray-55 = 4.81:1 ✓ */
   text-transform: uppercase;
 }
 
@@ -489,7 +489,7 @@
 .theme-noir .project-stat {
   font-family: var(--nr-font-mono);
   font-size: 10px;
-  color: var(--nr-gray-30);
+  color: var(--nr-gray-55); /* was --nr-gray-30 (2.12:1 on white) — gray-55 = 4.81:1 ✓ */
   letter-spacing: 0.06em;
 }
 
@@ -501,8 +501,8 @@
   padding: 2px 8px;
   border-radius: 0;
   background: transparent;
-  border: 1px solid var(--nr-gray-15);
-  color: var(--nr-gray-30);
+  border: 1px solid var(--nr-gray-30); /* border can stay subtle */
+  color: var(--nr-gray-55); /* was --nr-gray-30 (2.12:1 on white) — gray-55 = 4.81:1 ✓ */
 }
 
 /* Edit actions on featured */

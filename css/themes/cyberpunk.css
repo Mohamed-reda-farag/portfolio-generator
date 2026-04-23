@@ -647,7 +647,7 @@
 .theme-cyberpunk .project-stat {
   font-family: var(--cb-font-mono);
   font-size: 9px;
-  color: var(--cb-text-muted);
+  color: rgba(0, 255, 65, 0.50); /* was 0.28 (--cb-text-muted) — too dim on near-black */
   letter-spacing: 0.06em;
 }
 
