@@ -191,7 +191,7 @@
   ════════════════════════════════════════════════════════ */
 
   function initBootSequence(onComplete) {
-    const container = document.querySelector('.portfolio-container, .portfolio-wrapper');
+    const container = document.querySelector('.portfolio-container, .portfolio-wrapper, .p-main');
     if (!container) { onComplete?.(); return; }
 
     container.style.opacity = '0';
@@ -258,7 +258,7 @@
   ════════════════════════════════════════════════════════ */
 
   function initHexDecode() {
-    const nameEl = document.querySelector('.portfolio-hero__name');
+    const nameEl = document.querySelector('.portfolio-hero__name, .p-hero-name-inner, .p-hero-name');
     if (!nameEl || nameEl.dataset.cbHex) return;
     nameEl.dataset.cbHex = '1';
 
@@ -624,26 +624,26 @@
     style.id = 'cb-reveal-style';
     style.textContent = `
       [data-theme="cyberpunk"] .project-card,
-      [data-theme="cyberpunk"] .p-project-card,
-      .theme-cyberpunk .project-card,
-      .theme-cyberpunk .p-project-card {
+      .theme-cyberpunk .project-card {
         opacity:0;
         clip-path:inset(0 100% 0 0);
         transition:opacity .5s ease, clip-path .55s cubic-bezier(.16,1,.3,1);
       }
       [data-theme="cyberpunk"] .project-card.cb-revealed,
-      [data-theme="cyberpunk"] .p-project-card.cb-revealed,
-      .theme-cyberpunk .project-card.cb-revealed,
-      .theme-cyberpunk .p-project-card.cb-revealed {
+      .theme-cyberpunk .project-card.cb-revealed {
         opacity:1; clip-path:inset(0 0% 0 0);
       }
       [data-theme="cyberpunk"] .section-label,
-      .theme-cyberpunk .section-label {
+      [data-theme="cyberpunk"] .p-section-heading,
+      .theme-cyberpunk .section-label,
+      .theme-cyberpunk .p-section-heading {
         opacity:0; transform:translateX(-12px);
         transition:opacity .4s ease, transform .4s cubic-bezier(.16,1,.3,1);
       }
       [data-theme="cyberpunk"] .section-label.cb-revealed,
-      .theme-cyberpunk .section-label.cb-revealed {
+      [data-theme="cyberpunk"] .p-section-heading.cb-revealed,
+      .theme-cyberpunk .section-label.cb-revealed,
+      .theme-cyberpunk .p-section-heading.cb-revealed {
         opacity:1; transform:translateX(0);
       }
       [data-theme="cyberpunk"] .skill-tag:not(.skill-tag--add),
@@ -676,11 +676,11 @@
     }
 
     // Observe elements already in DOM at init time
-    const existing = [...document.querySelectorAll('.project-card, .p-project-card, .section-label')];
+    const existing = [...document.querySelectorAll('.project-card, .p-project-card, .section-label, .p-section-label')];
     if (existing.length) observeElements(existing);
 
     // Watch for cards added after async data fetch
-    const grid = document.querySelector('.projects-grid, [data-projects-grid]');
+    const grid = document.querySelector('.projects-grid, .p-projects-grid, [data-projects-grid]');
     if (grid) {
       const gridObs = new MutationObserver((mutations) => {
         const newCards = [];
@@ -702,7 +702,7 @@
       });
     }, { threshold: 0.1 });
 
-    const sc = document.querySelector('.skills-container');
+    const sc = document.querySelector('.skills-container, .p-skills-list');
     if (sc) skillObs.observe(sc);
     _observers.push(skillObs);
   }
@@ -711,7 +711,7 @@
   function initHUDBars() {
     if (document.querySelector('.cb-alert')) return;
 
-    const nameEl = document.querySelector('.portfolio-hero__name');
+    const nameEl = document.querySelector('.portfolio-hero__name, .p-hero-name-inner, .p-hero-name');
     const name   = nameEl?.textContent?.trim().toUpperCase() || 'UNKNOWN';
 
     const alert = document.createElement('div');
@@ -743,7 +743,7 @@
     `;
 
     const toolbar   = document.getElementById('edit-toolbar');
-    const container = document.querySelector('.portfolio-container, .portfolio-wrapper');
+    const container = document.querySelector('.portfolio-container, .portfolio-wrapper, .p-main');
 
     const insertAfter = toolbar?.nextSibling
       ? () => toolbar.parentNode.insertBefore(alert, toolbar.nextSibling)
@@ -781,7 +781,7 @@
 
   /* ═══ MUTATION OBSERVER ═══ */
   function initMutationObserver() {
-    const grid = document.querySelector('.projects-grid, [data-projects-grid]');
+    const grid = document.querySelector('.projects-grid, .p-projects-grid, [data-projects-grid]');
     if (!grid) return;
     const obs = new MutationObserver((mutations) => {
       const addedCards = [];
@@ -866,7 +866,7 @@
     document.body.style.filter = '';
 
     /* Reset hero name */
-    const nameEl = document.querySelector('.portfolio-hero__name');
+    const nameEl = document.querySelector('.portfolio-hero__name, .p-hero-name-inner, .p-hero-name');
     if (nameEl?.dataset?.cbHex) {
       nameEl.classList.remove('cb-glitching');
       delete nameEl.dataset.cbHex;
@@ -888,7 +888,7 @@
       el.style.transform = '';
     });
 
-    const container = document.querySelector('.portfolio-container, .portfolio-wrapper');
+    const container = document.querySelector('.portfolio-container, .portfolio-wrapper, .p-main');
     if (container) { container.style.opacity = '1'; container.style.transition = ''; }
   }
 

@@ -46,7 +46,7 @@
 
     const projectCount = document.querySelectorAll('.project-card, .p-project-card').length || 6;
     const skillCount   = document.querySelectorAll('.skill-tag:not(.skill-tag--add)').length || 12;
-    const nameEl       = document.querySelector('.portfolio-hero__name');
+    const nameEl       = document.querySelector('.portfolio-hero__name, .p-hero-name-inner, .p-hero-name');
     const name         = nameEl?.textContent?.trim().toUpperCase() || 'DEVELOPER';
     const rev          = `REV ${String(Math.floor(Math.random() * 8) + 1).padStart(2,'0')}`;
     const date         = new Date();
@@ -79,7 +79,7 @@
     `;
 
     const toolbar   = document.getElementById('edit-toolbar');
-    const container = document.querySelector('.portfolio-container, .portfolio-wrapper');
+    const container = document.querySelector('.portfolio-container, .portfolio-wrapper, .p-main');
     if (toolbar && toolbar.nextSibling) {
       toolbar.parentNode.insertBefore(block, toolbar.nextSibling);
     } else if (container) {
@@ -324,9 +324,7 @@
     style.id = 'bp-reveal-style';
     style.textContent = `
       [data-theme="blueprint"] .project-card,
-      [data-theme="blueprint"] .p-project-card,
-      .theme-blueprint .project-card,
-      .theme-blueprint .p-project-card {
+      .theme-blueprint .project-card {
         opacity: 0;
         clip-path: inset(0 100% 0 0);
         transition:
@@ -334,20 +332,22 @@
           clip-path 0.6s cubic-bezier(0.16, 1, 0.3, 1);
       }
       [data-theme="blueprint"] .project-card.bp-revealed,
-      [data-theme="blueprint"] .p-project-card.bp-revealed,
-      .theme-blueprint .project-card.bp-revealed,
-      .theme-blueprint .p-project-card.bp-revealed {
+      .theme-blueprint .project-card.bp-revealed {
         opacity: 1;
         clip-path: inset(0 0% 0 0);
       }
       [data-theme="blueprint"] .section-label,
-      .theme-blueprint .section-label {
+      [data-theme="blueprint"] .p-section-heading,
+      .theme-blueprint .section-label,
+      .theme-blueprint .p-section-heading {
         opacity: 0;
         transform: translateX(-20px);
         transition: opacity 0.45s ease, transform 0.45s cubic-bezier(0.16,1,0.3,1);
       }
       [data-theme="blueprint"] .section-label.bp-revealed,
-      .theme-blueprint .section-label.bp-revealed {
+      [data-theme="blueprint"] .p-section-heading.bp-revealed,
+      .theme-blueprint .section-label.bp-revealed,
+      .theme-blueprint .p-section-heading.bp-revealed {
         opacity: 1;
         transform: translateX(0);
       }
@@ -372,11 +372,11 @@
     }
 
     // Observe elements already in DOM
-    const existing = [...document.querySelectorAll('.project-card, .p-project-card, .section-label')];
+    const existing = [...document.querySelectorAll('.project-card, .p-project-card, .section-label, .p-section-label')];
     if (existing.length) observeElements(existing);
 
     // Also watch for cards added later (async render after data fetch)
-    const grid = document.querySelector('.projects-grid, [data-projects-grid]');
+    const grid = document.querySelector('.projects-grid, .p-projects-grid, [data-projects-grid]');
     if (grid) {
       const gridObs = new MutationObserver((mutations) => {
         const newCards = [];
@@ -418,7 +418,7 @@
       });
     }, { threshold: 0.15 });
 
-    const container = document.querySelector('.skills-container');
+    const container = document.querySelector('.skills-container, .p-skills-list');
     if (container) obs.observe(container);
     _observers.push(obs);
   }
@@ -428,7 +428,7 @@
      Adds small X/Y coordinate labels around the name
   ══════════════════════════════════════════════════ */
   function initHeroAnnotation() {
-    const nameEl = document.querySelector('.portfolio-hero__name');
+    const nameEl = document.querySelector('.portfolio-hero__name, .p-hero-name-inner, .p-hero-name');
     if (!nameEl || nameEl.dataset.bpAnnotated) return;
     nameEl.dataset.bpAnnotated = '1';
 
@@ -455,7 +455,7 @@
       </svg>
     `;
 
-    const hero = document.querySelector('.portfolio-hero');
+    const hero = document.querySelector('.portfolio-hero, .p-hero');
     if (hero) {
       hero.style.position = 'relative';
       hero.appendChild(origin);
@@ -466,7 +466,7 @@
      8. MUTATION OBSERVER
   ══════════════════════════════════════════════════ */
   function initMutationObserver() {
-    const grid = document.querySelector('.projects-grid, [data-projects-grid]');
+    const grid = document.querySelector('.projects-grid, .p-projects-grid, [data-projects-grid]');
     if (!grid) return;
 
     const obs = new MutationObserver((mutations) => {

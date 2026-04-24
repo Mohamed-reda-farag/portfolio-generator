@@ -59,7 +59,7 @@
     `;
 
     const toolbar  = document.getElementById('edit-toolbar');
-    const container = document.querySelector('.portfolio-container, .portfolio-wrapper');
+    const container = document.querySelector('.portfolio-container, .portfolio-wrapper, .p-main');
 
     if (toolbar && toolbar.nextSibling) {
       toolbar.parentNode.insertBefore(band, toolbar.nextSibling);
@@ -85,7 +85,7 @@
      2. HERO NAME — red slash between first / last name
   ══════════════════════════════════════════════════════ */
   function initHeroName() {
-    const nameEl = document.querySelector('.portfolio-hero__name');
+    const nameEl = document.querySelector('.portfolio-hero__name, .p-hero-name-inner, .p-hero-name');
     if (!nameEl || nameEl.dataset.nrSplit) return;
     nameEl.dataset.nrSplit = '1';
 
@@ -240,25 +240,25 @@
     style.id = 'nr-reveal-style';
     style.textContent = `
       [data-theme="noir"] .project-card,
-      [data-theme="noir"] .p-project-card,
-      .theme-noir .project-card,
-      .theme-noir .p-project-card {
+      .theme-noir .project-card {
         clip-path: inset(100% 0 0 0);
         transition: clip-path 0.65s cubic-bezier(0.16,1,0.3,1);
       }
       [data-theme="noir"] .project-card.nr-revealed,
-      [data-theme="noir"] .p-project-card.nr-revealed,
-      .theme-noir .project-card.nr-revealed,
-      .theme-noir .p-project-card.nr-revealed {
+      .theme-noir .project-card.nr-revealed {
         clip-path: inset(0% 0 0 0);
       }
       [data-theme="noir"] .section-label,
-      .theme-noir .section-label {
+      [data-theme="noir"] .p-section-heading,
+      .theme-noir .section-label,
+      .theme-noir .p-section-heading {
         opacity: 0; transform: translateX(-16px);
         transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.16,1,0.3,1);
       }
       [data-theme="noir"] .section-label.nr-revealed,
-      .theme-noir .section-label.nr-revealed {
+      [data-theme="noir"] .p-section-heading.nr-revealed,
+      .theme-noir .section-label.nr-revealed,
+      .theme-noir .p-section-heading.nr-revealed {
         opacity: 1; transform: translateX(0);
       }
     `;
@@ -282,11 +282,11 @@
     }
 
     // Observe elements already in DOM at init time
-    const existing = [...document.querySelectorAll('.project-card, .p-project-card, .section-label')];
+    const existing = [...document.querySelectorAll('.project-card, .p-project-card, .section-label, .p-section-label')];
     if (existing.length) observeElements(existing);
 
     // Watch for cards added after async data fetch (the common case)
-    const grid = document.querySelector('.projects-grid, [data-projects-grid]');
+    const grid = document.querySelector('.projects-grid, .p-projects-grid, [data-projects-grid]');
     if (grid) {
       const gridObs = new MutationObserver((mutations) => {
         const newCards = [];
@@ -330,7 +330,7 @@
       });
     }, { threshold: 0.2 });
 
-    const container = document.querySelector('.skills-container');
+    const container = document.querySelector('.skills-container, .p-skills-list');
     if (container) obs.observe(container);
     _observers.push(obs);
   }
@@ -339,7 +339,7 @@
      8. MUTATION OBSERVER — new cards get effects
   ══════════════════════════════════════════════════════ */
   function initMutationObserver() {
-    const grid = document.querySelector('.projects-grid, [data-projects-grid]');
+    const grid = document.querySelector('.projects-grid, .p-projects-grid, [data-projects-grid]');
     if (!grid) return;
 
     const obs = new MutationObserver((mutations) => {
@@ -405,7 +405,7 @@
     document.body.classList.remove('nr-cursor-active');
 
     /* Reset hero name */
-    const nameEl = document.querySelector('.portfolio-hero__name');
+    const nameEl = document.querySelector('.portfolio-hero__name, .p-hero-name-inner, .p-hero-name');
     if (nameEl && nameEl.dataset.nrSplit) {
       nameEl.textContent = nameEl.textContent.replace(' / ', ' ').trim();
       delete nameEl.dataset.nrSplit;
@@ -429,7 +429,7 @@
     });
 
     /* Reset section labels */
-    document.querySelectorAll('.section-label').forEach(el => {
+    document.querySelectorAll('.section-label, .p-section-heading').forEach(el => {
       el.classList.remove('nr-revealed');
       el.style.opacity   = '';
       el.style.transform = '';
