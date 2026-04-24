@@ -1406,7 +1406,16 @@
       document.body.setAttribute('data-theme', theme);
       document.body.classList.add(`theme-${theme}`);
 
-      // 2. Load Pro theme JS if applicable
+      // Render content FIRST — cards must be in DOM before theme FX init() runs
+      try {
+        renderPortfolio(draft);
+      } catch (err) {
+        console.error('[Portfolio] Render error:', err);
+        showError('Something went wrong rendering the portfolio.');
+        return;
+      }
+
+      // 2. Load Pro theme JS AFTER render — guarantees .p-project-card elements exist
       if (PRO_THEME_SCRIPTS[theme]?.src) {
         const script = document.createElement('script');
         script.src = PRO_THEME_SCRIPTS[theme].src;
@@ -1414,15 +1423,6 @@
           window[PRO_THEME_SCRIPTS[theme].global]?.init();
         };
         document.head.appendChild(script);
-      }
-
-      // Render content
-      try {
-        renderPortfolio(draft);
-      } catch (err) {
-        console.error('[Portfolio] Render error:', err);
-        showError('Something went wrong rendering the portfolio.');
-        return;
       }
 
       // Show page

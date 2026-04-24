@@ -415,7 +415,7 @@
       let state = 'default';
       let color = GREEN;
 
-      if (el.closest('.project-card'))        { state = 'project'; color = CYAN; }
+      if (el.closest('.project-card, .p-project-card'))        { state = 'project'; color = CYAN; }
       else if (el.closest('.skill-tag'))       { state = 'skill';   color = GREEN; }
       else if (el.matches('button, .btn--primary, .btn--ghost')) { state = 'button'; color = YELLOW; }
       else if (el.closest('[contenteditable]')) { state = 'editable'; color = MAGENTA; }
@@ -490,7 +490,7 @@
     const W = _glitchCanvas.width, H = _glitchCanvas.height;
     _glitchCtx.clearRect(0, 0, W, H);
 
-    const featured = document.querySelector('.project-card--featured');
+    const featured = document.querySelector('.project-card--featured, .p-project-card.featured');
     if (!featured) return;
 
     _glitchPhase += 0.02;
@@ -567,7 +567,7 @@
   }
 
   function initCardEffects() {
-    document.querySelectorAll('.project-card').forEach((card, i) => applyCardEffects(card, i));
+    document.querySelectorAll('.project-card, .p-project-card').forEach((card, i) => applyCardEffects(card, i));
   }
 
   /* ════════════════════════════════════════════════════════
@@ -624,13 +624,17 @@
     style.id = 'cb-reveal-style';
     style.textContent = `
       [data-theme="cyberpunk"] .project-card,
-      .theme-cyberpunk .project-card {
+      [data-theme="cyberpunk"] .p-project-card,
+      .theme-cyberpunk .project-card,
+      .theme-cyberpunk .p-project-card {
         opacity:0;
         clip-path:inset(0 100% 0 0);
         transition:opacity .5s ease, clip-path .55s cubic-bezier(.16,1,.3,1);
       }
       [data-theme="cyberpunk"] .project-card.cb-revealed,
-      .theme-cyberpunk .project-card.cb-revealed {
+      [data-theme="cyberpunk"] .p-project-card.cb-revealed,
+      .theme-cyberpunk .project-card.cb-revealed,
+      .theme-cyberpunk .p-project-card.cb-revealed {
         opacity:1; clip-path:inset(0 0% 0 0);
       }
       [data-theme="cyberpunk"] .section-label,
@@ -659,9 +663,9 @@
         entries.forEach(entry => {
           if (!entry.isIntersecting) return;
           const el  = entry.target;
-          const all = [...document.querySelectorAll('.project-card')];
+          const all = [...document.querySelectorAll('.project-card, .p-project-card')];
           const i   = all.indexOf(el);
-          const d   = el.classList.contains('project-card') ? (i % 3) * 90 : 0;
+          const d   = (el.classList.contains('project-card') || el.classList.contains('p-project-card')) ? (i % 3) * 90 : 0;
           _t(() => el.classList.add('cb-revealed'), d);
           obs.unobserve(el);
         });
@@ -672,7 +676,7 @@
     }
 
     // Observe elements already in DOM at init time
-    const existing = [...document.querySelectorAll('.project-card, .section-label')];
+    const existing = [...document.querySelectorAll('.project-card, .p-project-card, .section-label')];
     if (existing.length) observeElements(existing);
 
     // Watch for cards added after async data fetch
@@ -681,7 +685,7 @@
       const gridObs = new MutationObserver((mutations) => {
         const newCards = [];
         mutations.forEach(m => m.addedNodes.forEach(node => {
-          if (node.nodeType === 1 && node.classList.contains('project-card')) newCards.push(node);
+          if (node.nodeType === 1 && (node.classList.contains('project-card') || node.classList.contains('p-project-card'))) newCards.push(node);
         }));
         if (newCards.length) observeElements(newCards);
       });
@@ -783,7 +787,7 @@
       const addedCards = [];
       mutations.forEach(m => {
         m.addedNodes.forEach(node => {
-          if (node.nodeType === 1 && node.classList.contains('project-card')) {
+          if (node.nodeType === 1 && (node.classList.contains('project-card') || node.classList.contains('p-project-card'))) {
             addedCards.push(node);
           }
         });
@@ -869,7 +873,7 @@
     }
 
     /* Reset cards */
-    document.querySelectorAll('.project-card').forEach(card => {
+    document.querySelectorAll('.project-card, .p-project-card').forEach(card => {
       card.classList.remove('cb-revealed');
       card.style.opacity = '';
       card.style.clipPath = '';

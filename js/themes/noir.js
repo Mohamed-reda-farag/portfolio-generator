@@ -40,7 +40,7 @@
   function initBand() {
     if (document.querySelector('.nr-band')) return;
 
-    const repoCount  = document.querySelectorAll('.project-card').length || 6;
+    const repoCount  = document.querySelectorAll('.project-card, .p-project-card').length || 6;
     const skillCount = document.querySelectorAll('.skill-tag:not(.skill-tag--add)').length || 12;
 
     const band = document.createElement('div');
@@ -168,7 +168,7 @@
     /* Hover states */
     _on(document, 'mouseover', (e) => {
       const el = e.target;
-      if (el.matches('button, a, .project-card, .skill-tag, [contenteditable]')) {
+      if (el.matches('button, a, .project-card, .p-project-card, .skill-tag, [contenteditable]')) {
         ring.style.width        = '52px';
         ring.style.height       = '52px';
         ring.style.borderColor  = '#E8000D';
@@ -229,7 +229,7 @@
   }
 
   function initCardEffects() {
-    document.querySelectorAll('.project-card').forEach(applyCardEffects);
+    document.querySelectorAll('.project-card, .p-project-card').forEach(applyCardEffects);
   }
 
   /* ══════════════════════════════════════════════════════
@@ -240,12 +240,16 @@
     style.id = 'nr-reveal-style';
     style.textContent = `
       [data-theme="noir"] .project-card,
-      .theme-noir .project-card {
+      [data-theme="noir"] .p-project-card,
+      .theme-noir .project-card,
+      .theme-noir .p-project-card {
         clip-path: inset(100% 0 0 0);
         transition: clip-path 0.65s cubic-bezier(0.16,1,0.3,1);
       }
       [data-theme="noir"] .project-card.nr-revealed,
-      .theme-noir .project-card.nr-revealed {
+      [data-theme="noir"] .p-project-card.nr-revealed,
+      .theme-noir .project-card.nr-revealed,
+      .theme-noir .p-project-card.nr-revealed {
         clip-path: inset(0% 0 0 0);
       }
       [data-theme="noir"] .section-label,
@@ -265,9 +269,9 @@
         entries.forEach(entry => {
           if (!entry.isIntersecting) return;
           const el  = entry.target;
-          const all = [...document.querySelectorAll('.project-card')];
+          const all = [...document.querySelectorAll('.project-card, .p-project-card')];
           const idx = all.indexOf(el);
-          const delay = el.classList.contains('project-card') ? (idx % 3) * 90 : 0;
+          const delay = (el.classList.contains('project-card') || el.classList.contains('p-project-card')) ? (idx % 3) * 90 : 0;
           setTimeout(() => el.classList.add('nr-revealed'), delay);
           observer.unobserve(el);
         });
@@ -278,7 +282,7 @@
     }
 
     // Observe elements already in DOM at init time
-    const existing = [...document.querySelectorAll('.project-card, .section-label')];
+    const existing = [...document.querySelectorAll('.project-card, .p-project-card, .section-label')];
     if (existing.length) observeElements(existing);
 
     // Watch for cards added after async data fetch (the common case)
@@ -287,7 +291,7 @@
       const gridObs = new MutationObserver((mutations) => {
         const newCards = [];
         mutations.forEach(m => m.addedNodes.forEach(node => {
-          if (node.nodeType === 1 && node.classList.contains('project-card')) newCards.push(node);
+          if (node.nodeType === 1 && (node.classList.contains('project-card') || node.classList.contains('p-project-card'))) newCards.push(node);
         }));
         if (newCards.length) observeElements(newCards);
       });
@@ -342,7 +346,7 @@
       const addedCards = [];
       mutations.forEach(m => {
         m.addedNodes.forEach(node => {
-          if (node.nodeType === 1 && node.classList.contains('project-card')) {
+          if (node.nodeType === 1 && (node.classList.contains('project-card') || node.classList.contains('p-project-card'))) {
             addedCards.push(node);
           }
         });
@@ -408,7 +412,7 @@
     }
 
     /* Reset cards */
-    document.querySelectorAll('.project-card').forEach(card => {
+    document.querySelectorAll('.project-card, .p-project-card').forEach(card => {
       card.classList.remove('nr-revealed');
       card.style.transform   = '';
       card.style.boxShadow   = '';

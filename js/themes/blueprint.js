@@ -44,7 +44,7 @@
   function initTitleBlock() {
     if (document.querySelector('.bp-titleblock')) return;
 
-    const projectCount = document.querySelectorAll('.project-card').length || 6;
+    const projectCount = document.querySelectorAll('.project-card, .p-project-card').length || 6;
     const skillCount   = document.querySelectorAll('.skill-tag:not(.skill-tag--add)').length || 12;
     const nameEl       = document.querySelector('.portfolio-hero__name');
     const name         = nameEl?.textContent?.trim().toUpperCase() || 'DEVELOPER';
@@ -185,7 +185,7 @@
       const h    = Math.round(rect.height);
 
       /* Determine bracket color */
-      const isFeatured = card.classList.contains('project-card--featured');
+      const isFeatured = (card.classList.contains('project-card--featured') || card.classList.contains('featured'));
       const color = isFeatured ? YELLOW : BLUE;
 
       /* Inject brackets */
@@ -207,7 +207,7 @@
   }
 
   function initCardBrackets() {
-    document.querySelectorAll('.project-card').forEach(applyBrackets);
+    document.querySelectorAll('.project-card, .p-project-card').forEach(applyBrackets);
   }
 
   /* ══════════════════════════════════════════════════
@@ -303,7 +303,7 @@
 
     /* Expand crosshair on hover of interactive */
     _on(document, 'mouseover', (e) => {
-      const isI = e.target.matches('button,a,.project-card,.skill-tag,[contenteditable]');
+      const isI = e.target.matches('button,a,.project-card,.p-project-card,.skill-tag,[contenteditable]');
       if (isI) {
         dot.style.width = dot.style.height = '14px';
         hLine.style.background = `rgba(74,158,255,0.45)`;
@@ -324,7 +324,9 @@
     style.id = 'bp-reveal-style';
     style.textContent = `
       [data-theme="blueprint"] .project-card,
-      .theme-blueprint .project-card {
+      [data-theme="blueprint"] .p-project-card,
+      .theme-blueprint .project-card,
+      .theme-blueprint .p-project-card {
         opacity: 0;
         clip-path: inset(0 100% 0 0);
         transition:
@@ -332,7 +334,9 @@
           clip-path 0.6s cubic-bezier(0.16, 1, 0.3, 1);
       }
       [data-theme="blueprint"] .project-card.bp-revealed,
-      .theme-blueprint .project-card.bp-revealed {
+      [data-theme="blueprint"] .p-project-card.bp-revealed,
+      .theme-blueprint .project-card.bp-revealed,
+      .theme-blueprint .p-project-card.bp-revealed {
         opacity: 1;
         clip-path: inset(0 0% 0 0);
       }
@@ -355,9 +359,9 @@
         entries.forEach(entry => {
           if (!entry.isIntersecting) return;
           const el  = entry.target;
-          const all = [...document.querySelectorAll('.project-card')];
+          const all = [...document.querySelectorAll('.project-card, .p-project-card')];
           const i   = all.indexOf(el);
-          const delay = el.classList.contains('project-card') ? (i % 3) * 100 : 0;
+          const delay = (el.classList.contains('project-card') || el.classList.contains('p-project-card')) ? (i % 3) * 100 : 0;
           setTimeout(() => el.classList.add('bp-revealed'), delay);
           obs.unobserve(el);
         });
@@ -368,7 +372,7 @@
     }
 
     // Observe elements already in DOM
-    const existing = [...document.querySelectorAll('.project-card, .section-label')];
+    const existing = [...document.querySelectorAll('.project-card, .p-project-card, .section-label')];
     if (existing.length) observeElements(existing);
 
     // Also watch for cards added later (async render after data fetch)
@@ -377,7 +381,7 @@
       const gridObs = new MutationObserver((mutations) => {
         const newCards = [];
         mutations.forEach(m => m.addedNodes.forEach(node => {
-          if (node.nodeType === 1 && node.classList.contains('project-card')) newCards.push(node);
+          if (node.nodeType === 1 && (node.classList.contains('project-card') || node.classList.contains('p-project-card'))) newCards.push(node);
         }));
         if (newCards.length) observeElements(newCards);
       });
@@ -469,7 +473,7 @@
       const addedCards = [];
       mutations.forEach(m => {
         m.addedNodes.forEach(node => {
-          if (node.nodeType === 1 && node.classList.contains('project-card')) {
+          if (node.nodeType === 1 && (node.classList.contains('project-card') || node.classList.contains('p-project-card'))) {
             addedCards.push(node);
           }
         });
@@ -485,7 +489,7 @@
           entries.forEach(entry => {
             if (!entry.isIntersecting) return;
             const el  = entry.target;
-            const all = [...document.querySelectorAll('.project-card')];
+            const all = [...document.querySelectorAll('.project-card, .p-project-card')];
             const i   = all.indexOf(el);
             const delay = (i % 3) * 100;
             setTimeout(() => el.classList.add('bp-revealed'), delay);
@@ -546,7 +550,7 @@
     document.querySelectorAll('[data-bp-annotated]').forEach(el => delete el.dataset.bpAnnotated);
 
     /* Reset cards */
-    document.querySelectorAll('.project-card').forEach(card => {
+    document.querySelectorAll('.project-card, .p-project-card').forEach(card => {
       card.classList.remove('bp-revealed');
       card.style.opacity = '';
       card.style.clipPath = '';
