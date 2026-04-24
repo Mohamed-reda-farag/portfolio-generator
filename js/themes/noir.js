@@ -260,24 +260,40 @@
     `;
     document.head.appendChild(style);
 
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (!entry.isIntersecting) return;
-        const el  = entry.target;
-        const all = [...document.querySelectorAll('.project-card')];
-        const idx = all.indexOf(el);
-        const delay = el.classList.contains('project-card')
-          ? (idx % 3) * 90
-          : 0;
-        setTimeout(() => el.classList.add('nr-revealed'), delay);
-        observer.unobserve(el);
+    function observeElements(elements) {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+          const el  = entry.target;
+          const all = [...document.querySelectorAll('.project-card')];
+          const idx = all.indexOf(el);
+          const delay = el.classList.contains('project-card') ? (idx % 3) * 90 : 0;
+          setTimeout(() => el.classList.add('nr-revealed'), delay);
+          observer.unobserve(el);
+        });
+      }, { threshold: 0.08, rootMargin: '0px 0px -32px 0px' });
+
+      elements.forEach(el => observer.observe(el));
+      _observers.push(observer);
+    }
+
+    // Observe elements already in DOM at init time
+    const existing = [...document.querySelectorAll('.project-card, .section-label')];
+    if (existing.length) observeElements(existing);
+
+    // Watch for cards added after async data fetch (the common case)
+    const grid = document.querySelector('.projects-grid, [data-projects-grid]');
+    if (grid) {
+      const gridObs = new MutationObserver((mutations) => {
+        const newCards = [];
+        mutations.forEach(m => m.addedNodes.forEach(node => {
+          if (node.nodeType === 1 && node.classList.contains('project-card')) newCards.push(node);
+        }));
+        if (newCards.length) observeElements(newCards);
       });
-    }, { threshold: 0.08, rootMargin: '0px 0px -32px 0px' });
-
-    document.querySelectorAll('.project-card, .section-label')
-      .forEach(el => observer.observe(el));
-
-    _observers.push(observer);
+      gridObs.observe(grid, { childList: true });
+      _observers.push(gridObs);
+    }
   }
 
   /* ══════════════════════════════════════════════════════
@@ -322,9 +338,20 @@
     const grid = document.querySelector('.projects-grid, [data-projects-grid]');
     if (!grid) return;
 
-    const obs = new MutationObserver(() => {
-      _t(() => { initCardEffects(); }, 60);
+    const obs = new MutationObserver((mutations) => {
+      const addedCards = [];
+      mutations.forEach(m => {
+        m.addedNodes.forEach(node => {
+          if (node.nodeType === 1 && node.classList.contains('project-card')) {
+            addedCards.push(node);
+          }
+        });
+      });
+      if (addedCards.length) {
+        _t(() => addedCards.forEach(applyCardEffects), 60);
+      }
     });
+
     obs.observe(grid, { childList: true });
     _observers.push(obs);
   }

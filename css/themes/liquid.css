@@ -576,8 +576,10 @@
 }
 
 [data-theme="liquid"] .skill-tag span,
+[data-theme="liquid"] .skill-tag__text,
 [data-theme="liquid"] .skill-tag__delete,
 .theme-liquid .skill-tag span,
+.theme-liquid .skill-tag__text,
 .theme-liquid .skill-tag__delete {
   position: relative;
   z-index: 1;

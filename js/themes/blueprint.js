@@ -350,20 +350,40 @@
     `;
     document.head.appendChild(style);
 
-    const obs = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (!entry.isIntersecting) return;
-        const el  = entry.target;
-        const all = [...document.querySelectorAll('.project-card')];
-        const i   = all.indexOf(el);
-        const delay = el.classList.contains('project-card') ? (i % 3) * 100 : 0;
-        setTimeout(() => el.classList.add('bp-revealed'), delay);
-        obs.unobserve(el);
-      });
-    }, { threshold: 0.06, rootMargin: '0px 0px -30px 0px' });
+    function observeElements(elements) {
+      const obs = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+          const el  = entry.target;
+          const all = [...document.querySelectorAll('.project-card')];
+          const i   = all.indexOf(el);
+          const delay = el.classList.contains('project-card') ? (i % 3) * 100 : 0;
+          setTimeout(() => el.classList.add('bp-revealed'), delay);
+          obs.unobserve(el);
+        });
+      }, { threshold: 0.06, rootMargin: '0px 0px -30px 0px' });
 
-    document.querySelectorAll('.project-card, .section-label').forEach(el => obs.observe(el));
-    _observers.push(obs);
+      elements.forEach(el => obs.observe(el));
+      _observers.push(obs);
+    }
+
+    // Observe elements already in DOM
+    const existing = [...document.querySelectorAll('.project-card, .section-label')];
+    if (existing.length) observeElements(existing);
+
+    // Also watch for cards added later (async render after data fetch)
+    const grid = document.querySelector('.projects-grid, [data-projects-grid]');
+    if (grid) {
+      const gridObs = new MutationObserver((mutations) => {
+        const newCards = [];
+        mutations.forEach(m => m.addedNodes.forEach(node => {
+          if (node.nodeType === 1 && node.classList.contains('project-card')) newCards.push(node);
+        }));
+        if (newCards.length) observeElements(newCards);
+      });
+      gridObs.observe(grid, { childList: true });
+      _observers.push(gridObs);
+    }
   }
 
   /* ══════════════════════════════════════════════════
@@ -445,9 +465,39 @@
     const grid = document.querySelector('.projects-grid, [data-projects-grid]');
     if (!grid) return;
 
-    const obs = new MutationObserver(() => {
-      _t(() => initCardBrackets(), 80);
+    const obs = new MutationObserver((mutations) => {
+      const addedCards = [];
+      mutations.forEach(m => {
+        m.addedNodes.forEach(node => {
+          if (node.nodeType === 1 && node.classList.contains('project-card')) {
+            addedCards.push(node);
+          }
+        });
+      });
+
+      if (addedCards.length) {
+        // Apply brackets to new cards
+        _t(() => addedCards.forEach(applyBrackets), 80);
+
+        // Re-run reveal observer on new cards so they animate in instead of staying hidden
+        // (initReveal ran before these cards existed in the DOM)
+        const revealObs = new IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (!entry.isIntersecting) return;
+            const el  = entry.target;
+            const all = [...document.querySelectorAll('.project-card')];
+            const i   = all.indexOf(el);
+            const delay = (i % 3) * 100;
+            setTimeout(() => el.classList.add('bp-revealed'), delay);
+            revealObs.unobserve(el);
+          });
+        }, { threshold: 0.06, rootMargin: '0px 0px -30px 0px' });
+
+        addedCards.forEach(card => revealObs.observe(card));
+        _observers.push(revealObs);
+      }
     });
+
     obs.observe(grid, { childList: true });
     _observers.push(obs);
   }

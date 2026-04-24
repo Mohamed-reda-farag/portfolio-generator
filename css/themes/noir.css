@@ -501,7 +501,7 @@
   padding: 2px 8px;
   border-radius: 0;
   background: transparent;
-  border: 1px solid var(--nr-gray-30); /* border can stay subtle */
+  border: 1px solid var(--nr-gray-30);
   color: var(--nr-gray-55); /* was --nr-gray-30 (2.12:1 on white) — gray-55 = 4.81:1 ✓ */
 }
 
@@ -825,4 +825,33 @@
   .theme-noir .portfolio-hero__name {
     font-size: clamp(3rem, 20vw, 5rem);
   }
+}
+
+/* ══════════════════════════════════════════════════════════
+   DEFENSIVE — Ensure project cards always render above
+   any canvas/overlay injected by NoirFX.js
+══════════════════════════════════════════════════════════ */
+
+[data-theme="noir"] .projects-grid,
+.theme-noir .projects-grid {
+  position: relative;
+  isolation: isolate;
+}
+
+/* Any canvas injected by NoirFX inside the projects section
+   must sit BEHIND the cards */
+[data-theme="noir"] [data-projects-grid] canvas,
+[data-theme="noir"] .projects-grid canvas,
+.theme-noir [data-projects-grid] canvas,
+.theme-noir .projects-grid canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+[data-theme="noir"] .project-card,
+.theme-noir .project-card {
+  position: relative;
+  z-index: 1;
 }

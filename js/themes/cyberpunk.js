@@ -654,20 +654,40 @@
     `;
     document.head.appendChild(style);
 
-    const obs = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (!entry.isIntersecting) return;
-        const el  = entry.target;
-        const all = [...document.querySelectorAll('.project-card')];
-        const i   = all.indexOf(el);
-        const d   = el.classList.contains('project-card') ? (i % 3) * 90 : 0;
-        _t(() => el.classList.add('cb-revealed'), d);
-        obs.unobserve(el);
-      });
-    }, { threshold: 0.05, rootMargin: '0px 0px -16px 0px' });
+    function observeElements(elements) {
+      const obs = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+          const el  = entry.target;
+          const all = [...document.querySelectorAll('.project-card')];
+          const i   = all.indexOf(el);
+          const d   = el.classList.contains('project-card') ? (i % 3) * 90 : 0;
+          _t(() => el.classList.add('cb-revealed'), d);
+          obs.unobserve(el);
+        });
+      }, { threshold: 0.05, rootMargin: '0px 0px -16px 0px' });
 
-    document.querySelectorAll('.project-card, .section-label').forEach(el => obs.observe(el));
-    _observers.push(obs);
+      elements.forEach(el => obs.observe(el));
+      _observers.push(obs);
+    }
+
+    // Observe elements already in DOM at init time
+    const existing = [...document.querySelectorAll('.project-card, .section-label')];
+    if (existing.length) observeElements(existing);
+
+    // Watch for cards added after async data fetch
+    const grid = document.querySelector('.projects-grid, [data-projects-grid]');
+    if (grid) {
+      const gridObs = new MutationObserver((mutations) => {
+        const newCards = [];
+        mutations.forEach(m => m.addedNodes.forEach(node => {
+          if (node.nodeType === 1 && node.classList.contains('project-card')) newCards.push(node);
+        }));
+        if (newCards.length) observeElements(newCards);
+      });
+      gridObs.observe(grid, { childList: true });
+      _observers.push(gridObs);
+    }
 
     const skillObs = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
@@ -759,8 +779,18 @@
   function initMutationObserver() {
     const grid = document.querySelector('.projects-grid, [data-projects-grid]');
     if (!grid) return;
-    const obs = new MutationObserver(() => {
-      _t(() => initCardEffects(), 60);
+    const obs = new MutationObserver((mutations) => {
+      const addedCards = [];
+      mutations.forEach(m => {
+        m.addedNodes.forEach(node => {
+          if (node.nodeType === 1 && node.classList.contains('project-card')) {
+            addedCards.push(node);
+          }
+        });
+      });
+      if (addedCards.length) {
+        _t(() => addedCards.forEach((card, i) => applyCardEffects(card, i)), 60);
+      }
     });
     obs.observe(grid, { childList: true });
     _observers.push(obs);

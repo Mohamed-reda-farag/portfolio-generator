@@ -170,12 +170,19 @@
       tag.setAttribute('contenteditable', 'true');
       tag.setAttribute('spellcheck', 'false');
       tag.setAttribute('aria-label', `Edit skill: ${skill}`);
-      tag.textContent = skill;
+
+      // Wrap label in <span> so CSS z-index:1 (targeting "span") lifts text above
+      // the ::before fill animation used in editorial/noir/liquid ink-stamp effect
+      const textSpan = document.createElement('span');
+      textSpan.className = 'skill-tag__text';
+      textSpan.textContent = skill;
+      tag.appendChild(textSpan);
 
       tag.addEventListener('blur', () => _onSkillBlur(tag, i));
       tag.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') { e.preventDefault(); tag.blur(); }
-        if (e.key === 'Backspace' && tag.textContent.trim() === '') {
+        // Exclude the × button text when checking if tag is empty
+        if (e.key === 'Backspace' && tag.textContent.replace('×', '').trim() === '') {
           e.preventDefault(); _removeSkill(i);
         }
       });
@@ -199,7 +206,9 @@
 
   function _onSkillBlur(el, index) {
     const before = snapshot();
-    const val = el.textContent.replace('×', '').trim();
+    // Read from skill-tag__text span if present, fallback strips the × delete button
+    const textEl = el.querySelector('.skill-tag__text');
+    const val = (textEl ? textEl.textContent : el.textContent.replace('×', '')).trim();
     if (!val) { _removeSkill(index); return; }
     pushUndo(before);
     _draft.skills[index] = val;

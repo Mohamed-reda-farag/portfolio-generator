@@ -67,12 +67,10 @@
      LAYER 1 + 2: STARFIELD + NEBULA
   ════════════════════════════════════════════════════════ */
 
-  let _farCanvas, _midCanvas, _nearCanvas, _nebulaCanvas, _warpCanvas;
-  let _farCtx, _midCtx, _nearCtx, _nebulaCtx, _warpCtx;
+  let _farCanvas, _midCanvas, _nearCanvas, _nebulaCanvas;
+  let _farCtx, _midCtx, _nearCtx, _nebulaCtx;
   let _farStars = [], _midStars = [], _nearStars = [];
-  let _scrollY = 0, _scrollVel = 0, _lastScrollY = 0;
-  let _warpActive = false, _warpDecay = 0;
-  let _warpTimer = null;
+  // _scrollY / warp state removed — starfield is scroll-independent
   let _frameId   = null;
   let _mouseX = 0, _mouseY = 0;
   let _time = 0;
@@ -102,6 +100,8 @@
       color: STAR_COLORS[Math.floor(Math.random() * STAR_COLORS.length)],
       twinklePhase: Math.random() * Math.PI * 2,
       twinkleSpeed: 0.4 + Math.random() * 1.2,
+      shimmerAmp:   Math.random() < 0.15 ? 0.3 + Math.random() * 0.4 : 0, /* 15% of stars flash */
+      shimmerOffset: Math.random() * Math.PI * 2,
       ...(extra || {}),
     }));
   }
@@ -121,17 +121,22 @@
     _farCanvas    = _makeCanvas('sp-stars-far');
     _midCanvas    = _makeCanvas('sp-stars-mid');
     _nearCanvas   = _makeCanvas('sp-stars-near');
-    _warpCanvas   = _makeCanvas('sp-warp');
+    // _warpCanvas removed — no more scroll-streak effect
 
     _nebulaCtx = _nebulaCanvas.getContext('2d');
     _farCtx    = _farCanvas.getContext('2d');
     _midCtx    = _midCanvas.getContext('2d');
     _nearCtx   = _nearCanvas.getContext('2d');
-    _warpCtx   = _warpCanvas.getContext('2d');
 
-    _farStars  = _makeStars(900, 0.3, 0.9);
-    _midStars  = _makeStars(400, 0.6, 1.4);
-    _nearStars = _makeStars(150, 1.0, 2.5, { hasCross: true });
+    // More stars for a richer idle field
+    _farStars  = _makeStars(1100, 0.3, 0.9);
+    _midStars  = _makeStars(500,  0.6, 1.4);
+    _nearStars = _makeStars(180,  1.0, 2.5, { hasCross: true });
+
+    // Randomise twinkle phase so stars don't all pulse in sync
+    [..._farStars, ..._midStars, ..._nearStars].forEach(s => {
+      s.twinklePhase = Math.random() * Math.PI * 2;
+    });
 
     startRenderLoop();
   }
@@ -144,25 +149,11 @@
       _frameId = requestAnimationFrame(loop);
       _time += 0.016;
 
-      /* Scroll velocity */
-      _scrollVel = (_scrollY - _lastScrollY);
-      _lastScrollY = _scrollY;
-
-      /* Warp decay */
-      if (Math.abs(_scrollVel) > 1) {
-        _warpActive = true;
-        _warpDecay  = 1.0;
-        clearTimeout(_warpTimer);
-        _warpTimer = setTimeout(() => { _warpActive = false; }, 600);
-      } else {
-        _warpDecay *= 0.88;
-      }
-
+      // No scroll-velocity or warp effect — stars twinkle independently of scroll
       drawNebula();
-      drawStarLayer(_farCtx,  _farCanvas,  _farStars,  _scrollY * 0.04, 0.04);
-      drawStarLayer(_midCtx,  _midCanvas,  _midStars,  _scrollY * 0.10, 0.10);
-      drawStarLayer(_nearCtx, _nearCanvas, _nearStars, _scrollY * 0.22, 0.22);
-      drawWarp();
+      drawStarLayer(_farCtx,  _farCanvas,  _farStars,  0, 0.04);
+      drawStarLayer(_midCtx,  _midCanvas,  _midStars,  0, 0.10);
+      drawStarLayer(_nearCtx, _nearCanvas, _nearStars, 0, 0.22);
     })();
   }
 
@@ -196,17 +187,18 @@
     ctx.clearRect(0, 0, W, H);
 
     stars.forEach(s => {
-      /* Twinkle */
+      /* Multi-frequency twinkle: base + fast shimmer for occasional flashes */
       s.twinklePhase += s.twinkleSpeed * 0.016;
-      const twinkle = 0.6 + 0.4 * Math.sin(s.twinklePhase);
+      const base    = 0.55 + 0.45 * Math.sin(s.twinklePhase);
+      const shimmer = s.shimmerAmp * Math.max(0, Math.sin(s.twinklePhase * 3.7 + s.shimmerOffset));
+      const twinkle = Math.min(1, base + shimmer);
       const alpha   = s.brightness * twinkle;
 
-      /* Parallax Y position */
-      const y = ((s.y - offsetY) % H + H) % H;
+      /* Position — no scroll offset, static starfield */
+      const y = s.y;
 
-      /* Mouse parallax — subtle */
+      /* Mouse parallax — subtle depth effect retained */
       const mx = (_mouseX - W/2) * parallaxRatio * 0.015;
-      const my = (_mouseY - H/2) * parallaxRatio * 0.015;
       const x  = s.x + mx;
 
       ctx.globalAlpha = alpha;
@@ -214,6 +206,18 @@
       ctx.beginPath();
       ctx.arc(x, y, s.size, 0, Math.PI * 2);
       ctx.fill();
+
+      /* Glow halo when a star is at peak brightness */
+      if (alpha > 0.85) {
+        ctx.globalAlpha = (alpha - 0.85) * 0.6;
+        const grad = ctx.createRadialGradient(x, y, 0, x, y, s.size * 3.5);
+        grad.addColorStop(0, s.color);
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(x, y, s.size * 3.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
 
       /* Cross flare for bright near-stars */
       if (s.hasCross && s.size > 1.5 && alpha > 0.7) {
@@ -230,62 +234,6 @@
     ctx.globalAlpha = 1;
   }
 
-  /* ── WARP SPEED ── */
-  function drawWarp() {
-    const W = _warpCanvas.width, H = _warpCanvas.height;
-    _warpCtx.clearRect(0, 0, W, H);
-
-    if (!_warpActive && _warpDecay < 0.02) return;
-
-    const intensity = Math.min(Math.abs(_scrollVel) * 0.8, 1) * _warpDecay;
-    if (intensity < 0.02) return;
-
-    const cx = W / 2, cy = H / 2;
-    const dir = _scrollVel > 0 ? 1 : -1;
-
-    _warpCtx.globalAlpha = intensity * 0.7;
-
-    /* Draw streaks for near + mid stars */
-    [..._midStars, ..._nearStars].forEach(s => {
-      const y = ((s.y - _scrollY * 0.10) % H + H) % H;
-      const x = s.x;
-
-      /* Vector from center */
-      const dx = x - cx, dy = y - cy;
-      const dist = Math.hypot(dx, dy);
-      if (dist < 10) return;
-
-      const streakLen = (s.size * 2 + dist * 0.08) * intensity * dir * 3;
-      const nx = dx / dist, ny = dy / dist;
-
-      const grad = _warpCtx.createLinearGradient(
-        x, y,
-        x + nx * streakLen, y + ny * streakLen
-      );
-      grad.addColorStop(0, s.color);
-      grad.addColorStop(1, 'rgba(0,0,0,0)');
-
-      _warpCtx.strokeStyle = grad;
-      _warpCtx.lineWidth   = s.size * 0.7;
-      _warpCtx.beginPath();
-      _warpCtx.moveTo(x, y);
-      _warpCtx.lineTo(x + nx * streakLen, y + ny * streakLen);
-      _warpCtx.stroke();
-    });
-
-    _warpCtx.globalAlpha = 1;
-
-    /* Vignette at warp peak */
-    if (intensity > 0.5) {
-      const r  = Math.max(W, H);
-      const vg = _warpCtx.createRadialGradient(cx, cy, r * 0.3, cx, cy, r);
-      vg.addColorStop(0, 'rgba(0,0,8,0)');
-      vg.addColorStop(1, `rgba(0,0,8,${(intensity - 0.5) * 0.5})`);
-      _warpCtx.globalAlpha = 1;
-      _warpCtx.fillStyle = vg;
-      _warpCtx.fillRect(0, 0, W, H);
-    }
-  }
 
   /* ════════════════════════════════════════════════════════
      LAYER 4: HUD BAR
@@ -324,15 +272,14 @@
       container.parentNode.insertBefore(hud, container);
     }
 
-    /* Update velocity readout */
+    /* Velocity readout — gentle random fluctuation to feel alive */
     setInterval(() => {
       const el = document.getElementById('sp-vel');
       if (!el || !_active) return;
-      const spd = Math.abs(_scrollVel * 0.1).toFixed(1);
+      const spd = (0.1 + Math.random() * 0.4).toFixed(1);
       el.textContent = `VEL: ${spd} ly/s`;
-      el.style.color = Math.abs(_scrollVel) > 5
-        ? `rgba(255,241,118,0.9)` : `rgba(79,195,247,0.7)`;
-    }, 80);
+      el.style.color = `rgba(79,195,247,0.7)`;
+    }, 2000);
   }
 
   /* ════════════════════════════════════════════════════════
@@ -418,7 +365,7 @@
       reticle.style.top  = ry + 'px';
 
       /* Rotate — speed up during warp */
-      angle += _warpActive ? 0.8 : 0.15;
+      angle += 0.15; // constant rotation — no warp state
       reticle.style.transform = `translate(-50%,-50%) rotate(${angle}deg)`;
 
       /* Coordinates */
@@ -611,7 +558,7 @@
     _resizeTimer = setTimeout(() => {
       if (!_active) return;
       const W = window.innerWidth, H = window.innerHeight;
-      [_farCanvas,_midCanvas,_nearCanvas,_warpCanvas,_nebulaCanvas].forEach(c => {
+      [_farCanvas,_midCanvas,_nearCanvas,_nebulaCanvas].forEach(c => {
         if (!c) return;
         c.width = W; c.height = H;
       });
@@ -635,7 +582,6 @@
       initAnnotations();
       initReveal();
 
-      _on(window, 'scroll', () => { _scrollY = window.scrollY; }, { passive: true });
       _on(window, 'mousemove', (e) => { _mouseX = e.clientX; _mouseY = e.clientY; }, { passive: true });
       _on(window, 'resize', onResize);
     });
@@ -650,10 +596,9 @@
     _listeners = [];
     _observers.forEach(o => o.disconnect?.()); _observers = [];
     if (_frameId)   { cancelAnimationFrame(_frameId); _frameId = null; }
-    clearTimeout(_warpTimer);
     clearTimeout(_resizeTimer);
 
-    ['sp-stars-far','sp-stars-mid','sp-stars-near','sp-warp','sp-nebula',
+    ['sp-stars-far','sp-stars-mid','sp-stars-near','sp-nebula',
      'sp-reticle','sp-coords','sp-reveal-style'].forEach(id => {
       document.getElementById(id)?.remove();
     });
@@ -677,7 +622,7 @@
     });
 
     _farStars = []; _midStars = []; _nearStars = [];
-    _farCanvas = _midCanvas = _nearCanvas = _warpCanvas = _nebulaCanvas = null;
+    _farCanvas = _midCanvas = _nearCanvas = _nebulaCanvas = null;
   }
 
   window.SpaceFX2 = { init, destroy };

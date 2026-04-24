@@ -481,7 +481,7 @@
 .theme-blueprint .project-stat {
   font-family: var(--bp-font-tech);
   font-size: 9px;
-  color: rgba(232, 244, 255, 0.50); /* was 0.25 (--bp-white-ghost) — too dim on #0a1628 */
+  color: var(--bp-white-ghost);
   letter-spacing: 0.08em;
 }
 
@@ -798,4 +798,36 @@
   .theme-blueprint .portfolio-hero__name {
     font-size: clamp(2.2rem, 16vw, 3.5rem);
   }
+}
+
+/* ══════════════════════════════════════════════════════════
+   DEFENSIVE — Ensure project cards always render above
+   any canvas/SVG/overlay injected by BlueprintFX.js
+══════════════════════════════════════════════════════════ */
+
+[data-theme="blueprint"] [data-projects-grid],
+[data-theme="blueprint"] .projects-grid,
+.theme-blueprint [data-projects-grid],
+.theme-blueprint .projects-grid {
+  position: relative;
+  isolation: isolate;
+  z-index: 2; /* above body::before and body::after grid overlays */
+}
+
+/* Any canvas or SVG injected by BlueprintFX inside projects
+   must sit BEHIND the cards, not on top */
+[data-theme="blueprint"] .projects-grid canvas,
+[data-theme="blueprint"] .projects-grid svg:not(.card-svg),
+.theme-blueprint .projects-grid canvas,
+.theme-blueprint .projects-grid svg:not(.card-svg) {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+[data-theme="blueprint"] .project-card,
+.theme-blueprint .project-card {
+  position: relative;
+  z-index: 1;
 }

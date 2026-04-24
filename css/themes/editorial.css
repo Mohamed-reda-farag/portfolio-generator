@@ -18,7 +18,7 @@
   --ed-paper-dark:    #E8E3D8;   /* slightly darker paper */
   --ed-ink:           #0D0C0A;   /* near-black ink */
   --ed-ink-mid:       #3A3830;   /* medium ink */
-  --ed-ink-light:     #5E5849;   /* faded ink — was #7A7568 (4.0:1 on cream, below AA); #5E5849 = ~5.5:1 */
+  --ed-ink-light:     #7A7568;   /* faded ink */
   --ed-ink-ghost:     rgba(13,12,10,0.08); /* barely-there */
   --ed-amber:         #C8600A;   /* single warm accent — like ink stamp */
   --ed-amber-light:   rgba(200, 96, 10, 0.10);
@@ -197,15 +197,14 @@
 [data-theme="editorial"] .portfolio-hero__name,
 .theme-editorial .portfolio-hero__name {
   font-family: var(--ed-font-display);
-  font-size: clamp(4.5rem, 13vw, 11rem);
+  font-size: clamp(3rem, 9vw, 7.5rem); /* was clamp(4.5rem,13vw,11rem) — too large, wrapped badly */
   font-weight: 800;
   letter-spacing: -0.04em;
-  line-height: 0.88;
+  line-height: 0.92;
   color: var(--ed-ink);
   -webkit-text-fill-color: var(--ed-ink);
   text-transform: uppercase;
   margin-bottom: 24px;
-  /* Subtle ink texture on text */
   -webkit-font-smoothing: antialiased;
 }
 

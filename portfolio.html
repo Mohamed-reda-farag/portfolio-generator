@@ -1385,7 +1385,19 @@
       // Set theme attributes
       const theme = draft.theme || 'dark';
 
-      // تحميل الـ theme CSS ديناميكياً
+      // Pro theme scripts map — mirrors the same object in edit (portfolio.js)
+      const PRO_THEME_SCRIPTS = {
+        editorial: { src: 'js/themes/editorial.js', global: 'EditorialFX'  },
+        noir:      { src: 'js/themes/noir.js',      global: 'NoirFX'       },
+        blueprint: { src: 'js/themes/blueprint.js', global: 'BlueprintFX'  },
+        terminal:  { src: 'js/themes/terminal.js',  global: 'TerminalFX'   },
+        liquid:    { src: 'js/themes/liquid.js',    global: 'LiquidFX'     },
+        glass3d:   { src: 'js/themes/glass3d.js',   global: 'Glass3DFX'    },
+        cyberpunk: { src: 'js/themes/cyberpunk.js', global: 'CyberpunkFX'  },
+        space:     { src: 'js/themes/space.js',     global: 'SpaceFX'      },
+      };
+
+      // 1. Load theme CSS
       const themeLink = document.getElementById('portfolio-theme-css');
       if (themeLink) {
         themeLink.href = `css/themes/${theme}.css`;
@@ -1393,6 +1405,16 @@
       document.documentElement.setAttribute('data-theme', theme);
       document.body.setAttribute('data-theme', theme);
       document.body.classList.add(`theme-${theme}`);
+
+      // 2. Load Pro theme JS if applicable
+      if (PRO_THEME_SCRIPTS[theme]?.src) {
+        const script = document.createElement('script');
+        script.src = PRO_THEME_SCRIPTS[theme].src;
+        script.onload = () => {
+          window[PRO_THEME_SCRIPTS[theme].global]?.init();
+        };
+        document.head.appendChild(script);
+      }
 
       // Render content
       try {
