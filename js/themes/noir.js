@@ -265,20 +265,37 @@
     document.head.appendChild(style);
 
     function observeElements(elements) {
-      const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-          if (!entry.isIntersecting) return;
-          const el  = entry.target;
-          const all = [...document.querySelectorAll('.project-card, .p-project-card')];
-          const idx = all.indexOf(el);
-          const delay = (el.classList.contains('project-card') || el.classList.contains('p-project-card')) ? (idx % 3) * 90 : 0;
-          setTimeout(() => el.classList.add('nr-revealed'), delay);
-          observer.unobserve(el);
-        });
-      }, { threshold: 0.08, rootMargin: '0px 0px -32px 0px' });
+      // clip-path:inset() hides elements visually but does NOT affect getBoundingClientRect(),
+      // so we use a rect-based visibility check instead of IntersectionObserver
+      // (which uses the visual/clipped viewport and would never fire on clipped cards).
+      const pending = new Set(elements);
 
-      elements.forEach(el => observer.observe(el));
-      _observers.push(observer);
+      function isInViewport(el) {
+        const r = el.getBoundingClientRect();
+        return r.top < window.innerHeight - 32 && r.bottom > 0;
+      }
+
+      function revealReady() {
+        pending.forEach(el => {
+          if (!isInViewport(el)) return;
+          const all = [...document.querySelectorAll('.project-card')];
+          const idx = all.indexOf(el);
+          const delay = el.classList.contains('project-card') ? (idx % 3) * 90 : 0;
+          setTimeout(() => el.classList.add('nr-revealed'), delay);
+          pending.delete(el);
+        });
+        if (pending.size === 0) {
+          window.removeEventListener('scroll', onScroll, { passive: true });
+        }
+      }
+
+      function onScroll() { revealReady(); }
+
+      revealReady(); // check immediately — handles elements already in viewport
+      if (pending.size > 0) {
+        window.addEventListener('scroll', onScroll, { passive: true });
+        _listeners.push({ el: window, ev: 'scroll', fn: onScroll, opts: { passive: true } });
+      }
     }
 
     // Observe elements already in DOM at init time

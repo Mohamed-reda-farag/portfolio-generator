@@ -80,7 +80,7 @@
     `;
 
     const toolbar   = document.getElementById('edit-toolbar');
-    const container = document.querySelector('.portfolio-container, .portfolio-wrapper');
+    const container = document.querySelector('.portfolio-container, .portfolio-page');
     if (toolbar && toolbar.nextSibling) {
       toolbar.parentNode.insertBefore(win, toolbar.nextSibling);
     } else if (container) {
@@ -92,7 +92,7 @@
      2. BOOT SEQUENCE — fast-scrolling text then reveal
   ══════════════════════════════════════════════════════ */
   function initBootSequence(onComplete) {
-    const container = document.querySelector('.portfolio-container, .portfolio-wrapper');
+    const container = document.querySelector('.portfolio-container, .portfolio-page');
     if (!container) { onComplete?.(); return; }
 
     const lines = [
@@ -555,7 +555,7 @@
     });
 
     /* Restore container visibility */
-    const container = document.querySelector('.portfolio-container, .portfolio-wrapper');
+    const container = document.querySelector('.portfolio-container, .portfolio-page');
     if (container) { container.style.opacity = '1'; container.style.transition = ''; }
   }
 

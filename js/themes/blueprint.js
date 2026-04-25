@@ -355,20 +355,37 @@
     document.head.appendChild(style);
 
     function observeElements(elements) {
-      const obs = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-          if (!entry.isIntersecting) return;
-          const el  = entry.target;
-          const all = [...document.querySelectorAll('.project-card, .p-project-card')];
-          const i   = all.indexOf(el);
-          const delay = (el.classList.contains('project-card') || el.classList.contains('p-project-card')) ? (i % 3) * 100 : 0;
-          setTimeout(() => el.classList.add('bp-revealed'), delay);
-          obs.unobserve(el);
-        });
-      }, { threshold: 0.06, rootMargin: '0px 0px -30px 0px' });
+      // clip-path:inset() hides elements visually but does NOT affect getBoundingClientRect(),
+      // so we use a rect-based visibility check instead of IntersectionObserver
+      // (which uses the visual/clipped viewport and would never fire on clipped cards).
+      const pending = new Set(elements);
 
-      elements.forEach(el => obs.observe(el));
-      _observers.push(obs);
+      function isInViewport(el) {
+        const r = el.getBoundingClientRect();
+        return r.top < window.innerHeight - 30 && r.bottom > 0;
+      }
+
+      function revealReady() {
+        pending.forEach(el => {
+          if (!isInViewport(el)) return;
+          const all = [...document.querySelectorAll('.project-card')];
+          const i   = all.indexOf(el);
+          const delay = el.classList.contains('project-card') ? (i % 3) * 100 : 0;
+          setTimeout(() => el.classList.add('bp-revealed'), delay);
+          pending.delete(el);
+        });
+        if (pending.size === 0) {
+          window.removeEventListener('scroll', onScroll, { passive: true });
+        }
+      }
+
+      function onScroll() { revealReady(); }
+
+      revealReady(); // check immediately — handles elements already in viewport
+      if (pending.size > 0) {
+        window.addEventListener('scroll', onScroll, { passive: true });
+        _listeners.push({ el: window, ev: 'scroll', fn: onScroll });
+      }
     }
 
     // Observe elements already in DOM
@@ -483,22 +500,18 @@
         // Apply brackets to new cards
         _t(() => addedCards.forEach(applyBrackets), 80);
 
-        // Re-run reveal observer on new cards so they animate in instead of staying hidden
-        // (initReveal ran before these cards existed in the DOM)
-        const revealObs = new IntersectionObserver((entries) => {
-          entries.forEach(entry => {
-            if (!entry.isIntersecting) return;
-            const el  = entry.target;
-            const all = [...document.querySelectorAll('.project-card, .p-project-card')];
-            const i   = all.indexOf(el);
-            const delay = (i % 3) * 100;
-            setTimeout(() => el.classList.add('bp-revealed'), delay);
-            revealObs.unobserve(el);
+        // Re-run reveal on new cards using rect-based check (clip-path-safe)
+        _t(() => {
+          addedCards.forEach(card => {
+            const r = card.getBoundingClientRect();
+            const inView = r.top < window.innerHeight - 30 && r.bottom > 0;
+            if (inView) {
+              const all = [...document.querySelectorAll('.project-card')];
+              const i   = all.indexOf(card);
+              setTimeout(() => card.classList.add('bp-revealed'), (i % 3) * 100);
+            }
           });
-        }, { threshold: 0.06, rootMargin: '0px 0px -30px 0px' });
-
-        addedCards.forEach(card => revealObs.observe(card));
-        _observers.push(revealObs);
+        }, 50);
       }
     });
 

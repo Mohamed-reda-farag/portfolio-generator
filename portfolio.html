@@ -1,350 +1,48 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-page="portfolio">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- Dynamic meta — filled by portfolio.js -->
+  <!-- Dynamic meta — filled by JS -->
   <title>Portfolio</title>
   <meta name="description" content="" />
   <meta property="og:title" content="" />
   <meta property="og:description" content="" />
   <meta property="og:type" content="website" />
 
-  <!-- ─── Fonts ──────────────────────────────────────────────────────────── -->
+  <!-- Fonts — same as edit.html -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Newsreader:ital,wght@1,300;1,400&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Syne:wght@400;600;700;800&family=Newsreader:ital,wght@0,400;1,300;1,400&display=swap" rel="stylesheet" />
 
-  <!-- ─── Main CSS ────────────────────────────────────────────────────────── -->
+  <!-- GSAP — same as edit.html -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+
+  <!-- CSS — same order as edit.html -->
   <link rel="stylesheet" href="css/main.css" />
-  <link id="portfolio-theme-css" rel="stylesheet" href="" />
+  <!-- Active theme CSS — populated by JS (mirrors edit.html's #active-theme-css) -->
+  <link id="active-theme-css" rel="stylesheet" href="" />
+  <link rel="icon" href="data:,">
 
-  <!-- ─── Portfolio Page Styles ───────────────────────────────────────────── -->
+  <script>
+    window.SUPABASE_URL      = "https://zxybqbjsnriwpjehinwb.supabase.co";
+    window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4eWJxYmpzbnJpd3BqZWhpbndiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMjI1NDEsImV4cCI6MjA5MDY5ODU0MX0.ED8CX81h78oga482b9pepZPsqfvX7znMqmtO0VRn3AM";
+  </script>
+
   <style>
-    /* ══════════════════════════════════════════════════════════════════════
-       PORTFOLIO PAGE — LIGHT THEME
-       Editorial / Magazine aesthetic
-       Primary: #080C0A on #F5F2ED warm paper background
-       Accent:  #00FF88 terminal green (sparingly)
-    ══════════════════════════════════════════════════════════════════════ */
+    /* ══════════════════════════════════════════════════════════════
+       PORTFOLIO PUBLIC PAGE
+       Uses IDENTICAL CSS variables and structure to edit.html
+       so Pro theme CSS files apply correctly.
+    ══════════════════════════════════════════════════════════════ */
 
-    /* ── CSS Vars (light theme overrides) ─────────────────────────────── */
-    :root {
-      --bg:           #F5F2ED;
-      --bg-2:         #EDEAE4;
-      --bg-card:      #FFFFFF;
-      --ink:          #0A0D0B;
-      --ink-2:        #3D4240;
-      --ink-3:        #7A8280;
-      --accent:       #00FF88;
-      --accent-dim:   #00CC6A;
-      --border:       rgba(10,13,11,0.09);
-      --border-strong:rgba(10,13,11,0.16);
-      --shadow-lg:    0 8px 32px rgba(10,13,11,0.12);
-
-      /* Free theme fallbacks — also used as light theme */
-    }
-
-    /* ── Dark theme ── */
-    [data-theme="dark"] {
-      --bg:           #080C0A;
-      --bg-2:         #0D1410;
-      --bg-card:      #111A14;
-      --ink:          #E8F0EB;
-      --ink-2:        #8A9E90;
-      --ink-3:        #4A5E52;
-      --accent:       #00FF88;
-      --accent-dim:   #00E87B;
-      --border:       rgba(0,255,136,0.08);
-      --border-strong:rgba(0,255,136,0.16);
-      --shadow-lg:    0 8px 32px rgba(0,0,0,0.5);
-    }
-
-    /* ── Minimal theme ── */
-    [data-theme="minimal"] {
-      --bg:           #FFFFFF;
-      --bg-2:         #F7F7F5;
-      --bg-card:      #FFFFFF;
-      --ink:          #121212;
-      --ink-2:        #484848;
-      --ink-3:        #888888;
-      --accent:       #121212;
-      --accent-dim:   #2a2a2a;
-      --border:       rgba(18,18,18,0.08);
-      --border-strong:rgba(18,18,18,0.14);
-      --shadow-lg:    none;
-    }
-
-    /* ── Terminal theme ── */
-    [data-theme="terminal"] {
-      --bg:           #0f0f0f;
-      --bg-2:         #0c0c0c;
-      --bg-card:      #141414;
-      --ink:          #c8ffc8;
-      --ink-2:        rgba(200,255,200,0.50);
-      --ink-3:        #555f55;
-      --accent:       #00ff88;
-      --accent-dim:   rgba(57,255,20,0.12);
-      --border:       rgba(57,255,20,0.12);
-      --border-strong:rgba(57,255,20,0.25);
-      --shadow-lg:    0 0 24px rgba(57,255,20,0.08);
-    }
-
-    /* ── Noir theme ── */
-    [data-theme="noir"] {
-      --bg:           #FFFFFF;
-      --bg-2:         #F5F5F5;
-      --bg-card:      #FFFFFF;
-      --ink:          #000000;
-      --ink-2:        rgba(0,0,0,0.55);
-      --ink-3:        rgba(0,0,0,0.35);
-      --accent:       #000000;
-      --accent-dim:   rgba(0,0,0,0.15);
-      --border:       rgba(0,0,0,0.10);
-      --border-strong:rgba(0,0,0,0.20);
-      --shadow-lg:    none;
-    }
-
-    /* ── Blueprint theme ── */
-    [data-theme="blueprint"] {
-      --bg:           #0a1628;
-      --bg-2:         #0d1e36;
-      --bg-card:      rgba(255,255,255,0.04);
-      --ink:          #e8f4ff;
-      --ink-2:        rgba(232,244,255,0.55);
-      --ink-3:        rgba(232,244,255,0.35);
-      --accent:       #4a9eff;
-      --accent-dim:   rgba(74,158,255,0.15);
-      --border:       rgba(74,158,255,0.20);
-      --border-strong:rgba(74,158,255,0.40);
-      --shadow-lg:    0 8px 32px rgba(0,0,0,0.5);
-    }
-
-    /* ── Cyberpunk theme ── */
-    [data-theme="cyberpunk"] {
-      --bg:           #000000;
-      --bg-2:         #050510;
-      --bg-card:      rgba(0,255,65,0.04);
-      --ink:          rgba(0,255,65,0.90);
-      --ink-2:        rgba(0,255,65,0.55);
-      --ink-3:        rgba(0,255,65,0.35);
-      --accent:       #00ff41;
-      --accent-dim:   rgba(0,255,65,0.12);
-      --border:       rgba(0,255,65,0.15);
-      --border-strong:rgba(0,255,65,0.30);
-      --shadow-lg:    0 0 24px rgba(0,255,65,0.08);
-    }
-
-    /* ── Liquid theme ── */
-    [data-theme="liquid"] {
-      --bg:           #0d0a1a;
-      --bg-2:         #110d20;
-      --bg-card:      rgba(255,255,255,0.055);
-      --ink:          rgba(240,238,255,0.90);
-      --ink-2:        rgba(240,238,255,0.55);
-      --ink-3:        rgba(240,238,255,0.35);
-      --accent:       #7c3aed;
-      --accent-dim:   rgba(124,58,237,0.18);
-      --border:       rgba(255,255,255,0.10);
-      --border-strong:rgba(255,255,255,0.20);
-      --shadow-lg:    0 8px 32px rgba(0,0,0,0.5);
-    }
-
-    /* ── Glass 3D theme ── */
-    [data-theme="glass3d"] {
-      --bg:           #04040e;
-      --bg-2:         #08081a;
-      --bg-card:      rgba(255,255,255,0.055);
-      --ink:          #f0f4ff;
-      --ink-2:        rgba(240,244,255,0.70);
-      --ink-3:        rgba(240,244,255,0.40);
-      --accent:       #8b5cf6;
-      --accent-dim:   rgba(139,92,246,0.18);
-      --border:       rgba(255,255,255,0.10);
-      --border-strong:rgba(255,255,255,0.20);
-      --shadow-lg:    0 8px 32px rgba(0,0,0,0.6);
-    }
-
-    /* ── Space theme ── */
-    [data-theme="space"] {
-      --bg:           #000008;
-      --bg-2:         #02020f;
-      --bg-card:      rgba(4,8,32,0.55);
-      --ink:          rgba(232,244,255,0.90);
-      --ink-2:        rgba(232,244,255,0.55);
-      --ink-3:        rgba(232,244,255,0.35);
-      --accent:       #4fc3f7;
-      --accent-dim:   rgba(79,195,247,0.15);
-      --border:       rgba(255,255,255,0.08);
-      --border-strong:rgba(255,255,255,0.16);
-      --shadow-lg:    0 8px 32px rgba(0,0,0,0.7);
-    }
-
-    /* ── Editorial theme ── */
-    [data-theme="editorial"] {
-      --bg:           #F2EFE8;
-      --bg-2:         #EDE9E2;
-      --bg-card:      #FFFFFF;
-      --ink:          #0D0C0A;
-      --ink-2:        #3A3830;
-      --ink-3:        #5E5849;
-      --accent:       #C8600A;
-      --accent-dim:   rgba(200,96,10,0.12);
-      --border:       rgba(13,12,10,0.09);
-      --border-strong:rgba(13,12,10,0.18);
-      --shadow-lg:    0 6px 24px rgba(13,12,10,0.10);
-    }
-      --bg-2:         #0D1410;
-      --bg-card:      #111A14;
-      --ink:          #E8F0EB;
-      --ink-2:        #8A9E90;
-      --ink-3:        #4A5E52;
-      --accent:       #00FF88;
-      --accent-dim:   #00E87B;
-    }
-
-    /* ── Minimal theme ── */
-    [data-theme="minimal"] {
-      --bg:           #FFFFFF;
-      --bg-2:         #F7F7F5;
-      --bg-card:      #FFFFFF;
-      --ink:          #121212;
-      --ink-2:        #484848;
-      --ink-3:        #888888;
-      --accent:       #121212;
-      --accent-dim:   #2a2a2a;
-    }
-
-    /* ── Terminal theme ── */
-    [data-theme="terminal"] {
-      --bg:           #0f0f0f;
-      --bg-2:         #0c0c0c;
-      --bg-card:      #141414;
-      --ink:          #c8ffc8;
-      --ink-2:        rgba(200,255,200,0.50);
-      --ink-3:        #555f55;
-      --accent:       #00ff88;
-      --accent-dim:   rgba(57,255,20,0.12);
-    }
-
-    /* ── Noir theme ── */
-    [data-theme="noir"] {
-      --bg:           #FFFFFF;
-      --bg-2:         #F5F5F5;
-      --bg-card:      #FFFFFF;
-      --ink:          #000000;
-      --ink-2:        rgba(0,0,0,0.55);
-      --ink-3:        rgba(0,0,0,0.35);
-      --accent:       #000000;
-      --accent-dim:   rgba(0,0,0,0.15);
-    }
-
-    /* ── Blueprint theme ── */
-    [data-theme="blueprint"] {
-      --bg:           #0a1628;
-      --bg-2:         #0d1e36;
-      --bg-card:      rgba(255,255,255,0.04);
-      --ink:          #e8f4ff;
-      --ink-2:        rgba(232,244,255,0.55);
-      --ink-3:        rgba(232,244,255,0.35);
-      --accent:       #4a9eff;
-      --accent-dim:   rgba(74,158,255,0.15);
-    }
-
-    /* ── Cyberpunk theme ── */
-    [data-theme="cyberpunk"] {
-      --bg:           #000000;
-      --bg-2:         #050510;
-      --bg-card:      rgba(0,255,65,0.04);
-      --ink:          rgba(0,255,65,0.90);
-      --ink-2:        rgba(0,255,65,0.55);
-      --ink-3:        rgba(0,255,65,0.35);
-      --accent:       #00ff41;
-      --accent-dim:   rgba(0,255,65,0.12);
-    }
-
-    /* ── Liquid theme ── */
-    [data-theme="liquid"] {
-      --bg:           #0d0a1a;
-      --bg-2:         #110d20;
-      --bg-card:      rgba(255,255,255,0.055);
-      --ink:          rgba(240,238,255,0.90);
-      --ink-2:        rgba(240,238,255,0.55);
-      --ink-3:        rgba(240,238,255,0.35);
-      --accent:       #7c3aed;
-      --accent-dim:   rgba(124,58,237,0.18);
-    }
-
-    /* ── Glass 3D theme ── */
-    [data-theme="glass3d"] {
-      --bg:           #04040e;
-      --bg-2:         #08081a;
-      --bg-card:      rgba(255,255,255,0.055);
-      --ink:          #f0f4ff;
-      --ink-2:        rgba(240,244,255,0.70);
-      --ink-3:        rgba(240,244,255,0.40);
-      --accent:       #8b5cf6;
-      --accent-dim:   rgba(139,92,246,0.18);
-    }
-
-    /* ── Space theme ── */
-    [data-theme="space"] {
-      --bg:           #000008;
-      --bg-2:         #02020f;
-      --bg-card:      rgba(4,8,32,0.55);
-      --ink:          rgba(232,244,255,0.90);
-      --ink-2:        rgba(232,244,255,0.55);
-      --ink-3:        rgba(232,244,255,0.35);
-      --accent:       #4fc3f7;
-      --accent-dim:   rgba(79,195,247,0.15);
-    }
-
-    /* ── Editorial theme ── */
-    [data-theme="editorial"] {
-      --bg:           #F2EFE8;
-      --bg-2:         #EDE9E2;
-      --bg-card:      #FFFFFF;
-      --ink:          #0D0C0A;
-      --ink-2:        #3A3830;
-      --ink-3:        #5E5849;
-      --accent:       #C8600A;
-      --accent-dim:   rgba(200,96,10,0.12);
-    }
-      --border:       rgba(10, 13, 11, 0.10);
-      --border-strong:rgba(10, 13, 11, 0.20);
-      --shadow-sm:    0 1px 3px rgba(10,13,11,0.08);
-      --shadow-md:    0 4px 16px rgba(10,13,11,0.10);
-      --shadow-lg:    0 16px 48px rgba(10,13,11,0.12);
-    }
-
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    html { scroll-behavior: smooth; }
-
-    body {
-      font-family: 'DM Mono', monospace;
-      background: var(--bg);
-      color: var(--ink);
-      line-height: 1.6;
-      overflow-x: hidden;
-      /* Subtle paper texture via repeating gradient */
-      background-image:
-        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(0,255,136,0.04) 0%, transparent 60%),
-        repeating-linear-gradient(
-          0deg,
-          transparent,
-          transparent 59px,
-          rgba(10,13,11,0.025) 59px,
-          rgba(10,13,11,0.025) 60px
-        );
-    }
-
-    /* ── Loading State ──────────────────────────────────────────────────── */
+    /* ── Loading State ─────────────────────────────────────────── */
     #page-loader {
       position: fixed;
       inset: 0;
-      background: var(--bg);
+      background: var(--clr-bg);
       z-index: 9999;
       display: flex;
       align-items: center;
@@ -358,31 +56,28 @@
       visibility: hidden;
       pointer-events: none;
     }
-    .loader-dot-row {
-      display: flex;
-      gap: 8px;
-    }
+    .loader-dot-row { display: flex; gap: 8px; }
     .loader-dot {
       width: 8px; height: 8px;
       border-radius: 50%;
-      background: var(--ink-3);
+      background: var(--clr-text-3);
       animation: loader-pulse 1.2s ease-in-out infinite;
     }
     .loader-dot:nth-child(2) { animation-delay: 0.2s; }
     .loader-dot:nth-child(3) { animation-delay: 0.4s; }
     @keyframes loader-pulse {
       0%, 80%, 100% { transform: scale(0.6); opacity: 0.3; }
-      40% { transform: scale(1); opacity: 1; }
+      40%            { transform: scale(1);   opacity: 1; }
     }
     .loader-label {
-      font-family: 'DM Mono', monospace;
-      font-size: 11px;
-      letter-spacing: 0.15em;
-      color: var(--ink-3);
+      font-family: var(--font-body);
+      font-size: var(--fs-xs);
+      letter-spacing: var(--ls-wider);
+      color: var(--clr-text-3);
       text-transform: uppercase;
     }
 
-    /* ── Error State ────────────────────────────────────────────────────── */
+    /* ── Error State ───────────────────────────────────────────── */
     #error-state {
       display: none;
       min-height: 100vh;
@@ -391,41 +86,33 @@
       flex-direction: column;
       gap: 16px;
       text-align: center;
-      padding: 32px;
+      padding: var(--sp-8);
     }
     #error-state.visible { display: flex; }
     .error-code {
-      font-size: 80px;
-      font-family: 'Syne', sans-serif;
+      font-family: var(--font-display);
+      font-size: var(--fs-4xl);
       font-weight: 800;
-      color: var(--border-strong);
+      color: var(--clr-border-dim);
       line-height: 1;
     }
-    .error-msg {
-      font-size: 15px;
-      color: var(--ink-2);
-    }
-    .error-link {
-      color: var(--accent-dim);
-      text-decoration: none;
-      font-size: 13px;
-      letter-spacing: 0.05em;
-    }
+    .error-msg { font-size: var(--fs-base); color: var(--clr-text-2); }
+    .error-link { color: var(--clr-accent); font-size: var(--fs-sm); }
     .error-link:hover { text-decoration: underline; }
 
-    /* ── Main Layout ────────────────────────────────────────────────────── */
+    /* ── Main Layout ───────────────────────────────────────────── */
     #portfolio-page { display: none; }
     #portfolio-page.visible { display: block; }
 
-    /* ── NAV BAR ────────────────────────────────────────────────────────── */
+    /* ── NAV BAR ───────────────────────────────────────────────── */
     .p-nav {
       position: sticky;
       top: 0;
       z-index: 100;
-      background: rgba(245, 242, 237, 0.85);
+      background: rgba(8, 12, 10, 0.85);
       backdrop-filter: blur(12px) saturate(1.5);
       -webkit-backdrop-filter: blur(12px) saturate(1.5);
-      border-bottom: 1px solid var(--border);
+      border-bottom: 1px solid var(--clr-border-dim);
       padding: 0 clamp(20px, 5vw, 60px);
       height: 56px;
       display: flex;
@@ -433,568 +120,381 @@
       justify-content: space-between;
     }
     .p-nav-logo {
-      font-family: 'Syne', sans-serif;
+      font-family: var(--font-display);
       font-weight: 700;
-      font-size: 14px;
-      letter-spacing: 0.08em;
-      color: var(--ink);
+      font-size: var(--fs-base);
+      letter-spacing: var(--ls-wide);
+      color: var(--clr-text);
       text-decoration: none;
     }
-    .p-nav-logo span {
-      color: var(--accent-dim);
-    }
-    .p-nav-actions {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
+    .p-nav-logo span { color: var(--clr-accent); }
+    .p-nav-actions { display: flex; align-items: center; gap: var(--sp-3); }
     .p-nav-github {
       display: flex;
       align-items: center;
       gap: 6px;
-      font-size: 12px;
-      letter-spacing: 0.05em;
-      color: var(--ink-2);
+      font-size: var(--fs-sm);
+      letter-spacing: var(--ls-wide);
+      color: var(--clr-text-2);
       text-decoration: none;
       padding: 6px 12px;
-      border: 1px solid var(--border-strong);
-      border-radius: 6px;
-      transition: all 0.2s ease;
+      border: 1px solid var(--clr-border);
+      border-radius: var(--radius-md);
+      transition: all var(--dur-base) var(--ease-out);
     }
     .p-nav-github:hover {
-      border-color: var(--ink);
-      color: var(--ink);
-      background: var(--bg-2);
+      border-color: var(--clr-accent);
+      color: var(--clr-accent);
+      background: var(--clr-accent-dim);
     }
     .p-nav-github svg { width: 14px; height: 14px; }
 
-    /* ── HERO ───────────────────────────────────────────────────────────── */
-    .p-hero {
-      padding: clamp(60px, 10vh, 120px) clamp(20px, 5vw, 60px) clamp(40px, 6vh, 80px);
-      max-width: 1200px;
+    /* ── PORTFOLIO CONTAINER — mirrors edit.html ────────────────── */
+    .portfolio-container {
+      max-width: 960px;
       margin: 0 auto;
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 48px;
-      align-items: end;
-    }
-    @media (max-width: 700px) {
-      .p-hero {
-        grid-template-columns: 1fr;
-        align-items: start;
-      }
-      .p-hero-avatar-wrap { order: -1; }
+      padding: 0 var(--sp-6) var(--sp-32);
     }
 
-    .p-hero-left { min-width: 0; }
-
-    /* eyebrow */
-    .p-hero-eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 11px;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--ink-3);
-      margin-bottom: 20px;
+    /* ── HERO — identical classes to edit.html ─────────────────── */
+    .portfolio-hero {
+      padding: var(--sp-20) 0 var(--sp-16);
+      position: relative;
     }
-    .p-hero-eyebrow-dot {
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      background: var(--accent);
-      animation: pulse-dot 2s ease-in-out infinite;
-    }
-    @keyframes pulse-dot {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.5; transform: scale(0.7); }
+    .portfolio-hero::after {
+      content: ''; position: absolute;
+      bottom: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, var(--clr-accent), transparent);
+      opacity: 0.2;
     }
 
-    /* name — the BIG moment */
-    .p-hero-name {
-      font-family: 'Syne', sans-serif;
-      font-weight: 800;
-      font-size: clamp(44px, 8vw, 96px);
-      line-height: 0.95;
-      letter-spacing: -0.03em;
-      color: var(--ink);
-      margin-bottom: 8px;
-      /* clip for reveal animation */
-      overflow: hidden;
+    .hero-eyebrow {
+      display: inline-flex; align-items: center; gap: var(--sp-2);
+      font-size: var(--fs-xs); font-weight: 500;
+      letter-spacing: var(--ls-wider); text-transform: uppercase;
+      color: var(--clr-accent); margin-bottom: var(--sp-5); opacity: 0.8;
     }
-    .p-hero-name-inner {
-      display: block;
-      transform: translateY(110%);
-      opacity: 0;
-      transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1),
-                  opacity 0.5s ease;
-    }
-    .p-hero-name-inner.revealed {
-      transform: translateY(0);
-      opacity: 1;
+    .hero-eyebrow::before {
+      content: ''; width: 24px; height: 1px; background: var(--clr-accent);
     }
 
-    /* job title */
-    .p-hero-title {
-      font-family: 'Newsreader', serif;
-      font-style: italic;
-      font-size: clamp(16px, 2.5vw, 22px);
-      color: var(--ink-2);
-      margin-bottom: 28px;
-      opacity: 0;
+    .portfolio-hero__name {
+      font-family: var(--font-display);
+      font-size: clamp(3rem, 8vw, 6.5rem);
+      font-weight: 800; letter-spacing: var(--ls-tight);
+      line-height: 0.95; margin-bottom: var(--sp-5);
+      color: var(--clr-text);
+      opacity: 0; transform: translateY(20px);
+      transition: opacity 0.7s var(--ease-out), transform 0.7s var(--ease-out);
+    }
+    .portfolio-hero__name.revealed { opacity: 1; transform: translateY(0); }
+
+    .portfolio-hero__title {
+      font-family: var(--font-body); font-size: var(--fs-lg);
+      color: var(--clr-accent); letter-spacing: var(--ls-wide);
+      margin-bottom: var(--sp-8); opacity: 0;
       transform: translateY(12px);
-      transition: opacity 0.5s ease 0.4s, transform 0.5s ease 0.4s;
+      transition: opacity 0.5s ease 0.3s, transform 0.5s ease 0.3s;
     }
-    .p-hero-title.revealed { opacity: 1; transform: translateY(0); }
+    .portfolio-hero__title.revealed { opacity: 0.9; transform: translateY(0); }
 
-    /* bio */
-    .p-hero-bio {
-      font-size: 15px;
-      line-height: 1.75;
-      color: var(--ink-2);
-      max-width: 560px;
-      margin-bottom: 32px;
-      opacity: 0;
-      transform: translateY(12px);
-      transition: opacity 0.5s ease 0.55s, transform 0.5s ease 0.55s;
+    .portfolio-hero__bio {
+      font-family: var(--font-serif); font-style: italic;
+      font-size: clamp(1rem, 2vw, 1.2rem); font-weight: 300;
+      color: var(--clr-text-2); line-height: var(--lh-loose);
+      max-width: 640px; margin-bottom: var(--sp-10);
+      opacity: 0; transform: translateY(12px);
+      transition: opacity 0.5s ease 0.45s, transform 0.5s ease 0.45s;
     }
-    .p-hero-bio.revealed { opacity: 1; transform: translateY(0); }
+    .portfolio-hero__bio.revealed { opacity: 1; transform: translateY(0); }
 
-    /* social links */
-    .p-hero-links {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      opacity: 0;
-      transform: translateY(12px);
-      transition: opacity 0.5s ease 0.7s, transform 0.5s ease 0.7s;
+    .hero-links {
+      display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3);
+      opacity: 0; transform: translateY(12px);
+      transition: opacity 0.5s ease 0.6s, transform 0.5s ease 0.6s;
     }
-    .p-hero-links.revealed { opacity: 1; transform: translateY(0); }
-    .p-hero-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      font-size: 12px;
-      letter-spacing: 0.06em;
+    .hero-links.revealed { opacity: 1; transform: translateY(0); }
+
+    .hero-link {
+      display: inline-flex; align-items: center; gap: var(--sp-2);
+      font-size: var(--fs-sm); color: var(--clr-text-3);
+      letter-spacing: var(--ls-wide); text-transform: uppercase;
       text-decoration: none;
-      color: var(--ink-2);
-      border: 1px solid var(--border-strong);
       padding: 8px 14px;
-      border-radius: 6px;
-      transition: all 0.2s ease;
+      border: 1px solid var(--clr-border);
+      border-radius: var(--radius-md);
+      transition: all var(--dur-base) var(--ease-out);
     }
-    .p-hero-link:hover {
-      border-color: var(--ink);
-      color: var(--ink);
-      background: var(--bg-2);
-      transform: translateY(-2px);
-      box-shadow: var(--shadow-sm);
+    .hero-link:hover {
+      border-color: var(--clr-accent);
+      color: var(--clr-accent);
+      background: var(--clr-accent-dim);
     }
-    .p-hero-link svg { width: 14px; height: 14px; flex-shrink: 0; }
+    .hero-link svg { width: 14px; height: 14px; }
 
-    /* avatar */
-    .p-hero-avatar-wrap {
-      opacity: 0;
-      transform: scale(0.9);
-      transition: opacity 0.6s ease 0.2s, transform 0.6s cubic-bezier(0.16,1,0.3,1) 0.2s;
-    }
-    .p-hero-avatar-wrap.revealed { opacity: 1; transform: scale(1); }
-    .p-avatar {
-      width: clamp(100px, 14vw, 180px);
-      height: clamp(100px, 14vw, 180px);
-      border-radius: 50%;
-      object-fit: cover;
-      border: 3px solid var(--bg-card);
-      box-shadow: var(--shadow-lg);
-      display: block;
-    }
-    .p-avatar-placeholder {
-      width: clamp(100px, 14vw, 180px);
-      height: clamp(100px, 14vw, 180px);
-      border-radius: 50%;
-      background: var(--bg-2);
-      border: 3px solid var(--bg-card);
-      box-shadow: var(--shadow-lg);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-family: 'Syne', sans-serif;
-      font-weight: 800;
-      font-size: clamp(28px, 5vw, 56px);
-      color: var(--ink-3);
-    }
-
-    /* ── STATS BAR ─────────────────────────────────────────────────────── */
+    /* ── STATS BAR ─────────────────────────────────────────────── */
     .p-stats {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 0 clamp(20px, 5vw, 60px) 56px;
       display: flex;
-      gap: 0;
-      border-top: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-      background: var(--bg-card);
-      border-radius: 12px;
+      border: 1px solid var(--clr-border-dim);
+      background: var(--clr-bg-3);
+      border-radius: var(--radius-lg);
       overflow: hidden;
-      box-shadow: var(--shadow-sm);
-      opacity: 0;
-      transform: translateY(16px);
+      margin-bottom: var(--sp-16);
+      opacity: 0; transform: translateY(16px);
       transition: opacity 0.5s ease 0.8s, transform 0.5s ease 0.8s;
     }
     .p-stats.revealed { opacity: 1; transform: translateY(0); }
     .p-stat {
       flex: 1;
-      padding: 20px 24px;
-      border-right: 1px solid var(--border);
+      padding: var(--sp-5) var(--sp-6);
+      border-right: 1px solid var(--clr-border-dim);
       text-align: center;
     }
     .p-stat:last-child { border-right: none; }
     .p-stat-value {
-      font-family: 'Syne', sans-serif;
+      font-family: var(--font-display);
       font-weight: 700;
-      font-size: clamp(20px, 3vw, 32px);
-      color: var(--ink);
+      font-size: clamp(1.25rem, 3vw, 2rem);
+      color: var(--clr-text);
       display: block;
     }
     .p-stat-label {
-      font-size: 10px;
-      letter-spacing: 0.12em;
+      font-size: var(--fs-xs);
+      letter-spacing: var(--ls-wider);
       text-transform: uppercase;
-      color: var(--ink-3);
+      color: var(--clr-text-3);
       margin-top: 2px;
     }
     @media (max-width: 500px) {
       .p-stats { flex-wrap: wrap; }
-      .p-stat { min-width: 50%; border-right: none; border-bottom: 1px solid var(--border); }
-      .p-stat:nth-child(odd) { border-right: 1px solid var(--border); }
+      .p-stat { min-width: 50%; border-right: none; border-bottom: 1px solid var(--clr-border-dim); }
+      .p-stat:nth-child(odd) { border-right: 1px solid var(--clr-border-dim); }
       .p-stat:last-child { border-bottom: none; }
     }
 
-    /* ── SECTION WRAPPER ───────────────────────────────────────────────── */
-    .p-section {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: clamp(48px, 8vh, 96px) clamp(20px, 5vw, 60px);
+    /* ── SECTIONS — identical class names to edit.html ─────────── */
+    .portfolio-section { padding: var(--sp-16) 0 0; }
+
+    .section-label {
+      display: flex; align-items: center; gap: var(--sp-4);
+      font-size: var(--fs-xs); font-weight: 500;
+      letter-spacing: var(--ls-wider); text-transform: uppercase;
+      color: var(--clr-text-3); margin-bottom: var(--sp-8);
+    }
+    .section-label::after {
+      content: ''; flex: 1; height: 1px; background: var(--clr-border-dim);
+    }
+    .section-label span {
+      color: var(--clr-accent); font-family: var(--font-display);
+      font-weight: 700; font-size: var(--fs-sm); letter-spacing: normal;
     }
 
-    .p-section-header {
-      display: flex;
-      align-items: baseline;
-      gap: 16px;
-      margin-bottom: 40px;
-    }
-    .p-section-title {
-      font-family: 'Syne', sans-serif;
-      font-weight: 700;
-      font-size: clamp(22px, 3.5vw, 32px);
-      color: var(--ink);
-    }
-    .p-section-count {
-      font-size: 12px;
-      letter-spacing: 0.1em;
-      color: var(--ink-3);
-      font-family: 'DM Mono', monospace;
-    }
-    .p-section-line {
-      flex: 1;
-      height: 1px;
-      background: var(--border);
-    }
+    /* ── SKILLS — identical class names to edit.html ───────────── */
+    .skills-container { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 
-    /* ── SKILLS ─────────────────────────────────────────────────────────── */
-    .p-skills-grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-    .p-skill {
+    /* skill-tag class = same as edit.html (rendered by JS) */
+    .skill-tag {
       display: inline-flex;
       align-items: center;
-      gap: 7px;
-      font-size: 12px;
-      letter-spacing: 0.04em;
-      color: var(--ink-2);
-      background: var(--bg-card);
-      border: 1px solid var(--border-strong);
-      padding: 8px 16px;
-      border-radius: 100px;
-      cursor: default;
-      transition: all 0.2s ease;
+      gap: 0.35rem;
+      padding: 0.3rem 0.75rem;
+      border-radius: 999px;
+      font-size: var(--fs-sm);
+      font-family: var(--font-body);
+      background: var(--clr-accent-dim);
+      border: 1px solid rgba(0, 255, 136, 0.2);
+      color: var(--clr-text);
       white-space: nowrap;
-      opacity: 0;
-      transform: translateY(8px) scale(0.95);
-      /* Stagger set by JS */
+      opacity: 0; transform: translateY(8px) scale(0.95);
+      transition: opacity 0.4s ease, transform 0.4s ease,
+                  border-color var(--dur-base), background var(--dur-base);
     }
-    .p-skill.revealed {
-      opacity: 1;
-      transform: translateY(0) scale(1);
+    .skill-tag.revealed { opacity: 1; transform: translateY(0) scale(1); }
+    .skill-tag:hover {
+      border-color: rgba(0, 255, 136, 0.4);
+      background: rgba(0, 255, 136, 0.1);
     }
-    .p-skill:hover {
-      border-color: var(--accent-dim);
-      color: var(--ink);
-      background: rgba(0,204,106,0.06);
-      box-shadow: 0 0 0 3px rgba(0,204,106,0.08);
-    }
-    .p-skill-dot {
-      width: 5px; height: 5px;
-      border-radius: 50%;
-      background: var(--accent);
-      flex-shrink: 0;
-    }
+    /* sub-span used by portfolio.js's _renderSkillTags */
+    .skill-tag__text { pointer-events: none; }
 
-    /* ── PROJECTS GRID ──────────────────────────────────────────────────── */
-    .p-projects-grid {
+    /* ── PROJECTS — identical class names to edit.html ─────────── */
+    .projects-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
-      gap: 20px;
+      grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+      gap: var(--sp-5);
     }
 
-    .p-project-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 28px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      cursor: default;
-      transition: transform 0.25s cubic-bezier(0.16,1,0.3,1),
-                  box-shadow 0.25s ease,
-                  border-color 0.2s ease;
+    /* project-card — identical classes used by portfolio.js */
+    .project-card {
+      background: var(--clr-bg-3);
+      border: 1px solid var(--clr-border-dim);
+      border-radius: var(--radius-lg);
+      padding: var(--sp-6);
+      display: flex; flex-direction: column; gap: var(--sp-3);
+      transition: border-color var(--dur-base) var(--ease-out),
+                  box-shadow var(--dur-base) var(--ease-out),
+                  transform var(--dur-base) var(--ease-out);
+      position: relative; overflow: hidden;
+    }
+    /*
+     * Free themes (dark/light/minimal): cards start hidden, .revealed shows them.
+     * Pro themes (noir/blueprint/cyberpunk/…): their JS injects a higher-specificity
+     * [data-theme="X"] .project-card rule that handles reveal via their own classes
+     * (.nr-revealed / .bp-revealed / .cb-revealed etc.). We must NOT set opacity:0
+     * here because that would conflict. Instead, free-theme reveal is opt-in via
+     * .portfolio-page--free-reveal class set in applyTheme() for free themes only.
+     */
+    .portfolio-page--free-reveal .project-card {
       opacity: 0;
       transform: translateY(20px);
-      /* Stagger set by JS */
+      transition: opacity 0.5s ease, transform 0.5s var(--ease-out),
+                  border-color var(--dur-base) var(--ease-out),
+                  box-shadow var(--dur-base) var(--ease-out);
     }
-    .p-project-card.revealed {
-      opacity: 1;
-      transform: translateY(0);
+    .portfolio-page--free-reveal .project-card.revealed { opacity: 1; transform: translateY(0); }
+    .project-card::before {
+      content: ''; position: absolute;
+      top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, var(--clr-accent), transparent);
+      opacity: 0; transition: opacity var(--dur-base);
     }
-    .p-project-card:hover {
-      transform: translateY(-4px);
-      box-shadow: var(--shadow-lg);
-      border-color: var(--border-strong);
+    .project-card:hover {
+      border-color: var(--clr-border);
+      box-shadow: var(--shadow-md);
+      transform: translateY(-3px);
+    }
+    .project-card:hover::before { opacity: 0.5; }
+
+    .project-card--featured {
+      border-color: rgba(0,255,136,0.15);
+      background: linear-gradient(135deg, var(--clr-bg-3), var(--clr-surface));
+    }
+    .project-card--featured::before { opacity: 0.5; }
+
+    .project-card__header {
+      display: flex; align-items: center;
+      justify-content: space-between; min-height: 28px;
+    }
+    .project-card__meta { display: flex; align-items: center; gap: var(--sp-2); }
+    .lang-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .project-card__lang { font-size: var(--fs-xs); color: var(--clr-text-3); }
+
+    .featured-badge {
+      font-size: var(--fs-xs); font-weight: 600;
+      letter-spacing: var(--ls-wide); text-transform: uppercase;
+      color: var(--clr-accent); border: 1px solid rgba(0,255,136,0.3);
+      border-radius: var(--radius-sm); padding: 2px 8px;
     }
 
-    /* featured badge */
-    .p-project-card.featured {
-      border-color: var(--accent-dim);
-      background: var(--bg-card);
+    /* actions hidden in public view (no edit controls) */
+    .project-card__actions { display: none; }
+
+    .project-card__name {
+      font-family: var(--font-display); font-weight: 700;
+      font-size: var(--fs-lg); letter-spacing: var(--ls-tight);
+      color: var(--clr-text); line-height: var(--lh-snug);
+    }
+    .project-card__desc {
+      font-size: var(--fs-sm); color: var(--clr-text-2);
+      line-height: var(--lh-loose); flex: 1;
+    }
+    .project-card__footer {
+      display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2);
+      padding-top: var(--sp-3);
+      border-top: 1px solid var(--clr-border-dim); margin-top: auto;
+    }
+    .project-stat { font-size: var(--fs-xs); color: var(--clr-text-3); }
+    .topic-chip {
+      font-size: var(--fs-xs); padding: 2px 8px;
+      border-radius: var(--radius-full);
+      background: var(--clr-accent-dim); color: var(--clr-accent);
+      border: 1px solid rgba(0,255,136,0.15);
     }
 
-    /* Theme-specific featured card treatments */
-    [data-theme="dark"]      .p-project-card.featured { background: linear-gradient(135deg, #111A14, #162019); border-color: rgba(0,255,136,0.12); }
-    [data-theme="minimal"]   .p-project-card.featured { border-left: 3px solid #121212; border-radius: 0; }
-    [data-theme="terminal"]  .p-project-card.featured { background: #111; border-color: rgba(0,255,136,0.25); box-shadow: 0 0 20px rgba(0,255,136,0.08); }
-    [data-theme="noir"]      .p-project-card.featured { background: #000000; border-color: #000; }
-    [data-theme="noir"]      .p-project-card.featured .p-project-name,
-    [data-theme="noir"]      .p-project-card.featured .p-project-desc { color: #FFFFFF; }
-    [data-theme="blueprint"] .p-project-card.featured { border-color: rgba(74,158,255,0.4); background: rgba(74,158,255,0.05); }
-    [data-theme="cyberpunk"] .p-project-card.featured { border-color: rgba(0,255,65,0.35); box-shadow: 0 0 20px rgba(0,255,65,0.08); }
-    [data-theme="liquid"]    .p-project-card.featured { border-color: rgba(124,58,237,0.4); background: rgba(124,58,237,0.06); }
-    [data-theme="glass3d"]   .p-project-card.featured { border-color: rgba(139,92,246,0.4); background: rgba(139,92,246,0.06); }
-    [data-theme="space"]     .p-project-card.featured { border-color: rgba(79,195,247,0.4); background: rgba(4,8,32,0.7); }
-    [data-theme="editorial"] .p-project-card.featured { border-left: 3px solid #C8600A; border-radius: 0 12px 12px 0; background: #FAFAF8; }
-
-    .p-project-head {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 12px;
-    }
-    .p-project-name {
-      font-family: 'DM Mono', monospace;
-      font-size: 14px;
-      font-weight: 500;
-      color: var(--ink);
-      word-break: break-word;
-    }
-    .p-project-link {
-      color: var(--ink-3);
-      text-decoration: none;
-      flex-shrink: 0;
-      transition: color 0.2s ease;
-      margin-top: 1px;
-    }
-    .p-project-link:hover { color: var(--ink); }
-    .p-project-link svg { width: 16px; height: 16px; display: block; }
-
-    .p-project-desc {
-      font-size: 13px;
-      line-height: 1.65;
-      color: var(--ink-2);
-      flex: 1;
+    /* Project image (Feature 3) — mirrors edit.html's _buildProjectImageBlock */
+    .project-card__img {
+      width: 100%; max-height: 200px; object-fit: cover;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--clr-border-dim);
+      display: block; margin-bottom: var(--sp-2);
     }
 
-    .p-project-meta {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 12px;
-      padding-top: 12px;
-      border-top: 1px solid var(--border);
-    }
-    .p-project-lang {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 11px;
-      letter-spacing: 0.04em;
-      color: var(--ink-3);
-    }
-    .p-lang-dot {
-      width: 10px; height: 10px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-    .p-project-stars {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 11px;
-      color: var(--ink-3);
-      letter-spacing: 0.03em;
-    }
-    .p-project-stars svg { width: 12px; height: 12px; }
-    .p-project-topics {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 5px;
-      margin-left: auto;
-    }
-    .p-topic {
-      font-size: 10px;
-      letter-spacing: 0.06em;
-      text-transform: lowercase;
-      color: var(--ink-3);
-      background: var(--bg-2);
-      padding: 3px 8px;
-      border-radius: 4px;
-      border: 1px solid var(--border);
-    }
-
-    /* Featured star badge */
-    .p-featured-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 10px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--accent-dim);
-      background: rgba(0,204,106,0.1);
-      border: 1px solid rgba(0,204,106,0.25);
-      padding: 3px 8px;
-      border-radius: 4px;
-    }
-
-    /* ── FEATURE 3: Project Image ─────────────────────────────────────────── */
-    .p-project-img-wrap {
-      overflow: hidden;
-      border-radius: 6px 6px 0 0;
-      margin: calc(var(--card-pad, 20px) * -1) calc(var(--card-pad, 20px) * -1) var(--card-pad, 20px);
-      border-bottom: 1px solid var(--border);
-    }
-    .p-project-img {
-      width: 100%;
-      max-height: 200px;
-      object-fit: cover;
-      display: block;
-      transition: transform 0.4s ease;
-    }
-    .p-project-card:hover .p-project-img { transform: scale(1.03); }
-
-    /* ── FEATURE 1: Social Links ──────────────────────────────────────────── */
-    .p-hero-link--social {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 13px;
-    }
-    #hero-social-links {
-      margin-top: 6px;
-      opacity: 0;
-      transform: translateY(6px);
-      transition: opacity 0.4s ease, transform 0.4s ease;
-    }
-    #hero-social-links.revealed { opacity: 1; transform: translateY(0); }
-
-    /* ── FEATURE 2: Custom Section Content ────────────────────────────────── */
+    /* ── CUSTOM SECTIONS (Feature 2) ──────────────────────────── */
     .p-custom-section-content {
-      font-size: var(--fs-sm, 14px);
-      color: var(--ink-2);
-      line-height: 1.75;
+      font-size: var(--fs-sm);
+      color: var(--clr-text-2);
+      line-height: var(--lh-loose);
       white-space: pre-wrap;
       max-width: 680px;
     }
 
-    /* ── FOOTER ─────────────────────────────────────────────────────────── */
+    /* ── FOOTER ────────────────────────────────────────────────── */
     .p-footer {
-      border-top: 1px solid var(--border);
-      padding: 28px clamp(20px, 5vw, 60px);
+      border-top: 1px solid var(--clr-border-dim);
+      padding: var(--sp-8) 0;
+      margin-top: var(--sp-16);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
+      gap: var(--sp-4);
       flex-wrap: wrap;
     }
-    .p-footer-left {
-      font-size: 12px;
-      color: var(--ink-3);
-    }
+    .p-footer-left { font-size: var(--fs-sm); color: var(--clr-text-3); }
     .p-footer-cta {
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      font-size: 12px;
-      letter-spacing: 0.06em;
-      text-decoration: none;
-      color: var(--ink-2);
-      border: 1px solid var(--border-strong);
-      padding: 8px 16px;
-      border-radius: 6px;
-      transition: all 0.2s ease;
+      display: inline-flex; align-items: center; gap: var(--sp-2);
+      font-size: var(--fs-sm); letter-spacing: var(--ls-wide);
+      text-decoration: none; color: var(--clr-text-2);
+      border: 1px solid var(--clr-border);
+      padding: 8px 16px; border-radius: var(--radius-md);
+      transition: all var(--dur-base) var(--ease-out);
     }
     .p-footer-cta:hover {
-      border-color: var(--accent-dim);
-      color: var(--accent-dim);
-      background: rgba(0,204,106,0.05);
+      border-color: var(--clr-accent);
+      color: var(--clr-accent);
+      background: var(--clr-accent-dim);
     }
 
-    /* ── Language Colors (GitHub-inspired) ─────────────────────────────── */
-    .lang-javascript   { background: #F7DF1E; }
-    .lang-typescript   { background: #3178C6; }
-    .lang-python       { background: #3572A5; }
-    .lang-rust         { background: #DEA584; }
-    .lang-go           { background: #00ADD8; }
-    .lang-java         { background: #B07219; }
-    .lang-css          { background: #563D7C; }
-    .lang-html         { background: #E34C26; }
-    .lang-ruby         { background: #701516; }
-    .lang-swift        { background: #F05138; }
-    .lang-kotlin       { background: #7F52FF; }
-    .lang-cpp          { background: #F34B7D; }
-    .lang-c            { background: #555555; }
-    .lang-shell        { background: #89E051; }
-    .lang-php          { background: #4F5D95; }
-    .lang-dart         { background: #00B4AB; }
-    .lang-vue          { background: #41B883; }
-    .lang-svelte       { background: #FF3E00; }
-    .lang-default      { background: #8B8B8B; }
-
-    /* ── Scroll reveal for sections ────────────────────────────────────── */
+    /* ── Scroll reveal ─────────────────────────────────────────── */
     .p-reveal-section {
       opacity: 0;
       transform: translateY(24px);
-      transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.16,1,0.3,1);
+      transition: opacity 0.6s ease, transform 0.6s var(--ease-out);
     }
     .p-reveal-section.in-view { opacity: 1; transform: translateY(0); }
+
+    /* ── Language Colors ───────────────────────────────────────── */
+    .lang-javascript  { background: #F7DF1E; }
+    .lang-typescript  { background: #3178C6; }
+    .lang-python      { background: #3572A5; }
+    .lang-rust        { background: #DEA584; }
+    .lang-go          { background: #00ADD8; }
+    .lang-java        { background: #B07219; }
+    .lang-css         { background: #563D7C; }
+    .lang-html        { background: #E34C26; }
+    .lang-ruby        { background: #701516; }
+    .lang-swift       { background: #F05138; }
+    .lang-kotlin      { background: #7F52FF; }
+    .lang-cpp         { background: #F34B7D; }
+    .lang-c           { background: #555555; }
+    .lang-shell       { background: #89E051; }
+    .lang-php         { background: #4F5D95; }
+    .lang-dart        { background: #00B4AB; }
+    .lang-vue         { background: #41B883; }
+    .lang-svelte      { background: #FF3E00; }
+
+    /* ── Responsive ────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .portfolio-container { padding: 0 var(--sp-4) var(--sp-20); }
+      .projects-grid { grid-template-columns: 1fr; }
+      .portfolio-hero__name { font-size: clamp(2.5rem, 12vw, 4rem); }
+      .p-stat { padding: var(--sp-4); }
+    }
   </style>
 </head>
+
 <body>
 
-  <!-- ══════════════════════════════════════════════════════════════════════
-       LOADING SCREEN
-  ══════════════════════════════════════════════════════════════════════ -->
+  <!-- LOADING SCREEN -->
   <div id="page-loader" role="status" aria-label="Loading portfolio">
     <div class="loader-dot-row">
       <div class="loader-dot"></div>
@@ -1004,19 +504,15 @@
     <span class="loader-label">Loading portfolio…</span>
   </div>
 
-  <!-- ══════════════════════════════════════════════════════════════════════
-       ERROR STATE
-  ══════════════════════════════════════════════════════════════════════ -->
+  <!-- ERROR STATE -->
   <div id="error-state" role="alert" aria-live="polite">
     <div class="error-code">404</div>
     <p class="error-msg" id="error-msg-text">Portfolio not found or has expired.</p>
     <a href="index.html" class="error-link">← Generate your own portfolio</a>
   </div>
 
-  <!-- ══════════════════════════════════════════════════════════════════════
-       PORTFOLIO PAGE
-  ══════════════════════════════════════════════════════════════════════ -->
-  <div id="portfolio-page" class="portfolio-wrapper" aria-hidden="true">
+  <!-- PORTFOLIO PAGE -->
+  <div id="portfolio-page" aria-hidden="true">
 
     <!-- NAV -->
     <nav class="p-nav" aria-label="Portfolio navigation">
@@ -1024,8 +520,9 @@
         portfolio<span>.</span>gen
       </a>
       <div class="p-nav-actions">
-        <a href="#" id="nav-github-link" class="p-nav-github" target="_blank" rel="noopener noreferrer" aria-label="View GitHub profile">
-          <!-- GitHub Icon -->
+        <a href="#" id="nav-github-link" class="p-nav-github"
+           target="_blank" rel="noopener noreferrer"
+           aria-label="View GitHub profile">
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
           </svg>
@@ -1034,56 +531,24 @@
       </div>
     </nav>
 
-    <!-- HERO -->
-    <header class="p-hero" id="p-hero" aria-label="Developer profile">
-      <div class="p-hero-left">
-        <!-- Eyebrow -->
-        <div class="p-hero-eyebrow">
-          <span class="p-hero-eyebrow-dot" aria-hidden="true"></span>
-          <span id="hero-eyebrow-text">Software Developer</span>
-        </div>
+    <!-- PORTFOLIO CONTENT — uses same structure as edit.html -->
+    <div class="portfolio-container">
 
-        <!-- Name — BIG REVEAL -->
-        <h1 class="p-hero-name" aria-label="Developer name">
-          <span class="p-hero-name-inner" id="hero-name" data-edit="name">—</span>
-        </h1>
+      <!-- HERO -->
+      <header class="portfolio-hero" id="portfolio-hero" aria-label="Developer profile">
+        <div class="hero-eyebrow" aria-hidden="true">Portfolio</div>
 
-        <!-- Job Title -->
-        <p class="p-hero-title" id="hero-title" data-edit="jobTitle">Software Developer</p>
+        <h1 class="portfolio-hero__name" id="hero-name" aria-label="Developer name"></h1>
 
-        <!-- Bio -->
-        <p class="p-hero-bio" id="hero-bio" data-edit="bio">
-          Loading bio…
-        </p>
+        <p class="portfolio-hero__title" id="hero-title"></p>
 
-        <!-- Links -->
-        <div class="p-hero-links" id="hero-links">
-          <a href="#" id="link-github" class="p-hero-link" target="_blank" rel="noopener noreferrer">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
-            </svg>
-            GitHub
-          </a>
-        </div>
-        <!-- Feature 1: Social Links (LinkedIn + Gmail) — populated by renderSocialLinks() -->
-        <div class="p-hero-links" id="hero-social-links" aria-label="Social links"></div>
-      </div>
+        <p class="portfolio-hero__bio" id="hero-bio"></p>
 
-      <!-- Avatar -->
-      <div class="p-hero-avatar-wrap" id="p-hero-avatar-wrap">
-        <div class="p-avatar-placeholder" id="p-avatar-placeholder" aria-hidden="true">?</div>
-        <img
-          id="p-avatar-img"
-          class="p-avatar"
-          alt="Developer avatar"
-          style="display:none;"
-          loading="eager"
-        />
-      </div>
-    </header>
+        <!-- Links row (GitHub + LinkedIn + Gmail) -->
+        <div class="hero-links" id="hero-links"></div>
+      </header>
 
-    <!-- STATS BAR -->
-    <div class="p-section" style="padding-top:0; padding-bottom:32px;">
+      <!-- STATS BAR -->
       <div class="p-stats p-reveal-section" id="p-stats" role="list" aria-label="GitHub statistics">
         <div class="p-stat" role="listitem">
           <span class="p-stat-value" id="stat-repos">—</span>
@@ -1102,280 +567,254 @@
           <span class="p-stat-label">Top Language</span>
         </div>
       </div>
-    </div>
 
-    <!-- SKILLS -->
-    <section class="p-section p-reveal-section" id="p-skills-section" aria-labelledby="skills-heading">
-      <div class="p-section-header">
-        <h2 class="p-section-title" id="skills-heading">Skills</h2>
-        <span class="p-section-count" id="skills-count" aria-live="polite"></span>
-        <div class="p-section-line" aria-hidden="true"></div>
-      </div>
-      <div class="p-skills-grid" id="p-skills-grid" data-skills-container role="list" aria-label="Technical skills"></div>
-    </section>
+      <!-- SKILLS -->
+      <section class="portfolio-section p-reveal-section"
+               id="p-skills-section"
+               aria-labelledby="skills-label">
+        <div class="section-label" id="skills-label">
+          <span>Skills</span>
+        </div>
+        <!-- data-skills-container: same attribute used by portfolio.js -->
+        <div class="skills-container" data-skills-container
+             role="list" aria-label="Technical skills"></div>
+      </section>
 
-    <!-- PROJECTS -->
-    <section class="p-section p-reveal-section" id="p-projects-section" aria-labelledby="projects-heading">
-      <div class="p-section-header">
-        <h2 class="p-section-title" id="projects-heading">Projects</h2>
-        <span class="p-section-count" id="projects-count" aria-live="polite"></span>
-        <div class="p-section-line" aria-hidden="true"></div>
-      </div>
-      <div class="p-projects-grid" id="p-projects-grid" data-projects-grid aria-label="Portfolio projects"></div>
-    </section>
+      <!-- PROJECTS -->
+      <section class="portfolio-section p-reveal-section"
+               id="p-projects-section"
+               aria-labelledby="projects-label">
+        <div class="section-label" id="projects-label">
+          <span>Projects</span>
+        </div>
+        <!-- data-projects-grid: same attribute used by portfolio.js -->
+        <div class="projects-grid" data-projects-grid
+             aria-label="Portfolio projects"></div>
+      </section>
 
-    <!-- FOOTER -->
-    <footer class="p-footer" role="contentinfo">
-      <p class="p-footer-left">
-        Built with <a href="index.html" style="color:var(--accent-dim);text-decoration:none;">Portfolio Generator</a>
-      </p>
-      <a href="index.html" class="p-footer-cta">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-          <path d="M12 5v14M5 12l7 7 7-7"/>
-        </svg>
-        Create yours — free
-      </a>
-    </footer>
+      <!-- CUSTOM SECTIONS (Feature 2) — rendered by renderCustomSections() -->
+      <div id="custom-sections-anchor"></div>
+
+      <!-- FOOTER -->
+      <footer class="p-footer" role="contentinfo">
+        <p class="p-footer-left">
+          Built with <a href="index.html" style="color:var(--clr-accent);text-decoration:none;">Portfolio Generator</a>
+        </p>
+        <a href="index.html" class="p-footer-cta">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M12 5v14M5 12l7 7 7-7"/>
+          </svg>
+          Create yours — free
+        </a>
+      </footer>
+
+    </div><!-- /.portfolio-container -->
 
   </div><!-- /#portfolio-page -->
 
-  <!-- ══════════════════════════════════════════════════════════════════════
-       SCRIPTS
-  ══════════════════════════════════════════════════════════════════════ -->
-  <!-- Config — يُضاف قبل الـ scripts -->
+  <!-- SCRIPTS -->
   <script>
     window.SUPABASE_URL      = "https://zxybqbjsnriwpjehinwb.supabase.co";
     window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4eWJxYmpzbnJpd3BqZWhpbndiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMjI1NDEsImV4cCI6MjA5MDY5ODU0MX0.ED8CX81h78oga482b9pepZPsqfvX7znMqmtO0VRn3AM";
   </script>
 
-  <!-- Supabase SDK (للـ auth في الـ steps الجاية) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
-  <!-- AI module (بيوفر window.AI.getDraft) -->
+  <!-- ai.js provides window.AI.getDraft() -->
   <script src="js/github.js"></script>
   <script src="js/ai.js"></script>
 
-  <!-- Portfolio Page Logic -->
   <script>
   (function () {
-    "use strict";
+    'use strict';
 
-    // ── Language color map ────────────────────────────────────────────────
+    /* ── Language color map — mirrors portfolio.js ──────────────── */
     const LANG_COLORS = {
-      javascript: '#F7DF1E', typescript: '#3178C6', python: '#3572A5',
-      rust: '#DEA584', go: '#00ADD8', java: '#B07219', css: '#563D7C',
-      html: '#E34C26', ruby: '#701516', swift: '#F05138', kotlin: '#7F52FF',
-      'c++': '#F34B7D', c: '#555555', shell: '#89E051', php: '#4F5D95',
-      dart: '#00B4AB', vue: '#41B883', svelte: '#FF3E00',
+      JavaScript: '#f1e05a', TypeScript: '#3178c6', Python: '#3572A5',
+      Java: '#b07219', Rust: '#dea584', Go: '#00ADD8', Ruby: '#701516',
+      PHP: '#4F5D95', C: '#555555', 'C++': '#f34b7d', 'C#': '#178600',
+      Swift: '#ffac45', Kotlin: '#A97BFF', Dart: '#00B4AB',
+      HTML: '#e34c26', CSS: '#563d7c', Shell: '#89e051',
+      Vue: '#41b883', Svelte: '#ff3e00',
     };
-
     function getLangColor(lang) {
-      if (!lang) return '#8B8B8B';
-      return LANG_COLORS[lang.toLowerCase()] || '#8B8B8B';
+      if (!lang) return '#6b7280';
+      // try exact, then case-insensitive
+      return LANG_COLORS[lang]
+        || LANG_COLORS[lang.charAt(0).toUpperCase() + lang.slice(1).toLowerCase()]
+        || '#6b7280';
     }
 
-    // ── Format numbers ────────────────────────────────────────────────────
+    /* ── Helpers ──────────────────────────────────────────────────── */
     function fmtNum(n) {
-      if (typeof n !== 'number') return '0';
+      if (typeof n !== 'number' || isNaN(n)) return '0';
       if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
       return String(n);
     }
 
-    // ── Safe text ─────────────────────────────────────────────────────────
     function esc(str) {
       const d = document.createElement('div');
       d.textContent = String(str || '');
       return d.innerHTML;
     }
 
-    // ── Intersection Observer for scroll reveal ───────────────────────────
-    function initScrollReveal() {
+    /* ── Scroll reveal ──────────────────────────────────────────── */
+    /* ── Pro reveal themes — declared early for staggerReveal & applyTheme ── */
+    const PRO_REVEAL_THEMES = new Set([
+      'noir', 'blueprint', 'cyberpunk',
+      'editorial', 'terminal', 'liquid', 'glass3d', 'space'
+    ]);
+
+        function initScrollReveal() {
       const els = document.querySelectorAll('.p-reveal-section');
-      const io = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-              entry.target.classList.add('in-view');
-              io.unobserve(entry.target);
-            }
-          });
-        },
-        { threshold: 0.1, rootMargin: '0px 0px -40px 0px' }
-      );
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.classList.add('in-view');
+            io.unobserve(e.target);
+          }
+        });
+      }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
       els.forEach((el) => io.observe(el));
     }
 
-    // ── Stagger children into view ────────────────────────────────────────
     function staggerReveal(children, baseDelay = 0, step = 80) {
+      // Pro themes manage their own reveal — adding .revealed would conflict
+      // because [data-theme="X"] .project-card has higher specificity and expects
+      // .nr-revealed / .bp-revealed / .cb-revealed (added by their JS init()).
+      const activeTheme = document.documentElement.getAttribute('data-theme') || '';
+      const isProReveal = PRO_REVEAL_THEMES.has(activeTheme);
+
       children.forEach((el, i) => {
-        setTimeout(() => {
-          el.classList.add('revealed');
-        }, baseDelay + i * step);
+        const isCard = el.classList.contains('project-card');
+        if (isCard && isProReveal) return; // Pro theme's init() will reveal cards
+        setTimeout(() => el.classList.add('revealed'), baseDelay + i * step);
       });
     }
 
-    // ── Hero entrance animation ───────────────────────────────────────────
+    /* ── Hero entrance ──────────────────────────────────────────── */
     function animateHero() {
-      // Name reveal
-      setTimeout(() => {
-        document.getElementById('hero-name')?.classList.add('revealed');
-      }, 100);
-
-      // Title
-      setTimeout(() => {
-        document.getElementById('hero-title')?.classList.add('revealed');
-      }, 350);
-
-      // Bio
-      setTimeout(() => {
-        document.getElementById('hero-bio')?.classList.add('revealed');
-      }, 500);
-
-      // Links
-      setTimeout(() => {
-        document.getElementById('hero-links')?.classList.add('revealed');
-      }, 650);
-
-      // Avatar
-      setTimeout(() => {
-        document.getElementById('p-hero-avatar-wrap')?.classList.add('revealed');
-      }, 200);
-
-      // Stats bar
-      setTimeout(() => {
-        document.getElementById('p-stats')?.classList.add('revealed');
-      }, 900);
+      setTimeout(() => document.getElementById('hero-name')?.classList.add('revealed'), 100);
+      setTimeout(() => document.getElementById('hero-title')?.classList.add('revealed'), 350);
+      setTimeout(() => document.getElementById('hero-bio')?.classList.add('revealed'), 500);
+      setTimeout(() => document.getElementById('hero-links')?.classList.add('revealed'), 650);
+      setTimeout(() => document.getElementById('p-stats')?.classList.add('revealed'), 900);
     }
 
-    // ── Render skills ─────────────────────────────────────────────────────
+    /* ── Render skills ──────────────────────────────────────────── */
+    /*
+     * Uses the SAME .skill-tag structure as portfolio.js's _renderSkillTags()
+     * so Pro theme CSS that targets .skill-tag works identically.
+     */
     function renderSkills(skills) {
-      const grid = document.getElementById('p-skills-grid');
-      const count = document.getElementById('skills-count');
-      if (!grid) return;
+      const container = document.querySelector('[data-skills-container]');
+      if (!container) return;
 
       if (!skills?.length) {
-        grid.innerHTML = '<p style="color:var(--ink-3);font-size:13px;">No skills listed yet.</p>';
+        container.innerHTML = '<p style="color:var(--clr-text-3);font-size:var(--fs-sm);">No skills listed yet.</p>';
         return;
       }
 
-      count.textContent = `${skills.length} skills`;
-
-      grid.innerHTML = skills.map((skill) => `
-        <div class="p-skill" role="listitem">
-          <span class="p-skill-dot" aria-hidden="true"></span>
-          ${esc(skill)}
-        </div>
+      container.innerHTML = skills.map((skill) => `
+        <span class="skill-tag" role="listitem">
+          <span class="skill-tag__text">${esc(skill)}</span>
+        </span>
       `).join('');
 
-      // Stagger reveal
-      const skillEls = grid.querySelectorAll('.p-skill');
-      setTimeout(() => staggerReveal([...skillEls], 0, 60), 300);
+      const tags = container.querySelectorAll('.skill-tag');
+      setTimeout(() => staggerReveal([...tags], 0, 60), 300);
     }
 
-    // ── Render projects ───────────────────────────────────────────────────
-    function renderProjects(projects, githubRepos) {
-      const grid = document.getElementById('p-projects-grid');
-      const count = document.getElementById('projects-count');
+    /* ── Render projects ────────────────────────────────────────── */
+    /*
+     * Generates the SAME .project-card HTML as portfolio.js's _buildProjectCard()
+     * so Pro theme CSS (.project-card, .project-card--featured, etc.) applies.
+     */
+    function renderProjects(projects) {
+      const grid = document.querySelector('[data-projects-grid]');
       if (!grid) return;
 
       if (!projects?.length) {
-        grid.innerHTML = '<p style="color:var(--ink-3);font-size:13px;">No projects to display.</p>';
+        grid.innerHTML = '<p style="color:var(--clr-text-3);font-size:var(--fs-sm);">No projects to display.</p>';
         return;
       }
 
-      count.textContent = `${projects.length} project${projects.length !== 1 ? 's' : ''}`;
+      grid.innerHTML = '';
 
-      const merged = projects.map((p, idx) => {
-        const repo = (githubRepos || []).find(
-          (r) => r.name === p.repo_name || r.name?.toLowerCase() === p.repo_name?.toLowerCase()
-        ) || {};
-        return {
-          name:        p.repo_name,
-          description: p.description || repo.description || '—',
-          url:         p.url || repo.url || `https://github.com/${p.repo_name}`,
-          stars:       p.stars || repo.stars || 0,
-          language:    p.language || repo.language || null,
-          topics:      p.topics || repo.topics || [],
-          featured:    idx === 0,
-          imageUrl:    p.imageUrl || null,
-        };
-      });
+      projects.forEach((proj, index) => {
+        const card = document.createElement('article');
+        card.className = `project-card${index === 0 ? ' project-card--featured' : ''}`;
 
-      grid.innerHTML = merged.map((proj) => `
-        <article class="p-project-card${proj.featured ? ' featured' : ''}" role="article">
+        const langColor = getLangColor(proj.language);
+        const name = proj.github_repo_name || proj.repo_name || proj.name || '';
+        const desc = proj.ai_description || proj.description || '—';
+        const url  = proj.repo_url || `https://github.com/${name}`;
+        const stars = proj.stars || 0;
+        const topics = proj.topics || [];
+
+        card.innerHTML = `
+          <div class="project-card__header">
+            <div class="project-card__meta">
+              ${proj.language ? `
+                <span class="lang-dot" style="background:${langColor}"
+                      aria-label="${esc(proj.language)}"></span>
+                <span class="project-card__lang">${esc(proj.language)}</span>
+              ` : ''}
+              ${index === 0 ? '<span class="featured-badge">Featured</span>' : ''}
+            </div>
+            <a href="${esc(url)}" target="_blank" rel="noopener"
+               class="hero-link" style="padding:4px 8px;font-size:var(--fs-xs);"
+               aria-label="Open ${esc(name)} on GitHub">↗</a>
+          </div>
 
           ${proj.imageUrl ? `
-            <div class="p-project-img-wrap">
-              <img
-                src="${esc(proj.imageUrl)}"
-                alt="${esc(proj.name)} preview"
-                class="p-project-img"
-                loading="lazy"
-                onerror="this.parentElement.style.display='none'"
-              />
-            </div>
+            <img src="${esc(proj.imageUrl)}"
+                 alt="${esc(name)} preview"
+                 class="project-card__img"
+                 loading="lazy"
+                 onerror="this.style.display='none'" />
           ` : ''}
 
-          <div class="p-project-head">
-            <div>
-              ${proj.featured ? `<div class="p-featured-badge">★ Featured</div><br/>` : ''}
-              <h3 class="p-project-name">${esc(proj.name)}</h3>
-            </div>
-            <a
-              href="${esc(proj.url)}"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="p-project-link"
-              aria-label="View ${esc(proj.name)} on GitHub"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
-                <polyline points="15 3 21 3 21 9"/>
-                <line x1="10" y1="14" x2="21" y2="3"/>
-              </svg>
-            </a>
+          <h3 class="project-card__name">${esc(name)}</h3>
+          <p class="project-card__desc">${esc(desc)}</p>
+
+          <div class="project-card__footer">
+            ${stars > 0 ? `<span class="project-stat">⭐ ${fmtNum(stars)}</span>` : ''}
+            ${topics.slice(0, 3).map(t => `<span class="topic-chip">${esc(t)}</span>`).join('')}
           </div>
+        `;
 
-          <p class="p-project-desc">${esc(proj.description)}</p>
+        grid.appendChild(card);
+      });
 
-          <div class="p-project-meta">
-            ${proj.language ? `
-              <span class="p-project-lang">
-                <span class="p-lang-dot" style="background:${getLangColor(proj.language)}" aria-hidden="true"></span>
-                ${esc(proj.language)}
-              </span>
-            ` : ''}
-            ${proj.stars > 0 ? `
-              <span class="p-project-stars">
-                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                </svg>
-                ${fmtNum(proj.stars)}
-              </span>
-            ` : ''}
-            ${proj.topics?.length ? `
-              <div class="p-project-topics">
-                ${proj.topics.slice(0, 3).map((t) => `<span class="p-topic">${esc(t)}</span>`).join('')}
-              </div>
-            ` : ''}
-          </div>
-        </article>
-      `).join('');
-
-      const cards = grid.querySelectorAll('.p-project-card');
+      const cards = grid.querySelectorAll('.project-card');
       setTimeout(() => staggerReveal([...cards], 200, 100), 200);
     }
 
-    // ── Feature 1: Render Social Links ─────────────────────────────────────
-    function renderSocialLinks(linkedinUrl, gmailAddress) {
-      const container = document.getElementById('hero-social-links');
+    /* ── Render social links (Feature 1) ───────────────────────── */
+    function renderLinks(githubUsername, linkedinUrl, gmailAddress) {
+      const container = document.getElementById('hero-links');
       if (!container) return;
       const links = [];
+
+      if (githubUsername) {
+        links.push(`
+          <a href="https://github.com/${esc(githubUsername)}"
+             target="_blank" rel="noopener" class="hero-link"
+             aria-label="GitHub profile">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14" aria-hidden="true">
+              <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+            </svg>
+            @${esc(githubUsername)}
+          </a>`);
+      }
+
       if (linkedinUrl) {
         const url = linkedinUrl.startsWith('http') ? linkedinUrl : `https://${linkedinUrl}`;
         links.push(`
-          <a href="${esc(url)}" target="_blank" rel="noopener noreferrer"
-             class="p-hero-link p-hero-link--social" aria-label="LinkedIn profile">
+          <a href="${esc(url)}" target="_blank" rel="noopener"
+             class="hero-link" aria-label="LinkedIn profile">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
               <path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z"/>
               <circle cx="4" cy="4" r="2"/>
@@ -1383,58 +822,57 @@
             LinkedIn
           </a>`);
       }
+
       if (gmailAddress) {
         const email = gmailAddress.includes('@') ? gmailAddress : `${gmailAddress}@gmail.com`;
         links.push(`
-          <a href="mailto:${esc(email)}"
-             class="p-hero-link p-hero-link--social" aria-label="Send email">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <a href="mailto:${esc(email)}" class="hero-link" aria-label="Send email">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" aria-hidden="true">
               <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
               <polyline points="22,6 12,13 2,6"/>
             </svg>
             ${esc(email)}
           </a>`);
       }
+
       container.innerHTML = links.join('');
-      if (links.length) container.classList.add('revealed');
     }
 
-    // ── Feature 2: Render Custom Sections ──────────────────────────────────
+    /* ── Render custom sections (Feature 2) ────────────────────── */
     function renderCustomSections(sections) {
-      document.querySelectorAll('.p-custom-section').forEach(el => el.remove());
-      if (!sections?.length) return;
-      const anchor = document.getElementById('p-projects-section');
+      const anchor = document.getElementById('custom-sections-anchor');
       if (!anchor) return;
-      sections.forEach(sec => {
+      anchor.innerHTML = '';
+
+      (sections || []).forEach(sec => {
         if (!sec?.title && !sec?.content) return;
         const section = document.createElement('section');
-        section.className = 'p-section p-reveal-section p-custom-section';
+        section.className = 'portfolio-section p-reveal-section';
         section.setAttribute('aria-label', sec.title || 'Section');
         section.innerHTML = `
-          <div class="p-section-header">
-            <h2 class="p-section-title">${esc(sec.title || '')}</h2>
-          </div>
+          <div class="section-label"><span>${esc(sec.title || '')}</span></div>
           <div class="p-custom-section-content">${esc(sec.content || '').replace(/\n/g, '<br/>')}</div>
         `;
-        anchor.insertAdjacentElement('afterend', section);
-        setTimeout(() => section.classList.add('revealed'), 100);
+        anchor.appendChild(section);
+        setTimeout(() => section.classList.add('in-view'), 100);
       });
     }
 
-    // ── Render stats bar ──────────────────────────────────────────────────
-    function renderStats(githubUser, githubRepos) {
-      const totalStars = (githubRepos || []).reduce((s, r) => s + (r.stars || 0), 0);
+    /* ── Render stats ───────────────────────────────────────────── */
+    function renderStats(githubUser, projects) {
+      const totalStars = (projects || []).reduce((s, r) => s + (r.stars || 0), 0);
       const topLang = githubUser?.languages
         ? Object.entries(githubUser.languages).sort(([,a],[,b]) => b - a)[0]?.[0] || '—'
         : '—';
 
-      document.getElementById('stat-repos').textContent  = fmtNum(githubUser?.public_repos || 0);
-      document.getElementById('stat-stars').textContent  = fmtNum(totalStars);
+      document.getElementById('stat-repos').textContent     = fmtNum(githubUser?.public_repos || projects?.length || 0);
+      document.getElementById('stat-stars').textContent     = fmtNum(totalStars);
       document.getElementById('stat-followers').textContent = fmtNum(githubUser?.followers || 0);
-      document.getElementById('stat-lang').textContent   = topLang;
+      document.getElementById('stat-lang').textContent      = topLang;
     }
 
-    // ── Update meta tags ──────────────────────────────────────────────────
+    /* ── Update meta tags ───────────────────────────────────────── */
     function updateMeta(name, jobTitle, bio) {
       const title = `${name} — ${jobTitle} | Portfolio`;
       document.title = title;
@@ -1443,33 +881,118 @@
       document.querySelector('meta[property="og:description"]')?.setAttribute('content', bio?.slice(0, 200) || '');
     }
 
-    // ── Load avatar ───────────────────────────────────────────────────────
-    function loadAvatar(githubUsername, fullName) {
-      const img = document.getElementById('p-avatar-img');
-      const placeholder = document.getElementById('p-avatar-placeholder');
-      if (!img || !githubUsername) return;
+    /* ── Themes that manage their own card reveal via injected JS ───
+     * These themes inject [data-theme="X"] .project-card { opacity:0 / clip-path }
+     * with higher specificity AND reveal cards via their own classes
+     * (.nr-revealed, .bp-revealed, .cb-revealed …) inside init().
+     * We must NOT run our staggerReveal() for these — it adds .revealed which
+     * is the wrong class and cards would stay invisible forever.
+     * Free themes (dark/light/minimal) use .portfolio-page--free-reveal instead.
+     ─────────────────────────────────────────────────────────────── */
+    /* ── Apply theme — identical logic to edit.html / portfolio.js ── */
+    function applyTheme(theme) {
+      // 1. Load CSS file via #active-theme-css (same id as edit.html)
+      const link = document.getElementById('active-theme-css');
+      if (link) link.href = `css/themes/${theme}.css`;
 
-      // GitHub avatar URL
-      const avatarUrl = `https://avatars.githubusercontent.com/${encodeURIComponent(githubUsername)}?v=4&s=360`;
-      const initials = (fullName || githubUsername || '?')
-        .split(/\s+/)
-        .slice(0, 2)
-        .map((w) => w[0]?.toUpperCase() || '')
-        .join('');
+      // 2. Set data-theme attributes (same as edit.html)
+      document.documentElement.setAttribute('data-theme', theme);
+      document.body.setAttribute('data-theme', theme);
+      document.body.className = document.body.className.replace(/\btheme-\S+/g, '').trim();
+      document.body.classList.add(`theme-${theme}`);
 
-      if (placeholder) placeholder.textContent = initials;
-
-      img.onload = () => {
-        img.style.display = 'block';
-        if (placeholder) placeholder.style.display = 'none';
-      };
-      img.onerror = () => {
-        // Keep placeholder with initials
-      };
-      img.src = avatarUrl;
+      // 3. Free themes: enable simple opacity reveal flow.
+      //    Pro themes: their JS init() handles card reveal — skip ours.
+      const page = document.getElementById('portfolio-page');
+      if (page) {
+        if (PRO_REVEAL_THEMES.has(theme)) {
+          page.classList.remove('portfolio-page--free-reveal');
+        } else {
+          page.classList.add('portfolio-page--free-reveal');
+        }
+      }
     }
 
-    // ── Show error state ──────────────────────────────────────────────────
+    /* ── Pro theme JS lifecycle — mirrors portfolio.js ──────────── */
+    const PRO_THEME_SCRIPTS = {
+      editorial: { src: 'js/themes/editorial.js', global: 'EditorialFX'  },
+      noir:      { src: 'js/themes/noir.js',       global: 'NoirFX'       },
+      blueprint: { src: 'js/themes/blueprint.js',  global: 'BlueprintFX'  },
+      terminal:  { src: 'js/themes/terminal.js',   global: 'TerminalFX'   },
+      liquid:    { src: 'js/themes/liquid.js',      global: 'LiquidFX'    },
+      glass3d:   { src: 'js/themes/glass3d.js',    global: 'GlassFX'     },
+      cyberpunk: { src: 'js/themes/cyberpunk.js',  global: 'CyberpunkFX'  },
+      space:     { src: 'js/themes/space.js',       global: 'SpaceFX'     },
+    };
+
+    function loadProThemeScript(themeName) {
+      const config = PRO_THEME_SCRIPTS[themeName];
+      if (!config) return;
+      const script = document.createElement('script');
+      script.src = config.src;
+      script.onload = () => window[config.global]?.init?.();
+      document.head.appendChild(script);
+    }
+
+    /* ── Main render ────────────────────────────────────────────── */
+    function renderPortfolio(draft) {
+      const {
+        bio, skills, projects,
+        githubUser, githubRepos,
+        fullName, name, jobTitle,
+        githubUsername,
+        linkedinUrl, gmailAddress,
+        custom_sections,
+      } = draft;
+
+      const displayName = fullName || name || githubUsername || 'Developer';
+
+      // Hero
+      document.getElementById('hero-name').textContent  = displayName;
+      document.getElementById('hero-title').textContent = jobTitle || 'Software Developer';
+      document.getElementById('hero-bio').textContent   = bio || '';
+
+      // Nav
+      const navLink = document.getElementById('nav-github-link');
+      const navUser = document.getElementById('nav-github-username');
+      if (navLink && githubUsername) navLink.href = `https://github.com/${githubUsername}`;
+      if (navUser && githubUsername) navUser.textContent = `@${githubUsername}`;
+
+      // Links
+      renderLinks(githubUsername, linkedinUrl, gmailAddress);
+
+      // Stats
+      renderStats(githubUser, projects);
+
+      // Skills
+      renderSkills(skills);
+
+      // Projects — normalise field names
+      const normProjects = (projects || []).map(p => ({
+        ...p,
+        github_repo_name: p.github_repo_name || p.repo_name || p.name || '',
+        ai_description:   p.ai_description   || p.description || '',
+        repo_url: p.repo_url
+          || (githubRepos || []).find(r => r.name === (p.repo_name || p.github_repo_name))?.html_url
+          || `https://github.com/${githubUsername}/${p.repo_name || p.github_repo_name}`,
+        language: p.language
+          || (githubRepos || []).find(r => r.name === (p.repo_name || p.github_repo_name))?.language
+          || null,
+        stars: p.stars ?? (githubRepos || []).find(r => r.name === (p.repo_name || p.github_repo_name))?.stars ?? 0,
+        topics: p.topics ?? (githubRepos || []).find(r => r.name === (p.repo_name || p.github_repo_name))?.topics ?? [],
+        imageUrl: p.imageUrl || p.image_url || null,
+      }));
+
+      renderProjects(normProjects);
+
+      // Custom Sections
+      renderCustomSections(custom_sections || []);
+
+      // Meta
+      updateMeta(displayName, jobTitle || 'Software Developer', bio);
+    }
+
+    /* ── Show error ─────────────────────────────────────────────── */
     function showError(message) {
       document.getElementById('page-loader')?.classList.add('hidden');
       const errState = document.getElementById('error-state');
@@ -1478,75 +1001,23 @@
       if (errState) errState.classList.add('visible');
     }
 
-    // ── Main render ───────────────────────────────────────────────────────
-    function renderPortfolio(draft) {
-      const {
-        bio, skills, projects,
-        githubUser, githubRepos,
-        fullName, jobTitle,
-        githubUsername,
-        linkedinUrl, gmailAddress,
-        custom_sections,
-      } = draft;
-
-      // ─ Hero text
-      document.getElementById('hero-name').textContent    = fullName || githubUsername || 'Developer';
-      document.getElementById('hero-title').textContent   = jobTitle || 'Software Developer';
-      document.getElementById('hero-bio').textContent     = bio || '';
-      document.getElementById('hero-eyebrow-text').textContent = jobTitle || 'Software Developer';
-
-      // ─ GitHub links
-      const ghUrl = `https://github.com/${githubUsername}`;
-      const navGhLink   = document.getElementById('nav-github-link');
-      const navGhUser   = document.getElementById('nav-github-username');
-      const linkGithub  = document.getElementById('link-github');
-
-      if (navGhLink)  navGhLink.href = ghUrl;
-      if (navGhUser)  navGhUser.textContent = `@${githubUsername}`;
-      if (linkGithub) { linkGithub.href = ghUrl; }
-
-      // ─ Feature 1: Social Links — LinkedIn + Gmail
-      renderSocialLinks(linkedinUrl, gmailAddress);
-
-      // ─ Avatar
-      loadAvatar(githubUsername, fullName);
-
-      // ─ Stats
-      renderStats(githubUser, githubRepos);
-
-      // ─ Skills
-      renderSkills(skills);
-
-      // ─ Projects
-      renderProjects(projects, githubRepos);
-
-      // ─ Feature 2: Custom Sections
-      renderCustomSections(custom_sections || []);
-
-      // ─ Meta
-      updateMeta(fullName || githubUsername, jobTitle, bio);
-    }
-
-    // ── Supabase: Load portfolio by slug ─────────────────────────────────
-    // نستخدم singleton client بدل ما نعمل client جديد في كل call
+    /* ── Supabase client singleton ──────────────────────────────── */
     let _sb = null;
     function getSupabaseClient() {
       if (_sb) return _sb;
       if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) return null;
       if (!window.supabase?.createClient) return null;
       _sb = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+      window._supabaseClient = _sb;
       return _sb;
     }
 
+    /* ── Load portfolio from Supabase by slug ───────────────────── */
     async function loadFromSupabase(slug) {
-      if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) return null;
-      if (!window.supabase?.createClient) return null;
-
       try {
         const sb = getSupabaseClient();
         if (!sb) return null;
 
-        // جيب الـ portfolio بالـ slug
         const { data: portfolio, error } = await sb
           .from('portfolios')
           .select(`
@@ -1560,27 +1031,26 @@
 
         if (error || !portfolio) return null;
 
-        // جيب بيانات الـ user
         const { data: userData } = await sb
           .from('users')
           .select('full_name, github_username, job_title')
           .eq('id', portfolio.user_id)
           .single();
 
-        // Sort projects
         const projects = (portfolio.projects || [])
           .sort((a, b) => a.sort_order - b.sort_order)
           .map(p => ({
-            repo_name: p.github_repo_name,
-            description: p.ai_description,
-            stars: p.stars,
-            language: p.language,
-            topics: p.topics || [],
-            url: p.repo_url || `https://github.com/${userData?.github_username}/${p.github_repo_name}`,
-            imageUrl: p.image_url || null,
+            github_repo_name: p.github_repo_name,
+            repo_name:        p.github_repo_name,
+            ai_description:   p.ai_description,
+            stars:            p.stars || 0,
+            language:         p.language,
+            topics:           p.topics || [],
+            repo_url:         p.repo_url || `https://github.com/${userData?.github_username}/${p.github_repo_name}`,
+            imageUrl:         p.image_url || null,
           }));
 
-        // جيب بيانات GitHub الحقيقية — مع in-memory cache لتفادي rate limiting
+        // GitHub user data with cache
         let githubUser = { public_repos: projects.length, followers: 0, languages: {} };
         if (userData?.github_username) {
           const cacheKey = `gh_user_${userData.github_username}`;
@@ -1598,32 +1068,28 @@
                 githubUser = {
                   public_repos: ghData.public_repos || projects.length,
                   followers:    ghData.followers    || 0,
-                  following:    ghData.following    || 0,
                   languages:    {},
                 };
-                // cache لـ 10 دقايق في sessionStorage
                 try { sessionStorage.setItem(cacheKey, JSON.stringify(githubUser)); } catch {}
               }
-            } catch (e) {
-              githubUser.public_repos = projects.length;
-            }
+            } catch {}
           }
         }
 
         return {
-          bio:            portfolio.bio,
-          skills:         portfolio.skills || [],
+          bio:             portfolio.bio,
+          skills:          portfolio.skills || [],
           projects,
-          fullName:       userData?.full_name || userData?.github_username || '',
-          jobTitle:       userData?.job_title || 'Software Developer',
-          githubUsername: userData?.github_username || '',
-          theme:          portfolio.theme || 'dark',
+          fullName:        userData?.full_name || userData?.github_username || '',
+          name:            userData?.full_name || userData?.github_username || '',
+          jobTitle:        userData?.job_title || 'Software Developer',
+          githubUsername:  userData?.github_username || '',
+          theme:           portfolio.theme || 'dark',
           githubUser,
-          githubRepos:    projects,
-          linkedinUrl:    portfolio.linkedin_url   || '',
-          gmailAddress:   portfolio.gmail_address  || '',
+          githubRepos:     projects,
+          linkedinUrl:     portfolio.linkedin_url  || '',
+          gmailAddress:    portfolio.gmail_address || '',
           custom_sections: portfolio.custom_sections || [],
-          _fromSupabase:  true,
         };
       } catch (err) {
         console.error('[portfolio.html] Supabase load error:', err);
@@ -1631,25 +1097,24 @@
       }
     }
 
-    // ── Init ──────────────────────────────────────────────────────────────
+    /* ── Init ────────────────────────────────────────────────────── */
     async function init() {
-      // 1. Check URL for slug: /portfolio.html?slug=username or /p/username
-      const urlParams  = new URLSearchParams(window.location.search);
-      const slugParam  = urlParams.get('slug') || urlParams.get('u');
-      const pathSlug   = window.location.pathname.match(/\/p\/([^/?#]+)/)?.[1];
-      const slug       = slugParam || pathSlug || null;
+      const urlParams = new URLSearchParams(window.location.search);
+      const slugParam = urlParams.get('slug') || urlParams.get('u');
+      const pathSlug  = window.location.pathname.match(/\/p\/([^/?#]+)/)?.[1];
+      const slug      = slugParam || pathSlug || null;
 
       let draft = null;
 
       if (slug) {
-        // ── Public mode: load from Supabase by slug ───────────────────────
+        // Public mode — load from Supabase
         draft = await loadFromSupabase(slug);
         if (!draft) {
           showError(`Portfolio "${slug}" not found or not published.`);
           return;
         }
       } else {
-        // ── Preview mode: load from sessionStorage (after generation) ─────
+        // Preview mode — load from sessionStorage (same as edit.html flow)
         if (window.AI?.getDraft) {
           draft = window.AI.getDraft();
         } else {
@@ -1658,60 +1123,34 @@
             if (raw) draft = JSON.parse(raw);
           } catch {}
         }
+        // Brief UX delay only in preview mode
+        await new Promise(r => setTimeout(r, 600));
       }
-
-      // Brief load delay for UX polish
-      await new Promise(r => setTimeout(r, slug ? 0 : 600));
 
       if (!draft) {
         showError('Portfolio not found. Please generate one first.');
         return;
       }
 
-      // Set theme attributes
+      // ── Apply theme (identical flow to edit.html) ──────────────
       const theme = draft.theme || 'dark';
+      applyTheme(theme);
 
-      // Pro theme scripts map — mirrors the same object in edit (portfolio.js)
-      const PRO_THEME_SCRIPTS = {
-        editorial: { src: 'js/themes/editorial.js', global: 'EditorialFX'  },
-        noir:      { src: 'js/themes/noir.js',      global: 'NoirFX'       },
-        blueprint: { src: 'js/themes/blueprint.js', global: 'BlueprintFX'  },
-        terminal:  { src: 'js/themes/terminal.js',  global: 'TerminalFX'   },
-        liquid:    { src: 'js/themes/liquid.js',    global: 'LiquidFX'     },
-        glass3d:   { src: 'js/themes/glass3d.js',   global: 'Glass3DFX'    },
-        cyberpunk: { src: 'js/themes/cyberpunk.js', global: 'CyberpunkFX'  },
-        space:     { src: 'js/themes/space.js',     global: 'SpaceFX'      },
-      };
-
-      // 1. Load theme CSS
-      const themeLink = document.getElementById('portfolio-theme-css');
-      if (themeLink) {
-        themeLink.href = `css/themes/${theme}.css`;
-      }
-      document.documentElement.setAttribute('data-theme', theme);
-      document.body.setAttribute('data-theme', theme);
-      document.body.classList.add(`theme-${theme}`);
-
-      // Render content FIRST — cards must be in DOM before theme FX init() runs
+      // ── Render content BEFORE loading Pro theme JS ─────────────
       try {
         renderPortfolio(draft);
       } catch (err) {
-        console.error('[Portfolio] Render error:', err);
+        console.error('[portfolio.html] Render error:', err);
         showError('Something went wrong rendering the portfolio.');
         return;
       }
 
-      // 2. Load Pro theme JS AFTER render — guarantees .p-project-card elements exist
-      if (PRO_THEME_SCRIPTS[theme]?.src) {
-        const script = document.createElement('script');
-        script.src = PRO_THEME_SCRIPTS[theme].src;
-        script.onload = () => {
-          window[PRO_THEME_SCRIPTS[theme].global]?.init();
-        };
-        document.head.appendChild(script);
+      // ── Load Pro theme JS AFTER render ─────────────────────────
+      if (PRO_THEME_SCRIPTS[theme]) {
+        loadProThemeScript(theme);
       }
 
-      // Show page
+      // ── Show page ───────────────────────────────────────────────
       document.getElementById('page-loader')?.classList.add('hidden');
       const page = document.getElementById('portfolio-page');
       if (page) {
@@ -1719,14 +1158,13 @@
         page.removeAttribute('aria-hidden');
       }
 
-      // Animations
+      // ── Animate ─────────────────────────────────────────────────
       requestAnimationFrame(() => {
         animateHero();
         initScrollReveal();
       });
     }
 
-    // ── Wait for DOM ──────────────────────────────────────────────────────
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', init);
     } else {

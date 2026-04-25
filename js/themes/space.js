@@ -265,7 +265,7 @@
     `;
 
     const toolbar   = document.getElementById('edit-toolbar');
-    const container = document.querySelector('.portfolio-container, .portfolio-wrapper');
+    const container = document.querySelector('.portfolio-container, .portfolio-page');
     if (toolbar?.nextSibling) {
       toolbar.parentNode.insertBefore(hud, toolbar.nextSibling);
     } else if (container) {

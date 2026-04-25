@@ -82,7 +82,7 @@
 
     // Insert after toolbar, before portfolio content
     const toolbar = document.getElementById('edit-toolbar');
-    const container = document.querySelector('.portfolio-container, .portfolio-wrapper');
+    const container = document.querySelector('.portfolio-container, .portfolio-page');
 
     if (toolbar && toolbar.nextSibling) {
       toolbar.parentNode.insertBefore(ticker, toolbar.nextSibling);
