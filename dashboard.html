@@ -350,7 +350,43 @@
       </div>
     </div>
 
-    <!-- Portfolio Grid -->
+    <!-- ── CV Card ── -->
+    <div id="cv-card" style="
+      background: var(--clr-surface, rgba(255,255,255,0.03));
+      border: 1px solid var(--clr-border, rgba(255,255,255,0.08));
+      border-radius: 14px;
+      padding: 20px 24px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    ">
+      <div style="font-size:2rem;flex-shrink:0;">📄</div>
+      <div style="flex:1;min-width:180px;">
+        <div id="cv-card-title" style="font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;color:var(--clr-text,#E8F0EB);margin-bottom:4px;">
+          ATS CV Builder
+        </div>
+        <div id="cv-card-sub" style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--clr-text-muted,#8A9E90);">
+          Loading…
+        </div>
+        <!-- Completion bar -->
+        <div style="margin-top:10px;display:flex;align-items:center;gap:10px;" id="cv-completion-row">
+          <div style="flex:1;height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;">
+            <div id="dash-cv-fill" style="height:100%;background:linear-gradient(90deg,#00FF88,#00ccff);border-radius:2px;width:0%;transition:width 0.5s ease;"></div>
+          </div>
+          <span id="dash-cv-pct" style="font-family:'DM Mono',monospace;font-size:0.7rem;color:#00FF88;min-width:28px;">0%</span>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;flex-shrink:0;">
+        <a href="cv-builder.html" class="btn btn--primary btn--sm" style="text-decoration:none;text-align:center;" id="cv-action-btn">
+          ✏️ Edit CV
+        </a>
+        <button id="dash-download-cv-btn" class="btn btn--ghost btn--sm" style="white-space:nowrap;">
+          ⬇ Download PDF
+        </button>
+      </div>
+    </div>
     <div class="portfolio-grid" id="portfolio-grid" role="list" aria-label="Your portfolios">
       <div class="skeleton-card" aria-hidden="true">
         <div class="skeleton-preview"></div>
@@ -496,6 +532,182 @@
           window.SUPABASE_URL, window.SUPABASE_ANON_KEY
         );
       }
+
+      // ── CV Card logic ──────────────────────────────────
+      (function initCvCard() {
+        const CV_KEY = 'pg_cv_data';
+        const fillEl = document.getElementById('dash-cv-fill');
+        const pctEl  = document.getElementById('dash-cv-pct');
+        const subEl  = document.getElementById('cv-card-sub');
+        const dlBtn  = document.getElementById('dash-download-cv-btn');
+
+        let cvData = null;
+        try { cvData = JSON.parse(localStorage.getItem(CV_KEY) || 'null'); } catch {}
+
+        function calcCompletion(cv) {
+          if (!cv) return 0;
+          const p = cv.personal || {};
+          let filled = 0;
+          if (p.fullName)  filled++;
+          if (p.jobTitle)  filled++;
+          if (p.email)     filled++;
+          if (p.summary)   filled++;
+          if ((cv.experience   || []).length) filled++;
+          if ((cv.education    || []).length) filled++;
+          if ((cv.skills       || []).length) filled++;
+          if ((cv.projects     || []).length) filled++;
+          if ((cv.certificates || []).length) filled++;
+          if ((cv.languages    || []).length) filled++;
+          return Math.round((filled / 10) * 100);
+        }
+
+        const pct = calcCompletion(cvData);
+        if (fillEl) fillEl.style.width = pct + '%';
+        if (pctEl)  pctEl.textContent  = pct + '%';
+
+        if (cvData?.personal?.fullName) {
+          if (subEl) subEl.textContent = `${cvData.personal.fullName} · ${pct}% complete`;
+        } else {
+          if (subEl) subEl.textContent = pct > 0 ? `${pct}% complete` : 'No CV started yet — build yours in under 5 minutes!';
+        }
+
+        // Download PDF from dashboard
+        if (dlBtn) {
+          dlBtn.addEventListener('click', async () => {
+            if (!cvData || pct === 0) {
+              alert('Please build your CV first in the CV Builder.');
+              window.location.href = 'cv-builder.html';
+              return;
+            }
+
+            dlBtn.disabled = true;
+            dlBtn.textContent = '⏳ Generating…';
+
+            try {
+              if (!window.html2pdf) {
+                await new Promise((res, rej) => {
+                  const s = document.createElement('script');
+                  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+                  s.onload = res; s.onerror = rej;
+                  document.head.appendChild(s);
+                });
+              }
+
+              const name = (cvData.personal.fullName || 'CV').toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'');
+              const isAr = cvData.language === 'arabic';
+              const p = cvData.personal;
+              const PROF_EN = ['Elementary','Limited Working','Professional','Full Professional','Native / Bilingual'];
+              const PROF_AR = ['أساسية','محدودة','احترافية','احترافية كاملة','اللغة الأم'];
+              const profs   = isAr ? PROF_AR : PROF_EN;
+              function esc(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+              const contact = [p.email, p.phone, [p.city,p.country].filter(Boolean).join(', ')].filter(Boolean).join('  |  ');
+              const links   = [p.linkedIn, p.github, p.portfolio].filter(Boolean).join('  |  ');
+
+              let html = `<style>
+                *{box-sizing:border-box;margin:0;padding:0;}
+                body{font-family:Arial,sans-serif;font-size:10pt;color:#111;}
+                .n{font-size:18pt;font-weight:700;color:#1a3a6b;margin-bottom:2pt;}
+                .t{font-size:11pt;color:#2a5ab0;margin-bottom:4pt;}
+                .c{font-size:9pt;color:#555;margin-bottom:2pt;}
+                .d{height:2pt;background:#1a3a6b;margin:8pt 0;}
+                .s{font-size:9pt;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#1a3a6b;border-bottom:1pt solid #ccc;padding-bottom:2pt;margin:10pt 0 5pt;}
+                .e{margin-bottom:7pt;page-break-inside:avoid;}
+                .er{display:flex;justify-content:space-between;align-items:baseline;}
+                .en{font-weight:700;font-size:10pt;}
+                .ed{font-size:8pt;color:#888;font-style:italic;}
+                .es{font-size:9pt;color:#2a5ab0;font-style:italic;}
+                .b{font-size:9pt;color:#333;padding-left:10pt;position:relative;margin-bottom:2pt;page-break-inside:avoid;}
+                .b::before{content:'–';position:absolute;left:0;}
+                .tx{font-size:9pt;color:#333;line-height:1.5;margin-bottom:2pt;}
+                .sk{font-size:9pt;color:#333;margin-bottom:3pt;page-break-inside:avoid;}
+              </style>`;
+
+              if (isAr) html = `<div dir="rtl">` + html;
+              if (p.fullName) html += `<div class="n">${esc(p.fullName)}</div>`;
+              if (p.jobTitle) html += `<div class="t">${esc(p.jobTitle)}</div>`;
+              if (contact)    html += `<div class="c">${esc(contact)}</div>`;
+              if (links)      html += `<div class="c">${esc(links)}</div>`;
+              if (p.fullName || p.jobTitle) html += `<div class="d"></div>`;
+              if (p.summary) {
+                html += `<div class="s">${isAr?'الملخص المهني':'PROFESSIONAL SUMMARY'}</div>`;
+                html += `<div class="tx">${esc(p.summary)}</div>`;
+              }
+              const exp = cvData.experience || [];
+              if (exp.length) {
+                html += `<div class="s">${isAr?'الخبرة العملية':'WORK EXPERIENCE'}</div>`;
+                exp.forEach(x => {
+                  const end = x.isCurrent?(isAr?'حتى الآن':'Present'):x.endDate;
+                  const dates=[x.startDate,end].filter(Boolean).join(' – ');
+                  const loc=[x.city,x.country].filter(Boolean).join(', ');
+                  html += `<div class="e"><div class="er"><span class="en">${esc(x.jobTitle)}</span><span class="ed">${esc(dates)}</span></div><div class="er"><span class="es">${esc(x.company)}</span><span class="ed">${esc(loc)}</span></div>`;
+                  (x.responsibilities||[]).forEach(r=>{if(r)html+=`<div class="b">${esc(r)}</div>`;});
+                  html += `</div>`;
+                });
+              }
+              const edu = cvData.education || [];
+              if (edu.length) {
+                html += `<div class="s">${isAr?'التعليم':'EDUCATION'}</div>`;
+                edu.forEach(x=>{
+                  const dates=[x.startDate,x.endDate].filter(Boolean).join(' – ');
+                  const loc=[x.city,x.country].filter(Boolean).join(', ');
+                  html+=`<div class="e"><div class="er"><span class="en">${esc([x.degree,x.major].filter(Boolean).join(' in '))}</span><span class="ed">${esc(dates)}</span></div><div class="er"><span class="es">${esc(x.institution)}</span><span class="ed">${esc(loc)}</span></div>${x.gpa?`<div class="tx">GPA: ${esc(x.gpa)}</div>`:''}</div>`;
+                });
+              }
+              const skills = cvData.skills || [];
+              if (skills.length) {
+                html += `<div class="s">${isAr?'المهارات':'SKILLS'}</div>`;
+                const g={};
+                skills.forEach(s=>{const cat=s.category||(isAr?'عام':'General');(g[cat]=g[cat]||[]).push(s.name);});
+                Object.entries(g).forEach(([cat,names])=>{html+=`<div class="sk"><strong>${esc(cat)}:</strong> ${esc(names.join(' / '))}</div>`;});
+              }
+              const projects = cvData.projects || [];
+              if (projects.length) {
+                html += `<div class="s">${isAr?'المشاريع':'PROJECTS'}</div>`;
+                projects.forEach(x=>{
+                  const dates=[x.startDate,x.endDate].filter(Boolean).join(' – ');
+                  html+=`<div class="e"><div class="er"><span class="en">${esc(x.name)}</span><span class="ed">${esc(dates)}</span></div>${x.description?`<div class="tx">${esc(x.description)}</div>`:''}${x.technologies?.length?`<div class="tx" style="font-style:italic;color:#888;">${isAr?'التقنيات:':'Tech:'} ${esc(x.technologies.join(', '))}</div>`:''}${x.link?`<div class="tx" style="color:#2a5ab0;">${esc(x.link)}</div>`:''}</div>`;
+                });
+              }
+              const certs = cvData.certificates || [];
+              if (certs.length) {
+                html += `<div class="s">${isAr?'الشهادات':'CERTIFICATIONS'}</div>`;
+                certs.forEach(x=>{html+=`<div class="e"><div class="er"><span class="en">${esc(x.name)}</span><span class="ed">${esc(x.issueDate)}</span></div><div class="es">${esc(x.issuer)}</div>${x.credentialId?`<div class="tx">ID: ${esc(x.credentialId)}</div>`:''}</div>`;});
+              }
+              const langs = cvData.languages || [];
+              if (langs.length) {
+                html += `<div class="s">${isAr?'اللغات':'LANGUAGES'}</div>`;
+                html += `<div class="tx">${langs.map(l=>`${esc(l.language)}: ${profs[l.proficiency]||''}`).join('    ')}</div>`;
+              }
+              if (isAr) html += `</div>`;
+
+              const clone = document.createElement('div');
+              clone.innerHTML = html;
+              clone.style.cssText = 'position:fixed;left:-9999px;top:0;width:210mm;background:#fff;color:#111;font-family:Arial,sans-serif;font-size:10pt;line-height:1.45;padding:15mm 15mm;box-sizing:border-box;z-index:-1;';
+              document.body.appendChild(clone);
+              await new Promise(r => setTimeout(r, 80));
+
+              await window.html2pdf().set({
+                margin: 0,
+                filename: `${name}-cv.pdf`,
+                image: { type:'jpeg', quality:1 },
+                html2canvas: { scale:2, useCORS:true, logging:false, width:clone.scrollWidth, windowWidth:clone.scrollWidth },
+                jsPDF: { unit:'mm', format:'a4', orientation:'portrait' },
+                pagebreak: { mode:['css','legacy'], avoid:['.e','.sk','.b'] },
+              }).from(clone).save();
+
+              document.body.removeChild(clone);
+              window.toast?.('CV downloaded! ✓', 'success');
+            } catch(err) {
+              console.error(err);
+              window.toast?.('Failed to generate PDF', 'error');
+            } finally {
+              dlBtn.disabled = false;
+              dlBtn.textContent = '⬇ Download PDF';
+            }
+          });
+        }
+      })();
     });
   </script>
 
