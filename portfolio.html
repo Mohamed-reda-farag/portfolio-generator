@@ -38,6 +38,41 @@
        so Pro theme CSS files apply correctly.
     ══════════════════════════════════════════════════════════════ */
 
+
+    /* ── AVATAR ────────────────────────────────────────────────── */
+    .hero-avatar-wrap {
+      margin-bottom: var(--sp-6);
+      opacity: 0;
+      transform: scale(0.9);
+      transition: opacity 0.6s ease 0.1s, transform 0.6s cubic-bezier(0.16,1,0.3,1) 0.1s;
+    }
+    .hero-avatar-wrap.revealed { opacity: 1; transform: scale(1); }
+
+    .hero-avatar {
+      width: clamp(80px, 12vw, 140px);
+      height: clamp(80px, 12vw, 140px);
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--clr-border);
+      box-shadow: 0 0 0 4px var(--clr-accent-dim), var(--shadow-md);
+      display: none; /* shown via onload */
+    }
+    .hero-avatar-placeholder {
+      width: clamp(80px, 12vw, 140px);
+      height: clamp(80px, 12vw, 140px);
+      border-radius: 50%;
+      background: var(--clr-bg-3);
+      border: 2px solid var(--clr-border);
+      box-shadow: 0 0 0 4px var(--clr-accent-dim), var(--shadow-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: clamp(24px, 4vw, 48px);
+      color: var(--clr-text-3);
+    }
+
     /* ── Loading State ─────────────────────────────────────────── */
     #page-loader {
       position: fixed;
@@ -232,45 +267,7 @@
     }
     .hero-link svg { width: 14px; height: 14px; }
 
-    /* ── STATS BAR ─────────────────────────────────────────────── */
-    .p-stats {
-      display: flex;
-      border: 1px solid var(--clr-border-dim);
-      background: var(--clr-bg-3);
-      border-radius: var(--radius-lg);
-      overflow: hidden;
-      margin-bottom: var(--sp-16);
-      opacity: 0; transform: translateY(16px);
-      transition: opacity 0.5s ease 0.8s, transform 0.5s ease 0.8s;
-    }
-    .p-stats.revealed { opacity: 1; transform: translateY(0); }
-    .p-stat {
-      flex: 1;
-      padding: var(--sp-5) var(--sp-6);
-      border-right: 1px solid var(--clr-border-dim);
-      text-align: center;
-    }
-    .p-stat:last-child { border-right: none; }
-    .p-stat-value {
-      font-family: var(--font-display);
-      font-weight: 700;
-      font-size: clamp(1.25rem, 3vw, 2rem);
-      color: var(--clr-text);
-      display: block;
-    }
-    .p-stat-label {
-      font-size: var(--fs-xs);
-      letter-spacing: var(--ls-wider);
-      text-transform: uppercase;
-      color: var(--clr-text-3);
-      margin-top: 2px;
-    }
-    @media (max-width: 500px) {
-      .p-stats { flex-wrap: wrap; }
-      .p-stat { min-width: 50%; border-right: none; border-bottom: 1px solid var(--clr-border-dim); }
-      .p-stat:nth-child(odd) { border-right: 1px solid var(--clr-border-dim); }
-      .p-stat:last-child { border-bottom: none; }
-    }
+
 
     /* ── SECTIONS — identical class names to edit.html ─────────── */
     .portfolio-section { padding: var(--sp-16) 0 0; }
@@ -487,7 +484,6 @@
       .portfolio-container { padding: 0 var(--sp-4) var(--sp-20); }
       .projects-grid { grid-template-columns: 1fr; }
       .portfolio-hero__name { font-size: clamp(2.5rem, 12vw, 4rem); }
-      .p-stat { padding: var(--sp-4); }
     }
   </style>
 </head>
@@ -517,7 +513,7 @@
     <!-- NAV -->
     <nav class="p-nav" aria-label="Portfolio navigation">
       <a href="index.html" class="p-nav-logo">
-        portfolio<span>.</span>gen
+        Portfolio Generator
       </a>
       <div class="p-nav-actions">
         <a href="#" id="nav-github-link" class="p-nav-github"
@@ -536,6 +532,16 @@
 
       <!-- HERO -->
       <header class="portfolio-hero" id="portfolio-hero" aria-label="Developer profile">
+
+        <!-- Avatar -->
+        <div class="hero-avatar-wrap" id="hero-avatar-wrap">
+          <div class="hero-avatar-placeholder" id="hero-avatar-placeholder" aria-hidden="true"></div>
+          <img id="hero-avatar-img"
+               class="hero-avatar"
+               alt="Developer avatar"
+               loading="eager" />
+        </div>
+
         <div class="hero-eyebrow" aria-hidden="true">Portfolio</div>
 
         <h1 class="portfolio-hero__name" id="hero-name" aria-label="Developer name"></h1>
@@ -548,25 +554,7 @@
         <div class="hero-links" id="hero-links"></div>
       </header>
 
-      <!-- STATS BAR -->
-      <div class="p-stats p-reveal-section" id="p-stats" role="list" aria-label="GitHub statistics">
-        <div class="p-stat" role="listitem">
-          <span class="p-stat-value" id="stat-repos">—</span>
-          <span class="p-stat-label">Repositories</span>
-        </div>
-        <div class="p-stat" role="listitem">
-          <span class="p-stat-value" id="stat-stars">—</span>
-          <span class="p-stat-label">Total Stars</span>
-        </div>
-        <div class="p-stat" role="listitem">
-          <span class="p-stat-value" id="stat-followers">—</span>
-          <span class="p-stat-label">Followers</span>
-        </div>
-        <div class="p-stat" role="listitem">
-          <span class="p-stat-value" id="stat-lang">—</span>
-          <span class="p-stat-label">Top Language</span>
-        </div>
-      </div>
+
 
       <!-- SKILLS -->
       <section class="portfolio-section p-reveal-section"
@@ -598,7 +586,7 @@
       <!-- FOOTER -->
       <footer class="p-footer" role="contentinfo">
         <p class="p-footer-left">
-          Built with <a href="index.html" style="color:var(--clr-accent);text-decoration:none;">Portfolio Generator</a>
+          Built with <a href="index.html" class="p-nav-logo" style="font-size:var(--fs-sm);">Portfolio Generator</a>
         </p>
         <a href="index.html" class="p-footer-cta">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
@@ -693,13 +681,41 @@
       });
     }
 
-    /* ── Hero entrance ──────────────────────────────────────────── */
+    /* ── Load GitHub avatar ────────────────────────────────────── */
+    function loadAvatar(githubUsername, fullName) {
+      const wrap        = document.getElementById('hero-avatar-wrap');
+      const img         = document.getElementById('hero-avatar-img');
+      const placeholder = document.getElementById('hero-avatar-placeholder');
+      if (!img) return;
+
+      // Show initials in placeholder while image loads
+      const initials = (fullName || githubUsername || '?')
+        .split(/\s+/).slice(0, 2)
+        .map(w => w[0]?.toUpperCase() || '').join('');
+      if (placeholder) placeholder.textContent = initials;
+
+      if (githubUsername) {
+        const avatarUrl = `https://avatars.githubusercontent.com/${encodeURIComponent(githubUsername)}?v=4&s=360`;
+        img.onload = () => {
+          img.style.display = 'block';
+          if (placeholder) placeholder.style.display = 'none';
+        };
+        img.onerror = () => {
+          // Keep initials placeholder — no broken image
+        };
+        img.src = avatarUrl;
+      }
+
+      // Animate in regardless of image load status
+      setTimeout(() => wrap?.classList.add('revealed'), 80);
+    }
+
+        /* ── Hero entrance ──────────────────────────────────────────── */
     function animateHero() {
       setTimeout(() => document.getElementById('hero-name')?.classList.add('revealed'), 100);
       setTimeout(() => document.getElementById('hero-title')?.classList.add('revealed'), 350);
       setTimeout(() => document.getElementById('hero-bio')?.classList.add('revealed'), 500);
       setTimeout(() => document.getElementById('hero-links')?.classList.add('revealed'), 650);
-      setTimeout(() => document.getElementById('p-stats')?.classList.add('revealed'), 900);
     }
 
     /* ── Render skills ──────────────────────────────────────────── */
@@ -726,7 +742,26 @@
       setTimeout(() => staggerReveal([...tags], 0, 60), 300);
     }
 
-    /* ── Render projects ────────────────────────────────────────── */
+    /* ── GitHub URL normalizer ─────────────────────────────────────
+     * Converts github.com/user/repo/blob/branch/path.png
+     * to raw.githubusercontent.com/user/repo/branch/path.png
+     * so <img> can load the actual image binary.
+     ─────────────────────────────────────────────────────────── */
+    function toRawGithubUrl(url) {
+      if (!url) return url;
+      url = url.trim();
+      if (url.includes('raw.githubusercontent.com')) return url;
+      const match = url.match(
+        /^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/(blob|raw)\/(.+)$/
+      );
+      if (match) {
+        const [, user, repo, , rest] = match;
+        return `https://raw.githubusercontent.com/${user}/${repo}/${rest}`;
+      }
+      return url;
+    }
+
+        /* ── Render projects ────────────────────────────────────────── */
     /*
      * Generates the SAME .project-card HTML as portfolio.js's _buildProjectCard()
      * so Pro theme CSS (.project-card, .project-card--featured, etc.) applies.
@@ -859,18 +894,7 @@
       });
     }
 
-    /* ── Render stats ───────────────────────────────────────────── */
-    function renderStats(githubUser, projects) {
-      const totalStars = (projects || []).reduce((s, r) => s + (r.stars || 0), 0);
-      const topLang = githubUser?.languages
-        ? Object.entries(githubUser.languages).sort(([,a],[,b]) => b - a)[0]?.[0] || '—'
-        : '—';
 
-      document.getElementById('stat-repos').textContent     = fmtNum(githubUser?.public_repos || projects?.length || 0);
-      document.getElementById('stat-stars').textContent     = fmtNum(totalStars);
-      document.getElementById('stat-followers').textContent = fmtNum(githubUser?.followers || 0);
-      document.getElementById('stat-lang').textContent      = topLang;
-    }
 
     /* ── Update meta tags ───────────────────────────────────────── */
     function updateMeta(name, jobTitle, bio) {
@@ -959,10 +983,10 @@
       if (navUser && githubUsername) navUser.textContent = `@${githubUsername}`;
 
       // Links
+      loadAvatar(githubUsername, displayName);
       renderLinks(githubUsername, linkedinUrl, gmailAddress);
 
       // Stats
-      renderStats(githubUser, projects);
 
       // Skills
       renderSkills(skills);
@@ -980,7 +1004,7 @@
           || null,
         stars: p.stars ?? (githubRepos || []).find(r => r.name === (p.repo_name || p.github_repo_name))?.stars ?? 0,
         topics: p.topics ?? (githubRepos || []).find(r => r.name === (p.repo_name || p.github_repo_name))?.topics ?? [],
-        imageUrl: p.imageUrl || p.image_url || null,
+        imageUrl: toRawGithubUrl(p.imageUrl || p.image_url || null),
       }));
 
       renderProjects(normProjects);
@@ -1023,7 +1047,8 @@
           .select(`
             id, bio, skills, theme, slug, is_published,
             user_id, linkedin_url, gmail_address, custom_sections,
-            projects ( github_repo_name, ai_description, stars, language, topics, sort_order, repo_url, is_featured, image_url )
+            projects ( github_repo_name, ai_description, stars, language, topics, sort_order, repo_url, is_featured, image_url ),
+            users ( full_name, github_username, job_title )
           `)
           .eq('slug', slug)
           .eq('is_published', true)
@@ -1031,11 +1056,12 @@
 
         if (error || !portfolio) return null;
 
-        const { data: userData } = await sb
-          .from('users')
-          .select('full_name, github_username, job_title')
-          .eq('id', portfolio.user_id)
-          .single();
+        // userData comes from the embedded FK join — avoids a separate query
+        // on the users table which may be blocked by RLS for anonymous visitors.
+        // Supabase returns the joined row as an object (not array) when using FK join.
+        // If the join key name differs, portfolio.users may be an array — handle both.
+        const _u = portfolio.users;
+        const userData = Array.isArray(_u) ? (_u[0] || null) : (_u || null);
 
         const projects = (portfolio.projects || [])
           .sort((a, b) => a.sort_order - b.sort_order)
@@ -1047,7 +1073,7 @@
             language:         p.language,
             topics:           p.topics || [],
             repo_url:         p.repo_url || `https://github.com/${userData?.github_username}/${p.github_repo_name}`,
-            imageUrl:         p.image_url || null,
+            imageUrl:         toRawGithubUrl(p.image_url || null),
           }));
 
         // GitHub user data with cache

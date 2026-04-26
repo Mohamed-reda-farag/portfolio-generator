@@ -247,7 +247,34 @@
      PROJECTS RENDERING & EDITING
   ═══════════════════════════════════════════════════════════════ */
 
-  function _renderProjects(projects) {
+  /* ── GitHub URL normalizer ─────────────────────────────────────
+     Converts any GitHub blob/tree URL to a raw.githubusercontent.com URL
+     so <img> tags can actually load the image.
+     Handles:
+       github.com/user/repo/blob/branch/path/img.png
+       github.com/user/repo/raw/branch/path/img.png
+     Already-raw URLs pass through unchanged.
+  ─────────────────────────────────────────────────────────── */
+  function _toRawGithubUrl(url) {
+    if (!url) return url;
+    url = url.trim();
+    // Already a raw URL — pass through
+    if (url.includes('raw.githubusercontent.com')) return url;
+    // GitHub blob or raw path  →  raw.githubusercontent.com
+    // https://github.com/USER/REPO/blob/BRANCH/PATH
+    // https://github.com/USER/REPO/raw/BRANCH/PATH
+    const match = url.match(
+      /^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/(blob|raw)\/(.+)$/
+    );
+    if (match) {
+      const [, user, repo, , rest] = match;
+      return `https://raw.githubusercontent.com/${user}/${repo}/${rest}`;
+    }
+    // Not a GitHub URL — return as-is (could be Imgur, CDN, etc.)
+    return url;
+  }
+
+    function _renderProjects(projects) {
     const grid = $('[data-projects-grid]');
     if (!grid) return;
     grid.innerHTML = '';
@@ -378,9 +405,13 @@
     input.addEventListener('input', () => {
       const url = input.value.trim();
       const before = snapshot(); pushUndo(before);
-      _draft.projects[index].imageUrl = url || null;
-      if (url) {
-        img.src = url;
+      // Convert GitHub blob URLs to raw content URLs so <img> can load them.
+      // https://github.com/user/repo/blob/main/img.png → HTML page (broken)
+      // https://raw.githubusercontent.com/user/repo/main/img.png → actual image
+      const rawUrl = _toRawGithubUrl(url);
+      _draft.projects[index].imageUrl = rawUrl || null;
+      if (rawUrl) {
+        img.src = rawUrl;
         img.style.display = 'block';
       } else {
         img.style.display = 'none';
@@ -821,6 +852,16 @@
     }
 
     try {
+      // ── DOM flush: sync any [data-edit] field that still has focus ──────────
+      // Prevents gmail/linkedin/name from being NULL if user clicks Publish
+      // while the cursor is still inside the field (blur never fired).
+      document.querySelectorAll('[data-edit]').forEach(el => {
+        const field = el.getAttribute('data-edit');
+        if (!field || field === 'projectName' || field === 'projectDesc') return;
+        const val = el.textContent.trim();
+        if (val !== undefined && val !== null) _draft[field] = val;
+      });
+
       const draft = window.AI?.getDraft?.() || _draft;
       const sb = window._supabaseClient || window.supabase;
 
