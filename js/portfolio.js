@@ -359,68 +359,108 @@
      FEATURE 3: PROJECT IMAGE URL — helper لـ _buildProjectCard
   ═══════════════════════════════════════════════════════════════ */
 
+  const MAX_PROJECT_IMAGES = 4;
+
   function _buildProjectImageBlock(proj, index, card) {
-    // Wrapper يحتوي الصورة + حقل الـ URL
+    // imageUrls — normalise from legacy single string or new array
+    if (!Array.isArray(proj.imageUrls)) {
+      proj.imageUrls = proj.imageUrl ? [proj.imageUrl] : [];
+    }
+
     const wrap = document.createElement('div');
     wrap.className = 'project-image-wrap';
     wrap.style.cssText = 'margin-bottom: var(--sp-3);';
 
-    // الصورة — تظهر فقط لو في URL
-    const img = document.createElement('img');
-    img.className = 'project-card__img';
-    img.style.cssText = `
-      width: 100%; max-height: 200px; object-fit: cover;
-      border-radius: var(--radius-md, 8px); margin-bottom: var(--sp-2);
-      display: ${proj.imageUrl ? 'block' : 'none'};
-      border: 1px solid var(--clr-border-dim);
-    `;
-    img.alt = proj.github_repo_name || 'Project image';
-    if (proj.imageUrl) img.src = proj.imageUrl;
+    // ── رسم حقول الـ URL ────────────────────────────────────────
+    const inputsContainer = document.createElement('div');
+    inputsContainer.className = 'project-image-inputs';
 
-    img.onerror = () => { img.style.display = 'none'; };
-
-    // حقل إدخال الـ URL
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.className = 'project-image-input';
-    input.placeholder = '🖼 Image URL (optional)';
-    input.value = proj.imageUrl || '';
-    input.setAttribute('aria-label', 'Project image URL');
-    input.style.cssText = `
-      width: 100%; background: var(--clr-bg-2);
-      border: 1px dashed var(--clr-border-dim);
-      border-radius: var(--radius-sm, 4px);
-      padding: 6px 10px; font-size: var(--fs-xs);
-      color: var(--clr-text-3); font-family: var(--font-body);
-      outline: none; transition: border-color var(--dur-fast);
-    `;
-
-    input.addEventListener('focus', () => {
-      input.style.borderColor = 'var(--clr-accent)';
-    });
-    input.addEventListener('blur', () => {
-      input.style.borderColor = 'var(--clr-border-dim)';
-    });
-
-    input.addEventListener('input', () => {
-      const url = input.value.trim();
-      const before = snapshot(); pushUndo(before);
-      // Convert GitHub blob URLs to raw content URLs so <img> can load them.
-      // https://github.com/user/repo/blob/main/img.png → HTML page (broken)
-      // https://raw.githubusercontent.com/user/repo/main/img.png → actual image
-      const rawUrl = _toRawGithubUrl(url);
-      _draft.projects[index].imageUrl = rawUrl || null;
-      if (rawUrl) {
-        img.src = rawUrl;
-        img.style.display = 'block';
-      } else {
-        img.style.display = 'none';
-      }
+    function _syncUrls() {
+      const urls = [...inputsContainer.querySelectorAll('.project-image-input')]
+        .map(el => _toRawGithubUrl(el.value.trim()))
+        .filter(Boolean);
+      _draft.projects[index].imageUrls = urls;
+      _draft.projects[index].imageUrl  = urls[0] || null; // backward compat
       _scheduleAutosave();
+    }
+
+    function _buildInputRow(value = '') {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex; gap:6px; align-items:center; margin-bottom:6px;';
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'project-image-input';
+      input.placeholder = '🖼 Image URL (optional)';
+      input.value = value;
+      input.setAttribute('aria-label', 'Project image URL');
+      input.style.cssText = `
+        flex:1; background: var(--clr-bg-2);
+        border: 1px dashed var(--clr-border-dim);
+        border-radius: var(--radius-sm, 4px);
+        padding: 6px 10px; font-size: var(--fs-xs);
+        color: var(--clr-text-3); font-family: var(--font-body);
+        outline: none; transition: border-color var(--dur-fast);
+      `;
+      input.addEventListener('focus', () => input.style.borderColor = 'var(--clr-accent)');
+      input.addEventListener('blur',  () => input.style.borderColor = 'var(--clr-border-dim)');
+      input.addEventListener('input', () => { pushUndo(snapshot()); _syncUrls(); });
+
+      // زر الحذف (يظهر فقط للحقول غير الأولى)
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.textContent = '×';
+      removeBtn.setAttribute('aria-label', 'Remove image URL');
+      removeBtn.style.cssText = `
+        width:22px; height:22px; border-radius:50%;
+        background: rgba(255,80,80,0.12); border: 1px solid rgba(255,80,80,0.25);
+        color: rgba(255,100,100,0.8); font-size:14px; line-height:1;
+        cursor:pointer; flex-shrink:0; display:flex;
+        align-items:center; justify-content:center;
+        transition: background var(--dur-fast);
+      `;
+      removeBtn.addEventListener('click', () => {
+        row.remove();
+        _syncUrls();
+        _updateAddBtn();
+      });
+
+      row.appendChild(input);
+      row.appendChild(removeBtn);
+      return row;
+    }
+
+    // الحقول الموجودة أو حقل فارغ واحد
+    const initUrls = proj.imageUrls.length ? proj.imageUrls : [''];
+    initUrls.forEach(url => inputsContainer.appendChild(_buildInputRow(url)));
+
+    // ── زر الإضافة ───────────────────────────────────────────────
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.innerHTML = '＋ Add image';
+    addBtn.style.cssText = `
+      font-size: var(--fs-xs); font-family: var(--font-body);
+      color: var(--clr-accent); background: transparent;
+      border: 1px dashed rgba(0,255,136,0.3);
+      border-radius: var(--radius-sm, 4px);
+      padding: 4px 10px; cursor: pointer; width: 100%;
+      transition: all var(--dur-fast); margin-top: 2px;
+    `;
+    addBtn.addEventListener('click', () => {
+      const count = inputsContainer.querySelectorAll('.project-image-input').length;
+      if (count >= MAX_PROJECT_IMAGES) return;
+      inputsContainer.appendChild(_buildInputRow(''));
+      _updateAddBtn();
     });
 
-    wrap.appendChild(img);
-    wrap.appendChild(input);
+    function _updateAddBtn() {
+      const count = inputsContainer.querySelectorAll('.project-image-input').length;
+      addBtn.style.display = count >= MAX_PROJECT_IMAGES ? 'none' : 'block';
+    }
+    _updateAddBtn();
+
+    wrap.appendChild(inputsContainer);
+    wrap.appendChild(addBtn);
     return wrap;
   }
 
@@ -916,7 +956,8 @@
               ai_description: p.ai_description || p.description || '',
               stars: p.stars || 0, language: p.language || null,
               topics: p.topics || [], sort_order: i, is_featured: i === 0,
-              image_url: p.imageUrl || null,
+              image_url:  (p.imageUrls && p.imageUrls[0]) || p.imageUrl || null,
+              image_urls: p.imageUrls || (p.imageUrl ? [p.imageUrl] : []),
             }));
             await sb.from('projects').delete().eq('portfolio_id', portData.id);
             await sb.from('projects').insert(projectsPayload);

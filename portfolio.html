@@ -451,6 +451,128 @@
       background: var(--clr-accent-dim);
     }
 
+
+    /* ══════════════════════════════════════════════════════════════
+       STACKED IMAGE CARDS + LIGHTBOX
+    ══════════════════════════════════════════════════════════════ */
+
+    /* wrapper يحتوي الـ stack والـ project card معاً */
+    .project-stack {
+      position: relative;
+      /* ارتفاع إضافي لإفساح مجال للـ image cards خلف */
+      margin-top: 36px;
+    }
+
+    /* بطاقات الصور — تجلس خلف بطاقة المشروع */
+    .img-card {
+      position: absolute;
+      left: 0; right: 0;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      cursor: pointer;
+      border: 1px solid var(--clr-border-dim);
+      background: var(--clr-bg-3);
+      transition: transform 0.35s cubic-bezier(0.16,1,0.3,1),
+                  box-shadow 0.35s ease;
+      will-change: transform;
+    }
+
+    /* الصورة داخل البطاقة */
+    .img-card img {
+      width: 100%; height: 180px;
+      object-fit: cover; display: block;
+    }
+
+    /* البطاقات في الوضع الطبيعي — مخفية خلف بطاقة المشروع */
+    .img-card:nth-child(1) { top: -28px; transform: translateY(0) scale(0.97); z-index: 0; }
+    .img-card:nth-child(2) { top: -20px; transform: translateY(0) scale(0.94); z-index: -1; }
+    .img-card:nth-child(3) { top: -12px; transform: translateY(0) scale(0.91); z-index: -2; }
+    .img-card:nth-child(4) { top: -4px;  transform: translateY(0) scale(0.88); z-index: -3; }
+
+    /* بطاقة المشروع نفسها داخل الـ stack */
+    .project-stack .project-card {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* hover على الـ stack — تطلع بطاقة الصورة الأولى */
+    .project-stack:hover .img-card:nth-child(1) {
+      transform: translateY(-90px) scale(0.97);
+      box-shadow: var(--shadow-md);
+    }
+    .project-stack:hover .img-card:nth-child(2) {
+      transform: translateY(-18px) scale(0.94);
+    }
+    .project-stack:hover .img-card:nth-child(3) {
+      transform: translateY(-10px) scale(0.91);
+    }
+    .project-stack:hover .img-card:nth-child(4) {
+      transform: translateY(-4px) scale(0.88);
+    }
+
+    /* ── LIGHTBOX ─────────────────────────────────────────────── */
+    .pg-lightbox {
+      position: fixed; inset: 0; z-index: 9999;
+      background: rgba(0,0,0,0.92);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; visibility: hidden;
+      transition: opacity 0.25s ease, visibility 0.25s ease;
+    }
+    .pg-lightbox.open { opacity: 1; visibility: visible; }
+
+    .pg-lightbox__inner {
+      position: relative;
+      max-width: 90vw; max-height: 90vh;
+      display: flex; align-items: center; gap: 16px;
+    }
+
+    .pg-lightbox__img {
+      max-width: 80vw; max-height: 85vh;
+      object-fit: contain; border-radius: var(--radius-md);
+      box-shadow: 0 24px 80px rgba(0,0,0,0.7);
+      display: block;
+    }
+
+    .pg-lightbox__btn {
+      position: absolute;
+      top: 50%; transform: translateY(-50%);
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #fff; font-size: 20px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s;
+      backdrop-filter: blur(8px);
+      z-index: 2;
+    }
+    .pg-lightbox__btn:hover { background: rgba(255,255,255,0.2); }
+    .pg-lightbox__prev { left: -56px; }
+    .pg-lightbox__next { right: -56px; }
+
+    .pg-lightbox__close {
+      position: absolute; top: -44px; right: 0;
+      width: 36px; height: 36px; border-radius: 50%;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #fff; font-size: 18px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s;
+    }
+    .pg-lightbox__close:hover { background: rgba(255,80,80,0.3); }
+
+    .pg-lightbox__counter {
+      position: absolute; bottom: -36px; left: 50%;
+      transform: translateX(-50%);
+      font-size: var(--fs-xs); color: rgba(255,255,255,0.5);
+      font-family: var(--font-body); letter-spacing: var(--ls-wide);
+    }
+
+    @media (max-width: 600px) {
+      .pg-lightbox__btn { display: none; }
+      .pg-lightbox__img { max-width: 95vw; }
+    }
+
     /* ── Scroll reveal ─────────────────────────────────────────── */
     .p-reveal-section {
       opacity: 0;
@@ -601,6 +723,17 @@
 
   </div><!-- /#portfolio-page -->
 
+  <!-- LIGHTBOX -->
+  <div class="pg-lightbox" id="pg-lightbox" role="dialog" aria-modal="true" aria-label="Image viewer">
+    <div class="pg-lightbox__inner">
+      <button class="pg-lightbox__close" id="lb-close" aria-label="Close">✕</button>
+      <button class="pg-lightbox__btn pg-lightbox__prev" id="lb-prev" aria-label="Previous">‹</button>
+      <img class="pg-lightbox__img" id="lb-img" src="" alt="Project image" />
+      <button class="pg-lightbox__btn pg-lightbox__next" id="lb-next" aria-label="Next">›</button>
+      <div class="pg-lightbox__counter" id="lb-counter"></div>
+    </div>
+  </div>
+
   <!-- SCRIPTS -->
   <script>
     window.SUPABASE_URL      = "https://zxybqbjsnriwpjehinwb.supabase.co";
@@ -718,7 +851,84 @@
       setTimeout(() => document.getElementById('hero-links')?.classList.add('revealed'), 650);
     }
 
-    /* ── Render skills ──────────────────────────────────────────── */
+    /* ── Lightbox ───────────────────────────────────────────────── */
+    const _lb = {
+      images: [], idx: 0,
+      open(imgs, startIdx = 0) {
+        this.images = imgs; this.idx = startIdx;
+        this._render();
+        document.getElementById('pg-lightbox').classList.add('open');
+        document.body.style.overflow = 'hidden';
+      },
+      close() {
+        document.getElementById('pg-lightbox').classList.remove('open');
+        document.body.style.overflow = '';
+      },
+      prev() { this.idx = (this.idx - 1 + this.images.length) % this.images.length; this._render(); },
+      next() { this.idx = (this.idx + 1) % this.images.length; this._render(); },
+      _render() {
+        document.getElementById('lb-img').src = this.images[this.idx];
+        const counter = document.getElementById('lb-counter');
+        counter.textContent = this.images.length > 1
+          ? `${this.idx + 1} / ${this.images.length}` : '';
+        document.getElementById('lb-prev').style.display = this.images.length > 1 ? 'flex' : 'none';
+        document.getElementById('lb-next').style.display = this.images.length > 1 ? 'flex' : 'none';
+      }
+    };
+
+    function initLightbox() {
+      document.getElementById('lb-close').addEventListener('click', () => _lb.close());
+      document.getElementById('lb-prev').addEventListener('click',  () => _lb.prev());
+      document.getElementById('lb-next').addEventListener('click',  () => _lb.next());
+      document.getElementById('pg-lightbox').addEventListener('click', e => {
+        if (e.target === e.currentTarget) _lb.close();
+      });
+      document.addEventListener('keydown', e => {
+        if (!document.getElementById('pg-lightbox').classList.contains('open')) return;
+        if (e.key === 'Escape')     _lb.close();
+        if (e.key === 'ArrowLeft')  _lb.prev();
+        if (e.key === 'ArrowRight') _lb.next();
+      });
+    }
+
+    /* ── Build stacked image cards ──────────────────────────────── */
+    function buildStackedCards(imageUrls, projectName) {
+      // imageUrls = array of raw URLs — max 4
+      const urls = (imageUrls || []).filter(Boolean).slice(0, 4);
+      if (!urls.length) return null;
+
+      const fragment = document.createDocumentFragment();
+
+      urls.forEach((url, i) => {
+        const card = document.createElement('div');
+        card.className = 'img-card';
+        card.setAttribute('aria-label', `View ${projectName || 'project'} image ${i + 1}`);
+        card.setAttribute('role', 'button');
+        card.setAttribute('tabindex', '0');
+
+        // نخفي الصور الخلفية (index > 0) — فقط نعرض حافتها
+        if (i === 0) {
+          const img = document.createElement('img');
+          img.src = url;
+          img.alt = `${projectName || 'Project'} screenshot ${i + 1}`;
+          img.loading = 'lazy';
+          img.onerror = () => card.style.display = 'none';
+          card.appendChild(img);
+        } else {
+          // بطاقة خلفية — فقط background لون لإظهار الحافة
+          card.style.height = '12px';
+          card.style.background = `var(--clr-bg-3)`;
+        }
+
+        card.addEventListener('click', () => _lb.open(urls, 0));
+        card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') _lb.open(urls, 0); });
+        fragment.appendChild(card);
+      });
+
+      return fragment;
+    }
+
+        /* ── Render skills ──────────────────────────────────────────── */
     /*
      * Uses the SAME .skill-tag structure as portfolio.js's _renderSkillTags()
      * so Pro theme CSS that targets .skill-tag works identically.
@@ -778,6 +988,23 @@
       grid.innerHTML = '';
 
       projects.forEach((proj, index) => {
+        // normalise imageUrls
+        if (!Array.isArray(proj.imageUrls)) {
+          proj.imageUrls = proj.imageUrl ? [proj.imageUrl] : [];
+        }
+
+        const hasImages = proj.imageUrls.length > 0;
+
+        // wrapper — stack لو في صور، عادي لو ما في
+        const wrapper = document.createElement('div');
+        wrapper.className = hasImages ? 'project-stack' : '';
+
+        // ── Image cards (behind) ──
+        if (hasImages) {
+          const stackFrag = buildStackedCards(proj.imageUrls, proj.github_repo_name || proj.name);
+          if (stackFrag) wrapper.appendChild(stackFrag);
+        }
+
         const card = document.createElement('article');
         card.className = `project-card${index === 0 ? ' project-card--featured' : ''}`;
 
@@ -820,7 +1047,8 @@
           </div>
         `;
 
-        grid.appendChild(card);
+        wrapper.appendChild(card);
+        grid.appendChild(wrapper);
       });
 
       const cards = grid.querySelectorAll('.project-card');
@@ -1004,7 +1232,9 @@
           || null,
         stars: p.stars ?? (githubRepos || []).find(r => r.name === (p.repo_name || p.github_repo_name))?.stars ?? 0,
         topics: p.topics ?? (githubRepos || []).find(r => r.name === (p.repo_name || p.github_repo_name))?.topics ?? [],
-        imageUrl: toRawGithubUrl(p.imageUrl || p.image_url || null),
+        imageUrl:  toRawGithubUrl((p.imageUrls && p.imageUrls[0]) || p.imageUrl || p.image_url || null),
+          imageUrls: (p.imageUrls || p.image_urls || (p.image_url ? [p.image_url] : []))
+                       .map(u => toRawGithubUrl(u)).filter(Boolean),
       }));
 
       renderProjects(normProjects);
@@ -1048,7 +1278,7 @@
             id, bio, skills, theme, slug, is_published,
             user_id, linkedin_url, gmail_address, custom_sections,
             full_name, github_username, job_title,
-            projects ( github_repo_name, ai_description, stars, language, topics, sort_order, repo_url, is_featured, image_url )
+            projects ( github_repo_name, ai_description, stars, language, topics, sort_order, repo_url, is_featured, image_url, image_urls )
           `)
           .eq('slug', slug)
           .eq('is_published', true)
@@ -1074,7 +1304,9 @@
             language:         p.language,
             topics:           p.topics || [],
             repo_url:         p.repo_url || `https://github.com/${userData?.github_username}/${p.github_repo_name}`,
-            imageUrl:         toRawGithubUrl(p.image_url || null),
+            imageUrl:  toRawGithubUrl((p.image_urls && p.image_urls[0]) || p.image_url || null),
+            imageUrls: (p.image_urls || (p.image_url ? [p.image_url] : []))
+                         .map(u => toRawGithubUrl(u)).filter(Boolean),
           }));
 
         // GitHub user data with cache
@@ -1186,6 +1418,7 @@
       }
 
       // ── Animate ─────────────────────────────────────────────────
+      initLightbox();
       requestAnimationFrame(() => {
         animateHero();
         initScrollReveal();
