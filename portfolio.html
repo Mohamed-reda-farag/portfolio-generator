@@ -1047,8 +1047,8 @@
           .select(`
             id, bio, skills, theme, slug, is_published,
             user_id, linkedin_url, gmail_address, custom_sections,
-            projects ( github_repo_name, ai_description, stars, language, topics, sort_order, repo_url, is_featured, image_url ),
-            users ( full_name, github_username, job_title )
+            full_name, github_username, job_title,
+            projects ( github_repo_name, ai_description, stars, language, topics, sort_order, repo_url, is_featured, image_url )
           `)
           .eq('slug', slug)
           .eq('is_published', true)
@@ -1056,12 +1056,13 @@
 
         if (error || !portfolio) return null;
 
-        // userData comes from the embedded FK join — avoids a separate query
-        // on the users table which may be blocked by RLS for anonymous visitors.
-        // Supabase returns the joined row as an object (not array) when using FK join.
-        // If the join key name differs, portfolio.users may be an array — handle both.
-        const _u = portfolio.users;
-        const userData = Array.isArray(_u) ? (_u[0] || null) : (_u || null);
+        // User fields are stored directly in portfolios table (denormalized)
+        // to avoid RLS restrictions on the users table for anonymous visitors.
+        const userData = {
+          full_name:       portfolio.full_name       || null,
+          github_username: portfolio.github_username || null,
+          job_title:       portfolio.job_title       || null,
+        };
 
         const projects = (portfolio.projects || [])
           .sort((a, b) => a.sort_order - b.sort_order)

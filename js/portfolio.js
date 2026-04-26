@@ -893,9 +893,14 @@
             user_id: userId, bio: draft.bio,
             skills: draft.skills || [], theme: draft.theme || 'dark',
             slug, is_published: true, updated_at: new Date().toISOString(),
-            linkedin_url: draft.linkedinUrl || null,
-            gmail_address: draft.gmailAddress || null,
+            linkedin_url:    draft.linkedinUrl  || null,
+            gmail_address:   draft.gmailAddress || null,
             custom_sections: draft.custom_sections || [],
+            // Denormalized user fields — avoids RLS-blocked users table query
+            // for anonymous visitors on the public portfolio page.
+            full_name:       draft.fullName  || draft.name || '',
+            github_username: draft.githubUsername || '',
+            job_title:       draft.jobTitle  || '',
           }, { onConflict: 'user_id' });
 
           if (portError) throw portError;
