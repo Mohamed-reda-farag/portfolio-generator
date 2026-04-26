@@ -1408,7 +1408,6 @@ function _renderPreview() {
   const doc   = document.getElementById('cv-preview-doc');
   if (!doc) return;
 
-  // Shared mini-styles (preview uses px, PDF uses pt — same proportions)
   const sName    = 'font-size:13px;font-weight:700;color:#1a3a6b;margin:0 0 1px;';
   const sTitle   = 'font-size:10px;color:#2a5ab0;margin:0 0 2px;';
   const sContact = 'font-size:8px;color:#555;margin:0 0 1px;';
@@ -1423,9 +1422,24 @@ function _renderPreview() {
   const sText    = 'font-size:7.5px;color:#333;line-height:1.4;margin:0 0 1px;';
   const sSkRow   = 'font-size:7.5px;color:#333;margin-bottom:2px;';
 
-  // ── Build section blocks ────────────────────────────
-  const blocks = [];
+  // ── Each "block" is now a small unit: section-title is merged with its FIRST entry
+  // so we never get an orphan section title at the bottom of a page.
+  // blocks = array of { html, mustStayWithNext? }
+  // mustStayWithNext: true means this block should not be the last on a page
+  //                   (used for section titles when emitted separately)
+  const blocks = []; // { html:string, glued?:bool }
 
+  // helper: push section title glued to first entry, then rest as separate blocks
+  function pushSection(title, entries) {
+    if (!entries.length) return;
+    // First entry gets the section title prepended
+    blocks.push({ html: `<div style="${sSec}">${title}</div>` + entries[0], glued: false });
+    for (let i = 1; i < entries.length; i++) {
+      blocks.push({ html: entries[i], glued: false });
+    }
+  }
+
+  // ── Header (name/contact) — always first, never split
   const hdr = (() => {
     let h = '';
     if (p.fullName) h += `<div style="${sName}">${_esc(p.fullName)}</div>`;
@@ -1437,83 +1451,92 @@ function _renderPreview() {
     if (h) h += `<div style="${sDivider}"></div>`;
     return h;
   })();
-  if (hdr) blocks.push(hdr);
+  if (hdr) blocks.push({ html: hdr, glued: false });
 
+  // ── Summary
   if (p.summary) {
-    blocks.push(
+    blocks.push({ html:
       `<div style="${sSec}">${isAr?'الملخص المهني':'PROFESSIONAL SUMMARY'}</div>` +
-      `<div style="${sText}">${_esc(_truncate(p.summary, CHAR_LIMITS.summary))}</div>`
-    );
+      `<div style="${sText}">${_esc(_truncate(p.summary, CHAR_LIMITS.summary))}</div>`,
+      glued: false
+    });
   }
 
+  // ── Experience
   if (_cv.experience.length) {
-    let s = `<div style="${sSec}">${isAr?'الخبرة العملية':'WORK EXPERIENCE'}</div>`;
-    _cv.experience.forEach(exp => {
+    const entries = _cv.experience.map(exp => {
       const end   = exp.isCurrent?(isAr?'حتى الآن':'Present'):exp.endDate;
       const dates = [exp.startDate,end].filter(Boolean).join(' – ');
       const loc   = [exp.city,exp.country].filter(Boolean).join(', ');
-      s += `<div style="${sEntry}">`;
+      let s = `<div style="${sEntry}">`;
       s += `<div style="${sERow}"><span style="${sEName}">${_esc(exp.jobTitle)}</span><span style="${sEDate}">${_esc(dates)}</span></div>`;
       s += `<div style="${sERow}"><span style="${sESub}">${_esc(exp.company)}</span><span style="${sEDate}">${_esc(loc)}</span></div>`;
       (exp.responsibilities||[]).forEach(r => { if(r) s += `<div style="${sBullet}"><span style="position:absolute;left:0;">–</span>${_esc(_truncate(r,CHAR_LIMITS.respBullet))}</div>`; });
       s += `</div>`;
+      return s;
     });
-    blocks.push(s);
+    pushSection(isAr?'الخبرة العملية':'WORK EXPERIENCE', entries);
   }
 
+  // ── Education
   if (_cv.education.length) {
-    let s = `<div style="${sSec}">${isAr?'التعليم':'EDUCATION'}</div>`;
-    _cv.education.forEach(edu => {
+    const entries = _cv.education.map(edu => {
       const dates = [edu.startDate,edu.endDate].filter(Boolean).join(' – ');
       const loc   = [edu.city,edu.country].filter(Boolean).join(', ');
-      s += `<div style="${sEntry}">`;
+      let s = `<div style="${sEntry}">`;
       s += `<div style="${sERow}"><span style="${sEName}">${_esc([edu.degree,edu.major].filter(Boolean).join(' in '))}</span><span style="${sEDate}">${_esc(dates)}</span></div>`;
       s += `<div style="${sERow}"><span style="${sESub}">${_esc(edu.institution)}</span><span style="${sEDate}">${_esc(loc)}</span></div>`;
       if(edu.gpa) s += `<div style="${sText}">GPA: ${_esc(edu.gpa)}</div>`;
       s += `</div>`;
+      return s;
     });
-    blocks.push(s);
+    pushSection(isAr?'التعليم':'EDUCATION', entries);
   }
 
+  // ── Skills (one block, compact enough to never need splitting)
   if (_cv.skills.length) {
     let s = `<div style="${sSec}">${isAr?'المهارات':'SKILLS'}</div>`;
     const g = {};
     _cv.skills.forEach(sk => { const cat=sk.category||(isAr?'عام':'General'); (g[cat]=g[cat]||[]).push(sk.name); });
     Object.entries(g).forEach(([cat,names]) => { s += `<div style="${sSkRow}"><strong>${_esc(cat)}:</strong> ${_esc(names.join(' / '))}</div>`; });
-    blocks.push(s);
+    blocks.push({ html: s, glued: false });
   }
 
+  // ── Projects
   if (_cv.projects.length) {
-    let s = `<div style="${sSec}">${isAr?'المشاريع':'PROJECTS'}</div>`;
-    _cv.projects.forEach(proj => {
+    const entries = _cv.projects.map(proj => {
       const dates = [proj.startDate,proj.endDate].filter(Boolean).join(' – ');
-      s += `<div style="${sEntry}">`;
+      let s = `<div style="${sEntry}">`;
       s += `<div style="${sERow}"><span style="${sEName}">${_esc(proj.name)}</span><span style="${sEDate}">${_esc(dates)}</span></div>`;
       if(proj.description) s += `<div style="${sText}">${_esc(_truncate(proj.description,CHAR_LIMITS.projDescription))}</div>`;
       if(proj.technologies?.length) s += `<div style="${sText};font-style:italic;color:#777;">${isAr?'التقنيات:':'Tech:'} ${_esc(proj.technologies.join(', '))}</div>`;
       if(proj.link) s += `<div style="${sText};color:#2a5ab0;">${_esc(proj.link)}</div>`;
       s += `</div>`;
+      return s;
     });
-    blocks.push(s);
+    pushSection(isAr?'المشاريع':'PROJECTS', entries);
   }
 
+  // ── Certifications
   if (_cv.certificates.length) {
-    let s = `<div style="${sSec}">${isAr?'الشهادات':'CERTIFICATIONS'}</div>`;
-    _cv.certificates.forEach(cert => {
-      s += `<div style="${sEntry}">`;
+    const entries = _cv.certificates.map(cert => {
+      let s = `<div style="${sEntry}">`;
       s += `<div style="${sERow}"><span style="${sEName}">${_esc(cert.name)}</span><span style="${sEDate}">${_esc(cert.issueDate)}</span></div>`;
       s += `<div style="${sESub}">${_esc(cert.issuer)}</div>`;
       if(cert.credentialId) s += `<div style="${sText}">ID: ${_esc(cert.credentialId)}</div>`;
       s += `</div>`;
+      return s;
     });
-    blocks.push(s);
+    pushSection(isAr?'الشهادات':'CERTIFICATIONS', entries);
   }
 
+  // ── Languages
   if (_cv.languages.length) {
-    blocks.push(
+    blocks.push({ html:
       `<div style="${sSec}">${isAr?'اللغات':'LANGUAGES'}</div>` +
-      `<div style="${sText}">${_cv.languages.map(l=>`${_esc(l.language)}: ${profs[l.proficiency]||''}`).join('    ')}</div>`
-    );
+      `<div style="${sText}">${_cv.languages.map(l=>`${_esc(l.language)}: ${profs[l.proficiency]||''}`).join('    ')}</div>`,
+      glued: false
+    });
   }
 
   if (!blocks.length) {
@@ -1521,32 +1544,39 @@ function _renderPreview() {
     return;
   }
 
-  // ── Paginate into A4-proportioned preview pages ─────
-  // Measure each block's rendered height then pack into pages
-  const PAGE_H = 370; // px ≈ A4 height at preview scale
+  // ── Measure each block then greedily pack into pages ──
+  const PAGE_H = 370;
 
   const measurer = document.createElement('div');
   measurer.style.cssText = 'position:absolute;visibility:hidden;width:256px;font-family:Arial,sans-serif;font-size:10px;line-height:1.4;top:-9999px;left:0;';
   document.body.appendChild(measurer);
 
+  // Pre-measure all blocks
+  const measured = blocks.map(b => {
+    measurer.innerHTML = b.html;
+    return { html: b.html, h: measurer.offsetHeight + 4 };
+  });
+  document.body.removeChild(measurer);
+
+  // Greedy pack: fill current page as much as possible before starting a new one
   const pages = [];
   let curHtml = '';
   let curH    = 0;
 
-  blocks.forEach(block => {
-    measurer.innerHTML = block;
-    const bh = measurer.offsetHeight + 6;
-    if (curH + bh > PAGE_H && curH > 0) {
+  measured.forEach(({ html, h }) => {
+    if (curH > 0 && curH + h > PAGE_H) {
+      // Only start a new page if at least some content is on the current page
       pages.push(curHtml);
-      curHtml = block;
-      curH    = bh;
+      curHtml = html;
+      curH    = h;
     } else {
-      curHtml += block;
-      curH    += bh;
+      // Fits — add to current page even if it slightly overflows
+      // (slight overflow is better than a half-empty page)
+      curHtml += html;
+      curH    += h;
     }
   });
   if (curHtml) pages.push(curHtml);
-  document.body.removeChild(measurer);
 
   doc.innerHTML = pages.map((pg, i) => `
     <div style="
