@@ -163,15 +163,6 @@
       background: transparent;
     }
 
-    .cv-doc__page {
-      background: #fff; color: #111;
-      font-family: 'Arial', sans-serif;
-      font-size: 10px; line-height: 1.4;
-      padding: 24px 20px;
-      border-radius: var(--radius-md);
-      box-shadow: var(--shadow-lg);
-    }
-
     .cv-doc__name {
       font-size: 16px; font-weight: 700;
       color: #1a3a6b; margin-bottom: 2px;
@@ -656,10 +647,10 @@
 
       <div class="cv-field-group">
         <label class="cv-label" id="l-summary">Professional Summary</label>
-        <textarea class="cv-textarea" id="f-summary" rows="6" maxlength="600"
+        <textarea class="cv-textarea" id="f-summary" rows="6" maxlength="400"
           placeholder="e.g. Flutter developer with 2+ years building production apps. Expertise in Dart, Firebase, and clean architecture. Built EduMate — an education platform with 5,000+ users."
           oninput="CVBuilder.save()"></textarea>
-        <div style="font-size:var(--fs-xs);color:var(--clr-text-3);text-align:right;" id="summary-count">0 / 600</div>
+        <div style="font-size:var(--fs-xs);color:var(--clr-text-3);text-align:right;" id="summary-count">0 / 400</div>
       </div>
     </div>
 
@@ -946,7 +937,7 @@ function _renderStep2(isAr) {
 
 function _updateSummaryCount() {
   const el = document.getElementById('f-summary');
-  if (el) document.getElementById('summary-count').textContent = `${el.value.length} / 600`;
+  if (el) document.getElementById('summary-count').textContent = `${el.value.length} / 400`;
 }
 
 // ════════════════════════════════════════════════════
@@ -1059,7 +1050,7 @@ function _renderExperienceList() {
           <label class="cv-label" style="display:block;margin-bottom:var(--sp-2);">${isAr?'المهام والمسؤوليات':'Responsibilities'}</label>
           ${(exp.responsibilities||[]).map((r,ri) => `
             <div class="cv-bullet-item">
-              <input value="${_esc(r)}" placeholder="${isAr?'مثال: طورت تطبيق Flutter...':'e.g. Built Flutter app with 50k+ users'}" oninput="CVBuilder.updateResp(${exp.id},${ri},this.value)" />
+              <input value="${_esc(r)}" maxlength="120" placeholder="${isAr?'مثال: طورت تطبيق Flutter...':'e.g. Built Flutter app with 50k+ users'}" oninput="CVBuilder.updateResp(${exp.id},${ri},this.value)" />
               <button class="cv-bullet-remove" onclick="CVBuilder.removeResp(${exp.id},${ri})">×</button>
             </div>
           `).join('')}
@@ -1247,7 +1238,8 @@ function _renderProjectsList() {
         </div>
         <div class="cv-field-group">
           <label class="cv-label">${isAr?'وصف المشروع':'Description'}</label>
-          <textarea class="cv-textarea" rows="3" oninput="CVBuilder.updateProject(${proj.id},'description',this.value)" placeholder="${isAr?'صف المشروع وتأثيره...':'Describe the project and its impact...'}">${_esc(proj.description)}</textarea>
+          <textarea class="cv-textarea" rows="3" maxlength="200" oninput="CVBuilder.updateProject(${proj.id},'description',this.value)" placeholder="${isAr?'صف المشروع وتأثيره...':'Describe the project and its impact...'}">${_esc(proj.description)}</textarea>
+          <div style="font-size:var(--fs-xs);color:var(--clr-text-3);text-align:right;">${(proj.description||'').length} / 200</div>
         </div>
         <div class="cv-field-group">
           <label class="cv-label">${isAr?'التقنيات المستخدمة':'Technologies'}</label>
@@ -1391,12 +1383,12 @@ function _updateCompletion() {
   if (p.jobTitle)  filled++;
   if (p.email)     filled++;
   if (p.summary)   filled++;
-  if (_cv.experience.length)    filled++;
-  if (_cv.education.length)     filled++;
-  if (_cv.skills.length)        filled++;
-  if (_cv.projects.length)      filled++;
-  if (_cv.certificates.length)  filled++;
-  if (_cv.languages.length)     filled++;
+  if (_cv.experience.length)   filled++;
+  if (_cv.education.length)    filled++;
+  if (_cv.skills.length)       filled++;
+  if (_cv.projects.length)     filled++;
+  if (_cv.certificates.length) filled++;
+  if (_cv.languages.length)    filled++;
   const pct = Math.round((filled / 10) * 100);
   document.getElementById('completion-fill').style.width = pct + '%';
   document.getElementById('completion-pct').textContent  = pct + '%';
@@ -1408,157 +1400,162 @@ function _updateCompletion() {
 
 function _renderPreview() {
   _updateCompletion();
-  const isAr = _cv.language === 'arabic';
-  const p = _cv.personal;
+  const isAr  = _cv.language === 'arabic';
+  const p     = _cv.personal;
+  const PROF_EN = ['Elementary','Limited Working','Professional','Full Professional','Native / Bilingual'];
+  const PROF_AR = ['أساسية','محدودة','احترافية','احترافية كاملة','اللغة الأم'];
   const profs = isAr ? PROF_AR : PROF_EN;
-  const doc = document.getElementById('cv-preview-doc');
+  const doc   = document.getElementById('cv-preview-doc');
   if (!doc) return;
 
-  const contact = [p.email, p.phone, [p.city,p.country].filter(Boolean).join(', ')].filter(Boolean).join(' | ');
-  const links   = [p.linkedIn, p.github, p.portfolio].filter(Boolean).join(' | ');
+  // Shared mini-styles (preview uses px, PDF uses pt — same proportions)
+  const sName    = 'font-size:13px;font-weight:700;color:#1a3a6b;margin:0 0 1px;';
+  const sTitle   = 'font-size:10px;color:#2a5ab0;margin:0 0 2px;';
+  const sContact = 'font-size:8px;color:#555;margin:0 0 1px;';
+  const sDivider = 'height:2px;background:#1a3a6b;margin:5px 0;';
+  const sSec     = 'font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#1a3a6b;border-bottom:1px solid #ccc;padding-bottom:1px;margin:7px 0 3px;';
+  const sEntry   = 'margin-bottom:5px;';
+  const sERow    = 'display:flex;justify-content:space-between;align-items:baseline;';
+  const sEName   = 'font-weight:700;font-size:8.5px;';
+  const sEDate   = 'font-size:7px;color:#888;font-style:italic;';
+  const sESub    = 'font-size:7.5px;color:#2a5ab0;font-style:italic;';
+  const sBullet  = 'font-size:7.5px;color:#333;padding-left:8px;position:relative;margin-bottom:1px;';
+  const sText    = 'font-size:7.5px;color:#333;line-height:1.4;margin:0 0 1px;';
+  const sSkRow   = 'font-size:7.5px;color:#333;margin-bottom:2px;';
 
-  // ─── Build content blocks ───────────────────────────────
-  // Each block is an HTML string tagged with its approximate line-height cost.
-  // We'll pack blocks into pages respecting a max content height.
+  // ── Build section blocks ────────────────────────────
+  const blocks = [];
 
-  const blocks = []; // { html, avoidBreak }
-
-  if (p.fullName) blocks.push({ html:`<div class="cv-doc__name">${_esc(p.fullName)}</div>`, avoidBreak:true });
-  if (p.jobTitle) blocks.push({ html:`<div class="cv-doc__title">${_esc(p.jobTitle)}</div>`, avoidBreak:true });
-  if (contact)    blocks.push({ html:`<div class="cv-doc__contact">${_esc(contact)}</div>`, avoidBreak:true });
-  if (links)      blocks.push({ html:`<div class="cv-doc__contact">${_esc(links)}</div>`, avoidBreak:true });
-  if (p.fullName || p.jobTitle) blocks.push({ html:`<div class="cv-doc__divider"></div>`, avoidBreak:true });
+  const hdr = (() => {
+    let h = '';
+    if (p.fullName) h += `<div style="${sName}">${_esc(p.fullName)}</div>`;
+    if (p.jobTitle) h += `<div style="${sTitle}">${_esc(p.jobTitle)}</div>`;
+    const contact = [p.email, p.phone, [p.city,p.country].filter(Boolean).join(', ')].filter(Boolean).join(' · ');
+    const links   = [p.linkedIn, p.github, p.portfolio].filter(Boolean).join(' · ');
+    if (contact) h += `<div style="${sContact}">${_esc(contact)}</div>`;
+    if (links)   h += `<div style="${sContact}">${_esc(links)}</div>`;
+    if (h) h += `<div style="${sDivider}"></div>`;
+    return h;
+  })();
+  if (hdr) blocks.push(hdr);
 
   if (p.summary) {
-    blocks.push({ html:`<div class="cv-doc__section-title">${isAr?'الملخص المهني':'PROFESSIONAL SUMMARY'}</div><div class="cv-doc__text">${_esc(p.summary)}</div>`, avoidBreak:true });
+    blocks.push(
+      `<div style="${sSec}">${isAr?'الملخص المهني':'PROFESSIONAL SUMMARY'}</div>` +
+      `<div style="${sText}">${_esc(_truncate(p.summary, CHAR_LIMITS.summary))}</div>`
+    );
   }
 
   if (_cv.experience.length) {
-    let secHtml = `<div class="cv-doc__section-title">${isAr?'الخبرة العملية':'WORK EXPERIENCE'}</div>`;
+    let s = `<div style="${sSec}">${isAr?'الخبرة العملية':'WORK EXPERIENCE'}</div>`;
     _cv.experience.forEach(exp => {
-      const end = exp.isCurrent ? (isAr?'حتى الآن':'Present') : exp.endDate;
-      const dates = [exp.startDate, end].filter(Boolean).join(' - ');
-      const loc = [exp.city,exp.country].filter(Boolean).join(', ');
-      let entryHtml = `<div class="cv-doc__entry">`;
-      entryHtml += `<div class="cv-doc__entry-header"><span class="cv-doc__entry-name">${_esc(exp.jobTitle)}</span><span class="cv-doc__entry-date">${_esc(dates)}</span></div>`;
-      entryHtml += `<div class="cv-doc__entry-header"><span class="cv-doc__entry-sub">${_esc(exp.company)}</span><span class="cv-doc__entry-date">${_esc(loc)}</span></div>`;
-      (exp.responsibilities||[]).forEach(r => { if(r) entryHtml += `<div class="cv-doc__bullet">${_esc(r)}</div>`; });
-      entryHtml += `</div>`;
-      secHtml += entryHtml;
+      const end   = exp.isCurrent?(isAr?'حتى الآن':'Present'):exp.endDate;
+      const dates = [exp.startDate,end].filter(Boolean).join(' – ');
+      const loc   = [exp.city,exp.country].filter(Boolean).join(', ');
+      s += `<div style="${sEntry}">`;
+      s += `<div style="${sERow}"><span style="${sEName}">${_esc(exp.jobTitle)}</span><span style="${sEDate}">${_esc(dates)}</span></div>`;
+      s += `<div style="${sERow}"><span style="${sESub}">${_esc(exp.company)}</span><span style="${sEDate}">${_esc(loc)}</span></div>`;
+      (exp.responsibilities||[]).forEach(r => { if(r) s += `<div style="${sBullet}"><span style="position:absolute;left:0;">–</span>${_esc(_truncate(r,CHAR_LIMITS.respBullet))}</div>`; });
+      s += `</div>`;
     });
-    blocks.push({ html: secHtml, avoidBreak: false, sectionGroup: true });
+    blocks.push(s);
   }
 
   if (_cv.education.length) {
-    let secHtml = `<div class="cv-doc__section-title">${isAr?'التعليم':'EDUCATION'}</div>`;
+    let s = `<div style="${sSec}">${isAr?'التعليم':'EDUCATION'}</div>`;
     _cv.education.forEach(edu => {
-      const dates = [edu.startDate, edu.endDate].filter(Boolean).join(' - ');
-      const loc   = [edu.city, edu.country].filter(Boolean).join(', ');
-      secHtml += `<div class="cv-doc__entry">`;
-      secHtml += `<div class="cv-doc__entry-header"><span class="cv-doc__entry-name">${_esc([edu.degree,edu.major].filter(Boolean).join(' in '))}</span><span class="cv-doc__entry-date">${_esc(dates)}</span></div>`;
-      secHtml += `<div class="cv-doc__entry-header"><span class="cv-doc__entry-sub">${_esc(edu.institution)}</span><span class="cv-doc__entry-date">${_esc(loc)}</span></div>`;
-      if(edu.gpa) secHtml += `<div class="cv-doc__text">GPA: ${_esc(edu.gpa)}</div>`;
-      secHtml += `</div>`;
+      const dates = [edu.startDate,edu.endDate].filter(Boolean).join(' – ');
+      const loc   = [edu.city,edu.country].filter(Boolean).join(', ');
+      s += `<div style="${sEntry}">`;
+      s += `<div style="${sERow}"><span style="${sEName}">${_esc([edu.degree,edu.major].filter(Boolean).join(' in '))}</span><span style="${sEDate}">${_esc(dates)}</span></div>`;
+      s += `<div style="${sERow}"><span style="${sESub}">${_esc(edu.institution)}</span><span style="${sEDate}">${_esc(loc)}</span></div>`;
+      if(edu.gpa) s += `<div style="${sText}">GPA: ${_esc(edu.gpa)}</div>`;
+      s += `</div>`;
     });
-    blocks.push({ html: secHtml, avoidBreak: false, sectionGroup: true });
+    blocks.push(s);
   }
 
   if (_cv.skills.length) {
-    let secHtml = `<div class="cv-doc__section-title">${isAr?'المهارات':'SKILLS'}</div>`;
-    const grouped = {};
-    _cv.skills.forEach(s => {
-      const cat = s.category || (isAr?'عام':'General');
-      (grouped[cat] = grouped[cat]||[]).push(s.name);
-    });
-    Object.entries(grouped).forEach(([cat, names]) => {
-      secHtml += `<div class="cv-doc__skills-row"><strong>${_esc(cat)}:</strong> ${_esc(names.join(' / '))}</div>`;
-    });
-    blocks.push({ html: secHtml, avoidBreak: false, sectionGroup: true });
+    let s = `<div style="${sSec}">${isAr?'المهارات':'SKILLS'}</div>`;
+    const g = {};
+    _cv.skills.forEach(sk => { const cat=sk.category||(isAr?'عام':'General'); (g[cat]=g[cat]||[]).push(sk.name); });
+    Object.entries(g).forEach(([cat,names]) => { s += `<div style="${sSkRow}"><strong>${_esc(cat)}:</strong> ${_esc(names.join(' / '))}</div>`; });
+    blocks.push(s);
   }
 
   if (_cv.projects.length) {
-    let secHtml = `<div class="cv-doc__section-title">${isAr?'المشاريع':'PROJECTS'}</div>`;
+    let s = `<div style="${sSec}">${isAr?'المشاريع':'PROJECTS'}</div>`;
     _cv.projects.forEach(proj => {
-      const dates = [proj.startDate, proj.endDate].filter(Boolean).join(' - ');
-      let entryHtml = `<div class="cv-doc__entry">`;
-      entryHtml += `<div class="cv-doc__entry-header"><span class="cv-doc__entry-name">${_esc(proj.name)}</span><span class="cv-doc__entry-date">${_esc(dates)}</span></div>`;
-      if(proj.description) entryHtml += `<div class="cv-doc__text">${_esc(proj.description)}</div>`;
-      if(proj.technologies?.length) entryHtml += `<div class="cv-doc__text" style="font-style:italic;color:#888;">${isAr?'التقنيات:':'Tech:'} ${_esc(proj.technologies.join(', '))}</div>`;
-      if(proj.link) entryHtml += `<div class="cv-doc__text" style="color:#2a5ab0;">${_esc(proj.link)}</div>`;
-      entryHtml += `</div>`;
-      secHtml += entryHtml;
+      const dates = [proj.startDate,proj.endDate].filter(Boolean).join(' – ');
+      s += `<div style="${sEntry}">`;
+      s += `<div style="${sERow}"><span style="${sEName}">${_esc(proj.name)}</span><span style="${sEDate}">${_esc(dates)}</span></div>`;
+      if(proj.description) s += `<div style="${sText}">${_esc(_truncate(proj.description,CHAR_LIMITS.projDescription))}</div>`;
+      if(proj.technologies?.length) s += `<div style="${sText};font-style:italic;color:#777;">${isAr?'التقنيات:':'Tech:'} ${_esc(proj.technologies.join(', '))}</div>`;
+      if(proj.link) s += `<div style="${sText};color:#2a5ab0;">${_esc(proj.link)}</div>`;
+      s += `</div>`;
     });
-    blocks.push({ html: secHtml, avoidBreak: false, sectionGroup: true });
+    blocks.push(s);
   }
 
   if (_cv.certificates.length) {
-    let secHtml = `<div class="cv-doc__section-title">${isAr?'الشهادات':'CERTIFICATIONS'}</div>`;
+    let s = `<div style="${sSec}">${isAr?'الشهادات':'CERTIFICATIONS'}</div>`;
     _cv.certificates.forEach(cert => {
-      secHtml += `<div class="cv-doc__entry">`;
-      secHtml += `<div class="cv-doc__entry-header"><span class="cv-doc__entry-name">${_esc(cert.name)}</span><span class="cv-doc__entry-date">${_esc(cert.issueDate)}</span></div>`;
-      secHtml += `<div class="cv-doc__entry-sub">${_esc(cert.issuer)}</div>`;
-      if(cert.credentialId) secHtml += `<div class="cv-doc__text">ID: ${_esc(cert.credentialId)}</div>`;
-      secHtml += `</div>`;
+      s += `<div style="${sEntry}">`;
+      s += `<div style="${sERow}"><span style="${sEName}">${_esc(cert.name)}</span><span style="${sEDate}">${_esc(cert.issueDate)}</span></div>`;
+      s += `<div style="${sESub}">${_esc(cert.issuer)}</div>`;
+      if(cert.credentialId) s += `<div style="${sText}">ID: ${_esc(cert.credentialId)}</div>`;
+      s += `</div>`;
     });
-    blocks.push({ html: secHtml, avoidBreak: false, sectionGroup: true });
+    blocks.push(s);
   }
 
   if (_cv.languages.length) {
-    const secHtml = `<div class="cv-doc__section-title">${isAr?'اللغات':'LANGUAGES'}</div>`
-      + `<div class="cv-doc__text">${_cv.languages.map(l=>`${_esc(l.language)}: ${profs[l.proficiency]||''}`).join('    ')}</div>`;
-    blocks.push({ html: secHtml, avoidBreak: false, sectionGroup: true });
+    blocks.push(
+      `<div style="${sSec}">${isAr?'اللغات':'LANGUAGES'}</div>` +
+      `<div style="${sText}">${_cv.languages.map(l=>`${_esc(l.language)}: ${profs[l.proficiency]||''}`).join('    ')}</div>`
+    );
   }
-
-  // ─── Paginate blocks into A4 pages ────────────────────
-  // Preview panel is ~300px wide. A4 is 297mm tall content area (~842px at 72dpi,
-  // but we scale down for preview). We measure actual rendered height.
-  // Strategy: render all into a temp hidden div, measure each block, pack into pages.
 
   if (!blocks.length) {
     doc.innerHTML = `<div style="color:#aaa;font-size:11px;text-align:center;padding:40px 0;">Start filling in your information to see your CV preview</div>`;
     return;
   }
 
-  // Render into measuring div
+  // ── Paginate into A4-proportioned preview pages ─────
+  // Measure each block's rendered height then pack into pages
+  const PAGE_H = 370; // px ≈ A4 height at preview scale
+
   const measurer = document.createElement('div');
-  measurer.style.cssText = 'position:absolute;visibility:hidden;width:260px;font-family:Arial,sans-serif;font-size:10px;line-height:1.4;padding:0;';
+  measurer.style.cssText = 'position:absolute;visibility:hidden;width:256px;font-family:Arial,sans-serif;font-size:10px;line-height:1.4;top:-9999px;left:0;';
   document.body.appendChild(measurer);
 
-  const PAGE_HEIGHT = 368; // px — approximate A4 height at preview scale (matches 297mm → ~368px at ~72dpi scaled for 260px wide preview)
   const pages = [];
-  let currentPageHtml = '';
-  let currentHeight = 0;
+  let curHtml = '';
+  let curH    = 0;
 
   blocks.forEach(block => {
-    measurer.innerHTML = block.html;
-    const bh = measurer.offsetHeight + 4; // +4 for spacing
-
-    if (currentHeight + bh > PAGE_HEIGHT && currentHeight > 0) {
-      // Start new page
-      pages.push(currentPageHtml);
-      currentPageHtml = block.html;
-      currentHeight   = bh;
+    measurer.innerHTML = block;
+    const bh = measurer.offsetHeight + 6;
+    if (curH + bh > PAGE_H && curH > 0) {
+      pages.push(curHtml);
+      curHtml = block;
+      curH    = bh;
     } else {
-      currentPageHtml += block.html;
-      currentHeight   += bh;
+      curHtml += block;
+      curH    += bh;
     }
   });
-
-  if (currentPageHtml) pages.push(currentPageHtml);
-
+  if (curHtml) pages.push(curHtml);
   document.body.removeChild(measurer);
 
-  // Render pages
-  doc.innerHTML = pages.map((pageHtml, i) => `
-    <div class="cv-doc__page" style="
-      background:#fff; color:#111;
+  doc.innerHTML = pages.map((pg, i) => `
+    <div style="
+      background:#fff;color:#111;
       font-family:'Arial',sans-serif;
-      font-size:10px; line-height:1.4;
-      padding:24px 20px;
-      min-height:${PAGE_HEIGHT}px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
-      ${i > 0 ? 'margin-top:8px; border-top: 2px dashed #e0e0e0;' : ''}
-    ">${pageHtml}</div>
+      padding:18px 16px;
+      min-height:${PAGE_H}px;
+      ${i > 0 ? 'margin-top:6px;border-top:2px dashed #d0d0d0;' : ''}
+    ">${pg}</div>
   `).join('');
 }
 
@@ -1579,202 +1576,202 @@ function save() {
   _renderPreview();
 }
 
+// ── Character limits for PDF text fields ──────────────
+const CHAR_LIMITS = {
+  summary:        400,
+  respBullet:     120,
+  projDescription:200,
+};
+
+function _truncate(str, limit) {
+  const s = String(str || '');
+  return s.length > limit ? s.slice(0, limit) + '…' : s;
+}
+
+// ── Build clean A4 HTML for PDF (never touches the DOM preview) ──
+function _buildPdfHtml() {
+  const isAr  = _cv.language === 'arabic';
+  const p     = _cv.personal;
+  const PROF_EN = ['Elementary','Limited Working','Professional','Full Professional','Native / Bilingual'];
+  const PROF_AR = ['أساسية','محدودة','احترافية','احترافية كاملة','اللغة الأم'];
+  const profs = isAr ? PROF_AR : PROF_EN;
+
+  // inline styles only — no external CSS needed inside the clone
+  const S = {
+    wrap:    'font-family:Arial,Helvetica,sans-serif;font-size:10pt;line-height:1.45;color:#111;width:180mm;padding:0;margin:0;',
+    name:    'font-size:17pt;font-weight:700;color:#1a3a6b;margin:0 0 2pt;',
+    title:   'font-size:11pt;color:#2a5ab0;margin:0 0 3pt;',
+    contact: 'font-size:8.5pt;color:#555;margin:0 0 2pt;',
+    divider: 'height:2pt;background:#1a3a6b;margin:7pt 0;',
+    secTitle:'font-size:8.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#1a3a6b;border-bottom:1pt solid #ccc;padding-bottom:2pt;margin:9pt 0 4pt;',
+    entry:   'margin-bottom:6pt;page-break-inside:avoid;',
+    eRow:    'display:flex;justify-content:space-between;align-items:baseline;',
+    eName:   'font-weight:700;font-size:10pt;',
+    eDate:   'font-size:7.5pt;color:#888;font-style:italic;',
+    eSub:    'font-size:8.5pt;color:#2a5ab0;font-style:italic;',
+    bullet:  'font-size:8.5pt;color:#333;padding-left:9pt;position:relative;margin-bottom:1.5pt;page-break-inside:avoid;',
+    bDash:   'position:absolute;left:0;',
+    text:    'font-size:8.5pt;color:#333;line-height:1.45;margin:0 0 2pt;',
+    skRow:   'font-size:8.5pt;color:#333;margin-bottom:2.5pt;page-break-inside:avoid;',
+  };
+
+  let h = `<div style="${S.wrap}" ${isAr ? 'dir="rtl"' : ''}>`;
+
+  if (p.fullName) h += `<div style="${S.name}">${_esc(p.fullName)}</div>`;
+  if (p.jobTitle) h += `<div style="${S.title}">${_esc(p.jobTitle)}</div>`;
+
+  const contact = [p.email, p.phone, [p.city,p.country].filter(Boolean).join(', ')].filter(Boolean).join('  ·  ');
+  const links   = [p.linkedIn, p.github, p.portfolio].filter(Boolean).join('  ·  ');
+  if (contact) h += `<div style="${S.contact}">${_esc(contact)}</div>`;
+  if (links)   h += `<div style="${S.contact}">${_esc(links)}</div>`;
+
+  if (p.fullName || p.jobTitle) h += `<div style="${S.divider}"></div>`;
+
+  if (p.summary) {
+    h += `<div style="${S.secTitle}">${isAr?'الملخص المهني':'PROFESSIONAL SUMMARY'}</div>`;
+    h += `<div style="${S.text}">${_esc(_truncate(p.summary, CHAR_LIMITS.summary))}</div>`;
+  }
+
+  if (_cv.experience.length) {
+    h += `<div style="${S.secTitle}">${isAr?'الخبرة العملية':'WORK EXPERIENCE'}</div>`;
+    _cv.experience.forEach(exp => {
+      const end   = exp.isCurrent ? (isAr?'حتى الآن':'Present') : exp.endDate;
+      const dates = [exp.startDate, end].filter(Boolean).join(' – ');
+      const loc   = [exp.city, exp.country].filter(Boolean).join(', ');
+      h += `<div style="${S.entry}">`;
+      h += `<div style="${S.eRow}"><span style="${S.eName}">${_esc(exp.jobTitle)}</span><span style="${S.eDate}">${_esc(dates)}</span></div>`;
+      h += `<div style="${S.eRow}"><span style="${S.eSub}">${_esc(exp.company)}</span><span style="${S.eDate}">${_esc(loc)}</span></div>`;
+      (exp.responsibilities||[]).forEach(r => {
+        if (!r) return;
+        h += `<div style="${S.bullet}"><span style="${S.bDash}">–</span>${_esc(_truncate(r, CHAR_LIMITS.respBullet))}</div>`;
+      });
+      h += `</div>`;
+    });
+  }
+
+  if (_cv.education.length) {
+    h += `<div style="${S.secTitle}">${isAr?'التعليم':'EDUCATION'}</div>`;
+    _cv.education.forEach(edu => {
+      const dates = [edu.startDate, edu.endDate].filter(Boolean).join(' – ');
+      const loc   = [edu.city, edu.country].filter(Boolean).join(', ');
+      h += `<div style="${S.entry}">`;
+      h += `<div style="${S.eRow}"><span style="${S.eName}">${_esc([edu.degree,edu.major].filter(Boolean).join(' in '))}</span><span style="${S.eDate}">${_esc(dates)}</span></div>`;
+      h += `<div style="${S.eRow}"><span style="${S.eSub}">${_esc(edu.institution)}</span><span style="${S.eDate}">${_esc(loc)}</span></div>`;
+      if (edu.gpa) h += `<div style="${S.text}">GPA: ${_esc(edu.gpa)}</div>`;
+      h += `</div>`;
+    });
+  }
+
+  if (_cv.skills.length) {
+    h += `<div style="${S.secTitle}">${isAr?'المهارات':'SKILLS'}</div>`;
+    const grouped = {};
+    _cv.skills.forEach(s => { const cat = s.category||(isAr?'عام':'General'); (grouped[cat]=grouped[cat]||[]).push(s.name); });
+    Object.entries(grouped).forEach(([cat,names]) => {
+      h += `<div style="${S.skRow}"><strong>${_esc(cat)}:</strong> ${_esc(names.join(' / '))}</div>`;
+    });
+  }
+
+  if (_cv.projects.length) {
+    h += `<div style="${S.secTitle}">${isAr?'المشاريع':'PROJECTS'}</div>`;
+    _cv.projects.forEach(proj => {
+      const dates = [proj.startDate, proj.endDate].filter(Boolean).join(' – ');
+      h += `<div style="${S.entry}">`;
+      h += `<div style="${S.eRow}"><span style="${S.eName}">${_esc(proj.name)}</span><span style="${S.eDate}">${_esc(dates)}</span></div>`;
+      if (proj.description) h += `<div style="${S.text}">${_esc(_truncate(proj.description, CHAR_LIMITS.projDescription))}</div>`;
+      if (proj.technologies?.length) h += `<div style="${S.text};font-style:italic;color:#777;">${isAr?'التقنيات:':'Tech:'} ${_esc(proj.technologies.join(', '))}</div>`;
+      if (proj.link) h += `<div style="${S.text};color:#2a5ab0;">${_esc(proj.link)}</div>`;
+      h += `</div>`;
+    });
+  }
+
+  if (_cv.certificates.length) {
+    h += `<div style="${S.secTitle}">${isAr?'الشهادات':'CERTIFICATIONS'}</div>`;
+    _cv.certificates.forEach(cert => {
+      h += `<div style="${S.entry}">`;
+      h += `<div style="${S.eRow}"><span style="${S.eName}">${_esc(cert.name)}</span><span style="${S.eDate}">${_esc(cert.issueDate)}</span></div>`;
+      h += `<div style="${S.eSub}">${_esc(cert.issuer)}</div>`;
+      if (cert.credentialId) h += `<div style="${S.text}">ID: ${_esc(cert.credentialId)}</div>`;
+      h += `</div>`;
+    });
+  }
+
+  if (_cv.languages.length) {
+    h += `<div style="${S.secTitle}">${isAr?'اللغات':'LANGUAGES'}</div>`;
+    h += `<div style="${S.text}">${_cv.languages.map(l=>`${_esc(l.language)}: ${profs[l.proficiency]||''}`).join('    ')}</div>`;
+  }
+
+  h += `</div>`;
+  return h;
+}
+
 async function downloadPdf() {
   const btn = document.getElementById('download-pdf-btn');
   btn.disabled = true;
   btn.textContent = '⏳ Generating...';
 
   try {
-    // Lazy load html2pdf
+    // Lazy-load html2pdf
     if (!window.html2pdf) {
       await new Promise((res, rej) => {
         const s = document.createElement('script');
         s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-        s.onload = res; s.onerror = rej;
+        s.onload = res; s.onerror = () => rej(new Error('html2pdf load failed'));
         document.head.appendChild(s);
       });
     }
 
     save();
-    const name = (_cv.personal.fullName || 'CV').toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'');
+    const name = (_cv.personal.fullName || 'CV').toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'') || 'cv';
 
-    // Build a full-size A4 clone outside the viewport to avoid sticky/hidden issues
-    const clone = document.createElement('div');
-    clone.innerHTML = _buildPdfHtml();
-    clone.style.cssText = [
-      'position:fixed',
+    // Build an off-screen container with explicit pixel dimensions
+    // A4 at 96dpi = 794px wide, content after margins ≈ 756px
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = [
+      'position:absolute',
       'left:-9999px',
       'top:0',
-      'width:210mm',          // exact A4 width
+      'width:756px',
+      'min-height:10px',
       'background:#fff',
-      'color:#111',
-      'font-family:Arial,sans-serif',
-      'font-size:10pt',
-      'line-height:1.45',
-      'padding:15mm 15mm',
-      'box-sizing:border-box',
-      'z-index:-1',
+      'overflow:visible',
+      'z-index:-9999',
     ].join(';');
-    document.body.appendChild(clone);
+    wrapper.innerHTML = _buildPdfHtml();
+    document.body.appendChild(wrapper);
 
-    // Give browser a tick to lay out the clone
-    await new Promise(r => setTimeout(r, 80));
+    // One rAF + 150ms so the browser fully lays out the element
+    await new Promise(r => requestAnimationFrame(() => setTimeout(r, 150)));
 
-    await html2pdf()
+    await window.html2pdf()
       .set({
-        margin: 0,
-        filename: `${name}-cv.pdf`,
-        image:      { type: 'jpeg', quality: 1 },
+        margin:      [19, 19, 19, 19],   // mm  top/right/bottom/left
+        filename:    `${name}-cv.pdf`,
+        image:       { type: 'jpeg', quality: 0.98 },
         html2canvas: {
-          scale: 2,
-          useCORS: true,
-          logging: false,
-          width:  clone.scrollWidth,
-          windowWidth: clone.scrollWidth,
+          scale:       2,
+          useCORS:     true,
+          logging:     false,
+          width:       756,
+          scrollX:     0,
+          scrollY:     0,
+          windowWidth: 756,
         },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak: {
-          mode: ['css', 'legacy'],
-          before: '.pdf-page-break',
-          avoid: ['.pdf-no-break'],
-        },
+        jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak:   { mode: ['css', 'legacy'], avoid: ['[style*="page-break-inside:avoid"]'] },
       })
-      .from(clone)
+      .from(wrapper)
       .save();
 
-    document.body.removeChild(clone);
+    document.body.removeChild(wrapper);
     window._cvToast('CV downloaded! ✓', 'success');
+
   } catch (err) {
-    console.error(err);
+    console.error('[PDF]', err);
     window._cvToast('Failed to generate PDF — ' + (err.message || err), 'error');
   } finally {
     btn.disabled = false;
     btn.textContent = '⬇ Download PDF';
   }
-}
-
-// Builds clean A4-ready HTML string for the PDF (separate from the sidebar preview)
-function _buildPdfHtml() {
-  const isAr = _cv.language === 'arabic';
-  const p     = _cv.personal;
-  const profs = isAr ? PROF_AR : PROF_EN;
-
-  const css = `
-    <style>
-    * { box-sizing:border-box; margin:0; padding:0; }
-    body { font-family:Arial,sans-serif; font-size:10pt; color:#111; }
-    .pdf-name  { font-size:18pt; font-weight:700; color:#1a3a6b; margin-bottom:2pt; }
-    .pdf-title { font-size:11pt; color:#2a5ab0; margin-bottom:4pt; }
-    .pdf-contact { font-size:9pt; color:#555; margin-bottom:2pt; }
-    .pdf-divider { height:2pt; background:#1a3a6b; margin:8pt 0; }
-    .pdf-section-title {
-      font-size:9pt; font-weight:700; text-transform:uppercase;
-      letter-spacing:0.08em; color:#1a3a6b;
-      border-bottom:1pt solid #ccc; padding-bottom:2pt; margin:10pt 0 5pt;
-    }
-    .pdf-entry { margin-bottom:7pt; }
-    .pdf-entry-row { display:flex; justify-content:space-between; align-items:baseline; }
-    .pdf-entry-name { font-weight:700; font-size:10pt; }
-    .pdf-entry-date { font-size:8pt; color:#888; font-style:italic; }
-    .pdf-entry-sub  { font-size:9pt; color:#2a5ab0; font-style:italic; }
-    .pdf-bullet { font-size:9pt; color:#333; padding-left:10pt; position:relative; margin-bottom:2pt; page-break-inside:avoid; }
-    .pdf-bullet::before { content:'–'; position:absolute; left:0; }
-    .pdf-text { font-size:9pt; color:#333; line-height:1.5; margin-bottom:2pt; }
-    .pdf-skills-row { font-size:9pt; color:#333; margin-bottom:3pt; }
-    .pdf-skills-row strong { color:#111; }
-    .pdf-no-break { page-break-inside:avoid; }
-    .pdf-page-break { page-break-before:always; }
-    </style>
-  `;
-
-  let html = css;
-  if (isAr) html = `<div dir="rtl">` + html;
-
-  if (p.fullName) html += `<div class="pdf-name">${_esc(p.fullName)}</div>`;
-  if (p.jobTitle) html += `<div class="pdf-title">${_esc(p.jobTitle)}</div>`;
-
-  const contact = [p.email, p.phone, [p.city,p.country].filter(Boolean).join(', ')].filter(Boolean).join('  |  ');
-  const links   = [p.linkedIn, p.github, p.portfolio].filter(Boolean).join('  |  ');
-  if (contact) html += `<div class="pdf-contact">${_esc(contact)}</div>`;
-  if (links)   html += `<div class="pdf-contact">${_esc(links)}</div>`;
-
-  if (p.fullName || p.jobTitle) html += `<div class="pdf-divider"></div>`;
-
-  if (p.summary) {
-    html += `<div class="pdf-section-title">${isAr?'الملخص المهني':'PROFESSIONAL SUMMARY'}</div>`;
-    html += `<div class="pdf-text pdf-no-break">${_esc(p.summary)}</div>`;
-  }
-
-  if (_cv.experience.length) {
-    html += `<div class="pdf-section-title pdf-no-break">${isAr?'الخبرة العملية':'WORK EXPERIENCE'}</div>`;
-    _cv.experience.forEach(exp => {
-      const end   = exp.isCurrent ? (isAr?'حتى الآن':'Present') : exp.endDate;
-      const dates = [exp.startDate, end].filter(Boolean).join(' – ');
-      const loc   = [exp.city, exp.country].filter(Boolean).join(', ');
-      html += `<div class="pdf-entry pdf-no-break">`;
-      html += `<div class="pdf-entry-row"><span class="pdf-entry-name">${_esc(exp.jobTitle)}</span><span class="pdf-entry-date">${_esc(dates)}</span></div>`;
-      html += `<div class="pdf-entry-row"><span class="pdf-entry-sub">${_esc(exp.company)}</span><span class="pdf-entry-date">${_esc(loc)}</span></div>`;
-      (exp.responsibilities||[]).forEach(r => { if(r) html += `<div class="pdf-bullet">${_esc(r)}</div>`; });
-      html += `</div>`;
-    });
-  }
-
-  if (_cv.education.length) {
-    html += `<div class="pdf-section-title pdf-no-break">${isAr?'التعليم':'EDUCATION'}</div>`;
-    _cv.education.forEach(edu => {
-      const dates = [edu.startDate, edu.endDate].filter(Boolean).join(' – ');
-      const loc   = [edu.city, edu.country].filter(Boolean).join(', ');
-      html += `<div class="pdf-entry pdf-no-break">`;
-      html += `<div class="pdf-entry-row"><span class="pdf-entry-name">${_esc([edu.degree,edu.major].filter(Boolean).join(' in '))}</span><span class="pdf-entry-date">${_esc(dates)}</span></div>`;
-      html += `<div class="pdf-entry-row"><span class="pdf-entry-sub">${_esc(edu.institution)}</span><span class="pdf-entry-date">${_esc(loc)}</span></div>`;
-      if (edu.gpa) html += `<div class="pdf-text">GPA: ${_esc(edu.gpa)}</div>`;
-      html += `</div>`;
-    });
-  }
-
-  if (_cv.skills.length) {
-    html += `<div class="pdf-section-title pdf-no-break">${isAr?'المهارات':'SKILLS'}</div>`;
-    const grouped = {};
-    _cv.skills.forEach(s => {
-      const cat = s.category || (isAr?'عام':'General');
-      (grouped[cat] = grouped[cat]||[]).push(s.name);
-    });
-    Object.entries(grouped).forEach(([cat, names]) => {
-      html += `<div class="pdf-skills-row pdf-no-break"><strong>${_esc(cat)}:</strong> ${_esc(names.join(' / '))}</div>`;
-    });
-  }
-
-  if (_cv.projects.length) {
-    html += `<div class="pdf-section-title pdf-no-break">${isAr?'المشاريع':'PROJECTS'}</div>`;
-    _cv.projects.forEach(proj => {
-      const dates = [proj.startDate, proj.endDate].filter(Boolean).join(' – ');
-      html += `<div class="pdf-entry pdf-no-break">`;
-      html += `<div class="pdf-entry-row"><span class="pdf-entry-name">${_esc(proj.name)}</span><span class="pdf-entry-date">${_esc(dates)}</span></div>`;
-      if (proj.description) html += `<div class="pdf-text">${_esc(proj.description)}</div>`;
-      if (proj.technologies?.length) html += `<div class="pdf-text" style="font-style:italic;color:#888;">${isAr?'التقنيات:':'Tech:'} ${_esc(proj.technologies.join(', '))}</div>`;
-      if (proj.link) html += `<div class="pdf-text" style="color:#2a5ab0;">${_esc(proj.link)}</div>`;
-      html += `</div>`;
-    });
-  }
-
-  if (_cv.certificates.length) {
-    html += `<div class="pdf-section-title pdf-no-break">${isAr?'الشهادات':'CERTIFICATIONS'}</div>`;
-    _cv.certificates.forEach(cert => {
-      html += `<div class="pdf-entry pdf-no-break">`;
-      html += `<div class="pdf-entry-row"><span class="pdf-entry-name">${_esc(cert.name)}</span><span class="pdf-entry-date">${_esc(cert.issueDate)}</span></div>`;
-      html += `<div class="pdf-entry-sub">${_esc(cert.issuer)}</div>`;
-      if (cert.credentialId) html += `<div class="pdf-text">ID: ${_esc(cert.credentialId)}</div>`;
-      html += `</div>`;
-    });
-  }
-
-  if (_cv.languages.length) {
-    html += `<div class="pdf-section-title pdf-no-break">${isAr?'اللغات':'LANGUAGES'}</div>`;
-    html += `<div class="pdf-text pdf-no-break">${_cv.languages.map(l=>`${_esc(l.language)}: ${profs[l.proficiency]||''}`).join('    ')}</div>`;
-  }
-
-  if (isAr) html += `</div>`;
-  return html;
 }
 
 // ════════════════════════════════════════════════════
