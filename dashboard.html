@@ -584,123 +584,160 @@
             dlBtn.textContent = '⏳ Generating…';
 
             try {
-              if (!window.html2pdf) {
+              // تحميل jsPDF
+              if (!window.jspdf) {
                 await new Promise((res, rej) => {
                   const s = document.createElement('script');
-                  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-                  s.onload = res; s.onerror = rej;
+                  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+                  s.onload = res; s.onerror = () => rej(new Error('jsPDF load failed'));
                   document.head.appendChild(s);
                 });
               }
 
-              const name = (cvData.personal.fullName || 'CV').toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'');
-              const isAr = cvData.language === 'arabic';
-              const p = cvData.personal;
+              const { jsPDF } = window.jspdf;
+              const cv     = cvData;
+              const isAr   = cv.language === 'arabic';
+              const p      = cv.personal || {};
+              const pageW  = 210, pageH = 297, lx = 15, rx = 195, cw = 180, btm = 20;
+              const topMargin = 18; // single source of truth for top margin
               const PROF_EN = ['Elementary','Limited Working','Professional','Full Professional','Native / Bilingual'];
               const PROF_AR = ['أساسية','محدودة','احترافية','احترافية كاملة','اللغة الأم'];
               const profs   = isAr ? PROF_AR : PROF_EN;
-              function esc(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
+              const doc = new jsPDF({ unit:'mm', format:'a4', orientation:'portrait' });
+              let y = topMargin;
+
+              // ── helpers ──
+              function chkPage() { if (y > pageH - btm) { doc.addPage(); y = topMargin; } } // Fix 3: use topMargin
+              function hLine(y2) { doc.setDrawColor(200,200,200); doc.setLineWidth(0.3); doc.line(lx, y2, rx, y2); }
+              function secTitle(label) {
+                chkPage();
+                doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(26,58,107);
+                doc.text(label.toUpperCase(), lx, y);
+                hLine(y + 1.2); y += 5;
+              }
+              function txt(text, size, rgb, style, indent) {
+                doc.setFont('helvetica', style||'normal'); doc.setFontSize(size||8.5); doc.setTextColor(...(rgb||[51,51,51]));
+                const lines = doc.splitTextToSize(String(text||''), cw - (indent||0));
+                lines.forEach(l => { doc.text(l, lx + (indent||0), y); y += (size||8.5) * 0.3528 * 1.45; });
+              }
+              function rowLR(left, right, lSize, lRgb, lStyle, rSize) {
+                if (left) { doc.setFont('helvetica', lStyle||'bold'); doc.setFontSize(lSize||10); doc.setTextColor(...(lRgb||[17,17,17])); doc.text(String(left), lx, y); }
+                if (right) { doc.setFont('helvetica','italic'); doc.setFontSize(rSize||7.5); doc.setTextColor(136,136,136); doc.text(String(right), rx, y, {align:'right'}); }
+                y += (lSize||10) * 0.3528 * 1.4;
+              }
+
+              // ── Header ──
+              if (p.fullName) { doc.setFont('helvetica','bold'); doc.setFontSize(20); doc.setTextColor(26,58,107); doc.text(p.fullName, lx, y); y += 7; }
+              if (p.jobTitle) { doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.setTextColor(42,90,176); doc.text(p.jobTitle, lx, y); y += 5.5; }
               const contact = [p.email, p.phone, [p.city,p.country].filter(Boolean).join(', ')].filter(Boolean).join('  |  ');
               const links   = [p.linkedIn, p.github, p.portfolio].filter(Boolean).join('  |  ');
+              // Fix 1 (contact/links): use splitTextToSize to prevent overflow
+              if (contact) { doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(85,85,85); doc.splitTextToSize(contact,cw).forEach(l=>{ doc.text(l,lx,y); y+=4; }); }
+              if (links)   { doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(42,90,176); doc.splitTextToSize(links,cw).forEach(l=>{ doc.text(l,lx,y); y+=4; }); }
+              if (p.fullName || p.jobTitle) { doc.setDrawColor(26,58,107); doc.setLineWidth(0.8); doc.line(lx, y, rx, y); y += 5; }
 
-              let html = `<style>
-                *{box-sizing:border-box;margin:0;padding:0;}
-                body{font-family:Arial,sans-serif;font-size:10pt;color:#111;}
-                .n{font-size:18pt;font-weight:700;color:#1a3a6b;margin-bottom:2pt;}
-                .t{font-size:11pt;color:#2a5ab0;margin-bottom:4pt;}
-                .c{font-size:9pt;color:#555;margin-bottom:2pt;}
-                .d{height:2pt;background:#1a3a6b;margin:8pt 0;}
-                .s{font-size:9pt;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#1a3a6b;border-bottom:1pt solid #ccc;padding-bottom:2pt;margin:10pt 0 5pt;}
-                .e{margin-bottom:7pt;page-break-inside:avoid;}
-                .er{display:flex;justify-content:space-between;align-items:baseline;}
-                .en{font-weight:700;font-size:10pt;}
-                .ed{font-size:8pt;color:#888;font-style:italic;}
-                .es{font-size:9pt;color:#2a5ab0;font-style:italic;}
-                .b{font-size:9pt;color:#333;padding-left:10pt;position:relative;margin-bottom:2pt;page-break-inside:avoid;}
-                .b::before{content:'–';position:absolute;left:0;}
-                .tx{font-size:9pt;color:#333;line-height:1.5;margin-bottom:2pt;}
-                .sk{font-size:9pt;color:#333;margin-bottom:3pt;page-break-inside:avoid;}
-              </style>`;
+              // ── Summary ──
+              if (p.summary) { secTitle(isAr?'الملخص المهني':'Professional Summary'); txt(p.summary, 8.5, [51,51,51], 'normal'); y += 1; }
 
-              if (isAr) html = `<div dir="rtl">` + html;
-              if (p.fullName) html += `<div class="n">${esc(p.fullName)}</div>`;
-              if (p.jobTitle) html += `<div class="t">${esc(p.jobTitle)}</div>`;
-              if (contact)    html += `<div class="c">${esc(contact)}</div>`;
-              if (links)      html += `<div class="c">${esc(links)}</div>`;
-              if (p.fullName || p.jobTitle) html += `<div class="d"></div>`;
-              if (p.summary) {
-                html += `<div class="s">${isAr?'الملخص المهني':'PROFESSIONAL SUMMARY'}</div>`;
-                html += `<div class="tx">${esc(p.summary)}</div>`;
-              }
-              const exp = cvData.experience || [];
+              // ── Experience ──
+              const exp = cv.experience || [];
               if (exp.length) {
-                html += `<div class="s">${isAr?'الخبرة العملية':'WORK EXPERIENCE'}</div>`;
+                secTitle(isAr?'الخبرة العملية':'Work Experience');
                 exp.forEach(x => {
-                  const end = x.isCurrent?(isAr?'حتى الآن':'Present'):x.endDate;
-                  const dates=[x.startDate,end].filter(Boolean).join(' – ');
-                  const loc=[x.city,x.country].filter(Boolean).join(', ');
-                  html += `<div class="e"><div class="er"><span class="en">${esc(x.jobTitle)}</span><span class="ed">${esc(dates)}</span></div><div class="er"><span class="es">${esc(x.company)}</span><span class="ed">${esc(loc)}</span></div>`;
-                  (x.responsibilities||[]).forEach(r=>{if(r)html+=`<div class="b">${esc(r)}</div>`;});
-                  html += `</div>`;
+                  chkPage();
+                  const end   = x.isCurrent ? (isAr?'حتى الآن':'Present') : (x.endDate||'');
+                  const dates = [x.startDate, end].filter(Boolean).join(' \u2013 ');
+                  const loc   = [x.city, x.country].filter(Boolean).join(', ');
+                  rowLR(x.jobTitle, dates, 10, [17,17,17], 'bold', 7.5);
+                  rowLR(x.company,  loc,   8.5, [42,90,176], 'italic', 7.5);
+                  (x.responsibilities||[]).forEach(r => {
+                    if (!r) return; chkPage();
+                    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(51,51,51);
+                    const rLines = doc.splitTextToSize(r, cw - 5);
+                    rLines.forEach((l,i) => { if(i===0) doc.text('\u2013', lx, y); doc.text(l, lx+4, y); y += 3.8; });
+                  });
+                  y += 2;
                 });
               }
-              const edu = cvData.education || [];
+
+              // ── Education ──
+              const edu = cv.education || [];
               if (edu.length) {
-                html += `<div class="s">${isAr?'التعليم':'EDUCATION'}</div>`;
-                edu.forEach(x=>{
-                  const dates=[x.startDate,x.endDate].filter(Boolean).join(' – ');
-                  const loc=[x.city,x.country].filter(Boolean).join(', ');
-                  html+=`<div class="e"><div class="er"><span class="en">${esc([x.degree,x.major].filter(Boolean).join(' in '))}</span><span class="ed">${esc(dates)}</span></div><div class="er"><span class="es">${esc(x.institution)}</span><span class="ed">${esc(loc)}</span></div>${x.gpa?`<div class="tx">GPA: ${esc(x.gpa)}</div>`:''}</div>`;
+                secTitle(isAr?'التعليم':'Education');
+                edu.forEach(x => {
+                  chkPage();
+                  const dates  = [x.startDate, x.endDate].filter(Boolean).join(' \u2013 ');
+                  const loc    = [x.city, x.country].filter(Boolean).join(', ');
+                  const degree = [x.degree, x.major].filter(Boolean).join(' in ');
+                  rowLR(degree, dates, 10, [17,17,17], 'bold', 7.5);
+                  rowLR(x.institution, loc, 8.5, [42,90,176], 'italic', 7.5);
+                  if (x.gpa) txt('GPA: '+x.gpa, 8.5, [51,51,51], 'normal');
+                  y += 2;
                 });
               }
-              const skills = cvData.skills || [];
+
+              // ── Skills ──
+              const skills = cv.skills || [];
               if (skills.length) {
-                html += `<div class="s">${isAr?'المهارات':'SKILLS'}</div>`;
-                const g={};
-                skills.forEach(s=>{const cat=s.category||(isAr?'عام':'General');(g[cat]=g[cat]||[]).push(s.name);});
-                Object.entries(g).forEach(([cat,names])=>{html+=`<div class="sk"><strong>${esc(cat)}:</strong> ${esc(names.join(' / '))}</div>`;});
-              }
-              const projects = cvData.projects || [];
-              if (projects.length) {
-                html += `<div class="s">${isAr?'المشاريع':'PROJECTS'}</div>`;
-                projects.forEach(x=>{
-                  const dates=[x.startDate,x.endDate].filter(Boolean).join(' – ');
-                  html+=`<div class="e"><div class="er"><span class="en">${esc(x.name)}</span><span class="ed">${esc(dates)}</span></div>${x.description?`<div class="tx">${esc(x.description)}</div>`:''}${x.technologies?.length?`<div class="tx" style="font-style:italic;color:#888;">${isAr?'التقنيات:':'Tech:'} ${esc(x.technologies.join(', '))}</div>`:''}${x.link?`<div class="tx" style="color:#2a5ab0;">${esc(x.link)}</div>`:''}</div>`;
+                secTitle(isAr?'المهارات':'Skills');
+                const g = {};
+                skills.forEach(s => { const c = s.category||(isAr?'عام':'General'); (g[c]=g[c]||[]).push(s.name); });
+                Object.entries(g).forEach(([cat, names]) => {
+                  chkPage();
+                  doc.setFontSize(8.5); doc.setTextColor(51,51,51);
+                  doc.setFont('helvetica','bold');
+                  const lbl = cat + ': '; const lw = doc.getTextWidth(lbl);
+                  doc.text(lbl, lx, y);
+                  doc.setFont('helvetica','normal');
+                  const sLines = doc.splitTextToSize(names.join(' / '), cw - lw); // Fix 2: store once
+                  sLines.forEach((l,i) => { doc.text(l, i===0 ? lx+lw : lx, y); if(i < sLines.length-1) y+=3.8; });
+                  y += 4.2;
                 });
               }
-              const certs = cvData.certificates || [];
+
+              // ── Projects ──
+              const projects = cv.projects || [];
+              if (projects.length) {
+                secTitle(isAr?'المشاريع':'Projects');
+                projects.forEach(x => {
+                  chkPage();
+                  const dates = [x.startDate, x.endDate].filter(Boolean).join(' \u2013 ');
+                  rowLR(x.name, dates, 10, [17,17,17], 'bold', 7.5);
+                  if (x.description) txt(x.description, 8.5, [51,51,51], 'normal');
+                  if (x.technologies?.length) txt((isAr?'التقنيات: ':'Tech: ')+x.technologies.join(', '), 8, [119,119,119], 'italic');
+                  if (x.link) txt(x.link, 8, [42,90,176], 'normal');
+                  y += 2;
+                });
+              }
+
+              // ── Certifications ──
+              const certs = cv.certificates || [];
               if (certs.length) {
-                html += `<div class="s">${isAr?'الشهادات':'CERTIFICATIONS'}</div>`;
-                certs.forEach(x=>{html+=`<div class="e"><div class="er"><span class="en">${esc(x.name)}</span><span class="ed">${esc(x.issueDate)}</span></div><div class="es">${esc(x.issuer)}</div>${x.credentialId?`<div class="tx">ID: ${esc(x.credentialId)}</div>`:''}</div>`;});
+                secTitle(isAr?'الشهادات':'Certifications');
+                certs.forEach(x => {
+                  chkPage();
+                  rowLR(x.name, x.issueDate, 10, [17,17,17], 'bold', 7.5);
+                  if (x.issuer) txt(x.issuer, 8.5, [42,90,176], 'italic');
+                  if (x.credentialId) txt('ID: '+x.credentialId, 8, [85,85,85], 'normal');
+                  y += 2;
+                });
               }
-              const langs = cvData.languages || [];
+
+              // ── Languages ──
+              const langs = cv.languages || [];
               if (langs.length) {
-                html += `<div class="s">${isAr?'اللغات':'LANGUAGES'}</div>`;
-                html += `<div class="tx">${langs.map(l=>`${esc(l.language)}: ${profs[l.proficiency]||''}`).join('    ')}</div>`;
+                secTitle(isAr?'اللغات':'Languages');
+                txt(langs.map(l=>`${l.language}: ${profs[l.proficiency]||''}`).join('    '), 8.5, [51,51,51], 'normal');
               }
-              if (isAr) html += `</div>`;
 
-              const clone = document.createElement('div');
-              clone.innerHTML = html;
-              clone.style.cssText = 'position:fixed;left:-9999px;top:0;width:210mm;background:#fff;color:#111;font-family:Arial,sans-serif;font-size:10pt;line-height:1.45;padding:15mm 15mm;box-sizing:border-box;z-index:-1;';
-              document.body.appendChild(clone);
-              await new Promise(r => setTimeout(r, 80));
-
-              await window.html2pdf().set({
-                margin: 0,
-                filename: `${name}-cv.pdf`,
-                image: { type:'jpeg', quality:1 },
-                html2canvas: { scale:2, useCORS:true, logging:false, width:clone.scrollWidth, windowWidth:clone.scrollWidth },
-                jsPDF: { unit:'mm', format:'a4', orientation:'portrait' },
-                pagebreak: { mode:['css','legacy'], avoid:['.e','.sk','.b'] },
-              }).from(clone).save();
-
-              document.body.removeChild(clone);
+              const name = (p.fullName||'CV').toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'')||'cv';
+              doc.save(`${name}-cv.pdf`);
               window.toast?.('CV downloaded! ✓', 'success');
+
             } catch(err) {
               console.error(err);
-              window.toast?.('Failed to generate PDF', 'error');
+              window.toast?.('Failed to generate PDF: ' + err.message, 'error');
             } finally {
               dlBtn.disabled = false;
               dlBtn.textContent = '⬇ Download PDF';

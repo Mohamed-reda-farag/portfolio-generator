@@ -1606,132 +1606,276 @@ function save() {
   _renderPreview();
 }
 
-// ── Character limits for PDF text fields ──────────────
-const CHAR_LIMITS = {
-  summary:        400,
-  respBullet:     120,
-  projDescription:200,
-};
+// ════════════════════════════════════════════════════
+// PDF ENGINE — jsPDF (نص حقيقي، ATS-readable، مش صورة)
+// ════════════════════════════════════════════════════
 
-function _truncate(str, limit) {
-  const s = String(str || '');
-  return s.length > limit ? s.slice(0, limit) + '…' : s;
+// تحميل jsPDF مرة واحدة
+function _loadJsPDF() {
+  if (window.jspdf) return Promise.resolve();
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s.onload = res;
+    s.onerror = () => rej(new Error('jsPDF load failed'));
+    document.head.appendChild(s);
+  });
 }
 
-// ── Build clean A4 HTML for PDF (never touches the DOM preview) ──
-function _buildPdfHtml() {
-  const isAr  = _cv.language === 'arabic';
-  const p     = _cv.personal;
+// ── مساعد لتقسيم النص الطويل على سطور بعرض محدد ──
+function _splitText(doc, text, maxWidth) {
+  return doc.splitTextToSize(String(text || ''), maxWidth);
+}
+
+// ── رسم خط أفقي ──
+function _hLine(doc, x1, x2, y, color) {
+  doc.setDrawColor(...color);
+  doc.setLineWidth(0.4);
+  doc.line(x1, y, x2, y);
+}
+
+// ── رسم عنوان قسم بخط تحته ──
+function _sectionTitle(doc, label, y, lx, rx) {
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(26, 58, 107);
+  doc.text(label.toUpperCase(), lx, y);
+  _hLine(doc, lx, rx, y + 1.2, [200, 200, 200]);
+  return y + 5;
+}
+
+// ── كتابة سطر نص عادي مع wrap تلقائي، يرجع الـ y الجديد ──
+function _textBlock(doc, text, x, y, maxWidth, fontSize, color, style, bottomMargin) {
+  doc.setFont('helvetica', style || 'normal');
+  doc.setFontSize(fontSize || 8.5);
+  doc.setTextColor(...(color || [51, 51, 51]));
+  const lines = _splitText(doc, text, maxWidth);
+  lines.forEach(line => { doc.text(line, x, y); y += (fontSize || 8.5) * 0.3528 * 1.45; });
+  return y + (bottomMargin || 0);
+}
+
+// ── صف فيه نصين: يسار وبيين ──
+function _entryRow(doc, left, right, x, rx, y, lSize, lColor, lStyle, rSize, rColor) {
+  if (left) {
+    doc.setFont('helvetica', lStyle || 'bold');
+    doc.setFontSize(lSize || 10);
+    doc.setTextColor(...(lColor || [17, 17, 17]));
+    doc.text(String(left), x, y);
+  }
+  if (right) {
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(rSize || 7.5);
+    doc.setTextColor(...(rColor || [136, 136, 136]));
+    doc.text(String(right), rx, y, { align: 'right' });
+  }
+  return y + (lSize || 10) * 0.3528 * 1.4;
+}
+
+// ── التحقق من الصفحة وإضافة جديدة إذا لزم ──
+function _checkPage(doc, y, margin, pageH) {
+  if (y > pageH - margin) {
+    doc.addPage();
+    return margin;
+  }
+  return y;
+}
+
+// ── الدالة الرئيسية لبناء الـ PDF ──
+function _buildPdfWithJsPDF(cvData) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+
+  const isAr   = cvData.language === 'arabic';
+  const p      = cvData.personal || {};
+  const pageW  = 210;
+  const pageH  = 297;
+  const lx     = 15;          // left margin
+  const rx     = pageW - 15;  // right margin
+  const cw     = rx - lx;     // content width
+  const btm    = 20;          // bottom safe zone
+
   const PROF_EN = ['Elementary','Limited Working','Professional','Full Professional','Native / Bilingual'];
   const PROF_AR = ['أساسية','محدودة','احترافية','احترافية كاملة','اللغة الأم'];
-  const profs = isAr ? PROF_AR : PROF_EN;
+  const profs   = isAr ? PROF_AR : PROF_EN;
 
-  // inline styles only — no external CSS needed inside the clone
-  const S = {
-    wrap:    'font-family:Arial,Helvetica,sans-serif;font-size:10pt;line-height:1.45;color:#111;width:180mm;padding:0;margin:0;',
-    name:    'font-size:17pt;font-weight:700;color:#1a3a6b;margin:0 0 2pt;',
-    title:   'font-size:11pt;color:#2a5ab0;margin:0 0 3pt;',
-    contact: 'font-size:8.5pt;color:#555;margin:0 0 2pt;',
-    divider: 'height:2pt;background:#1a3a6b;margin:7pt 0;',
-    secTitle:'font-size:8.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#1a3a6b;border-bottom:1pt solid #ccc;padding-bottom:2pt;margin:9pt 0 4pt;',
-    entry:   'margin-bottom:6pt;page-break-inside:avoid;',
-    eRow:    'display:flex;justify-content:space-between;align-items:baseline;',
-    eName:   'font-weight:700;font-size:10pt;',
-    eDate:   'font-size:7.5pt;color:#888;font-style:italic;',
-    eSub:    'font-size:8.5pt;color:#2a5ab0;font-style:italic;',
-    bullet:  'font-size:8.5pt;color:#333;padding-left:9pt;position:relative;margin-bottom:1.5pt;page-break-inside:avoid;',
-    bDash:   'position:absolute;left:0;',
-    text:    'font-size:8.5pt;color:#333;line-height:1.45;margin:0 0 2pt;',
-    skRow:   'font-size:8.5pt;color:#333;margin-bottom:2.5pt;page-break-inside:avoid;',
-  };
+  let y = 18;
 
-  let h = `<div style="${S.wrap}" ${isAr ? 'dir="rtl"' : ''}>`;
+  // ── الاسم ──
+  if (p.fullName) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(20);
+    doc.setTextColor(26, 58, 107);
+    doc.text(p.fullName, lx, y);
+    y += 7;
+  }
 
-  if (p.fullName) h += `<div style="${S.name}">${_esc(p.fullName)}</div>`;
-  if (p.jobTitle) h += `<div style="${S.title}">${_esc(p.jobTitle)}</div>`;
+  // ── المسمى الوظيفي ──
+  if (p.jobTitle) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.setTextColor(42, 90, 176);
+    doc.text(p.jobTitle, lx, y);
+    y += 5.5;
+  }
 
-  const contact = [p.email, p.phone, [p.city,p.country].filter(Boolean).join(', ')].filter(Boolean).join('  ·  ');
-  const links   = [p.linkedIn, p.github, p.portfolio].filter(Boolean).join('  ·  ');
-  if (contact) h += `<div style="${S.contact}">${_esc(contact)}</div>`;
-  if (links)   h += `<div style="${S.contact}">${_esc(links)}</div>`;
+  // ── بيانات التواصل ──
+  const contactParts = [p.email, p.phone, [p.city, p.country].filter(Boolean).join(', ')].filter(Boolean);
+  const linkParts    = [p.linkedIn, p.github, p.portfolio].filter(Boolean);
 
-  if (p.fullName || p.jobTitle) h += `<div style="${S.divider}"></div>`;
+  if (contactParts.length) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(85, 85, 85);
+    const contactLines = doc.splitTextToSize(contactParts.join('  |  '), cw);
+    contactLines.forEach(line => { doc.text(line, lx, y); y += 4; });
+  }
+  if (linkParts.length) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(42, 90, 176);
+    const linkLines = doc.splitTextToSize(linkParts.join('  |  '), cw);
+    linkLines.forEach(line => { doc.text(line, lx, y); y += 4; });
+  }
 
+  // ── خط فاصل ──
+  if (p.fullName || p.jobTitle) {
+    doc.setDrawColor(26, 58, 107);
+    doc.setLineWidth(0.8);
+    doc.line(lx, y, rx, y);
+    y += 5;
+  }
+
+  // ── الملخص ──
   if (p.summary) {
-    h += `<div style="${S.secTitle}">${isAr?'الملخص المهني':'PROFESSIONAL SUMMARY'}</div>`;
-    h += `<div style="${S.text}">${_esc(_truncate(p.summary, CHAR_LIMITS.summary))}</div>`;
+    y = _checkPage(doc, y, btm, pageH);
+    y = _sectionTitle(doc, isAr ? 'الملخص المهني' : 'Professional Summary', y, lx, rx);
+    y = _textBlock(doc, p.summary, lx, y, cw, 8.5, [51, 51, 51], 'normal', 3);
   }
 
-  if (_cv.experience.length) {
-    h += `<div style="${S.secTitle}">${isAr?'الخبرة العملية':'WORK EXPERIENCE'}</div>`;
-    _cv.experience.forEach(exp => {
-      const end   = exp.isCurrent ? (isAr?'حتى الآن':'Present') : exp.endDate;
-      const dates = [exp.startDate, end].filter(Boolean).join(' – ');
-      const loc   = [exp.city, exp.country].filter(Boolean).join(', ');
-      h += `<div style="${S.entry}">`;
-      h += `<div style="${S.eRow}"><span style="${S.eName}">${_esc(exp.jobTitle)}</span><span style="${S.eDate}">${_esc(dates)}</span></div>`;
-      h += `<div style="${S.eRow}"><span style="${S.eSub}">${_esc(exp.company)}</span><span style="${S.eDate}">${_esc(loc)}</span></div>`;
-      (exp.responsibilities||[]).forEach(r => {
+  // ── الخبرة العملية ──
+  const exp = cvData.experience || [];
+  if (exp.length) {
+    y = _checkPage(doc, y, btm, pageH);
+    y = _sectionTitle(doc, isAr ? 'الخبرة العملية' : 'Work Experience', y, lx, rx);
+    exp.forEach(x => {
+      y = _checkPage(doc, y, btm, pageH);
+      const end   = x.isCurrent ? (isAr ? 'حتى الآن' : 'Present') : (x.endDate || '');
+      const dates = [x.startDate, end].filter(Boolean).join(' – ');
+      const loc   = [x.city, x.country].filter(Boolean).join(', ');
+      // اسم الوظيفة + التاريخ
+      y = _entryRow(doc, x.jobTitle, dates, lx, rx, y, 10, [17,17,17], 'bold', 7.5, [136,136,136]);
+      // الشركة + الموقع
+      y = _entryRow(doc, x.company, loc, lx, rx, y, 8.5, [42,90,176], 'italic', 7.5, [136,136,136]);
+      // المسؤوليات
+      (x.responsibilities || []).forEach(r => {
         if (!r) return;
-        h += `<div style="${S.bullet}"><span style="${S.bDash}">–</span>${_esc(_truncate(r, CHAR_LIMITS.respBullet))}</div>`;
+        y = _checkPage(doc, y, btm, pageH);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.5);
+        doc.setTextColor(51, 51, 51);
+        const lines = _splitText(doc, r, cw - 5);
+        lines.forEach((line, i) => {
+          if (i === 0) {
+            doc.text('\u2013', lx, y);
+            doc.text(line, lx + 4, y);
+          } else {
+            doc.text(line, lx + 4, y);
+          }
+          y += 3.8;
+        });
       });
-      h += `</div>`;
+      y += 2;
     });
   }
 
-  if (_cv.education.length) {
-    h += `<div style="${S.secTitle}">${isAr?'التعليم':'EDUCATION'}</div>`;
-    _cv.education.forEach(edu => {
-      const dates = [edu.startDate, edu.endDate].filter(Boolean).join(' – ');
-      const loc   = [edu.city, edu.country].filter(Boolean).join(', ');
-      h += `<div style="${S.entry}">`;
-      h += `<div style="${S.eRow}"><span style="${S.eName}">${_esc([edu.degree,edu.major].filter(Boolean).join(' in '))}</span><span style="${S.eDate}">${_esc(dates)}</span></div>`;
-      h += `<div style="${S.eRow}"><span style="${S.eSub}">${_esc(edu.institution)}</span><span style="${S.eDate}">${_esc(loc)}</span></div>`;
-      if (edu.gpa) h += `<div style="${S.text}">GPA: ${_esc(edu.gpa)}</div>`;
-      h += `</div>`;
+  // ── التعليم ──
+  const edu = cvData.education || [];
+  if (edu.length) {
+    y = _checkPage(doc, y, btm, pageH);
+    y = _sectionTitle(doc, isAr ? 'التعليم' : 'Education', y, lx, rx);
+    edu.forEach(x => {
+      y = _checkPage(doc, y, btm, pageH);
+      const dates   = [x.startDate, x.endDate].filter(Boolean).join(' – ');
+      const loc     = [x.city, x.country].filter(Boolean).join(', ');
+      const degree  = [x.degree, x.major].filter(Boolean).join(' in ');
+      y = _entryRow(doc, degree, dates, lx, rx, y, 10, [17,17,17], 'bold', 7.5, [136,136,136]);
+      y = _entryRow(doc, x.institution, loc, lx, rx, y, 8.5, [42,90,176], 'italic', 7.5, [136,136,136]);
+      if (x.gpa) y = _textBlock(doc, 'GPA: ' + x.gpa, lx, y, cw, 8.5, [51,51,51], 'normal', 0);
+      y += 2;
     });
   }
 
-  if (_cv.skills.length) {
-    h += `<div style="${S.secTitle}">${isAr?'المهارات':'SKILLS'}</div>`;
+  // ── المهارات ──
+  const skills = cvData.skills || [];
+  if (skills.length) {
+    y = _checkPage(doc, y, btm, pageH);
+    y = _sectionTitle(doc, isAr ? 'المهارات' : 'Skills', y, lx, rx);
     const grouped = {};
-    _cv.skills.forEach(s => { const cat = s.category||(isAr?'عام':'General'); (grouped[cat]=grouped[cat]||[]).push(s.name); });
-    Object.entries(grouped).forEach(([cat,names]) => {
-      h += `<div style="${S.skRow}"><strong>${_esc(cat)}:</strong> ${_esc(names.join(' / '))}</div>`;
+    skills.forEach(s => {
+      const cat = s.category || (isAr ? 'عام' : 'General');
+      (grouped[cat] = grouped[cat] || []).push(s.name);
+    });
+    Object.entries(grouped).forEach(([cat, names]) => {
+      y = _checkPage(doc, y, btm, pageH);
+      doc.setFontSize(8.5);
+      // اسم الفئة بولد
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(51, 51, 51);
+      const catLabel = cat + ': ';
+      const catW = doc.getTextWidth(catLabel);
+      doc.text(catLabel, lx, y);
+      // المهارات بعدها
+      doc.setFont('helvetica', 'normal');
+      const skillsText = names.join(' / ');
+      const skillLines = _splitText(doc, skillsText, cw - catW);
+      skillLines.forEach((line, i) => {
+        doc.text(line, i === 0 ? lx + catW : lx, y);
+        if (i < skillLines.length - 1) y += 3.8;
+      });
+      y += 4.2;
     });
   }
 
-  if (_cv.projects.length) {
-    h += `<div style="${S.secTitle}">${isAr?'المشاريع':'PROJECTS'}</div>`;
-    _cv.projects.forEach(proj => {
-      const dates = [proj.startDate, proj.endDate].filter(Boolean).join(' – ');
-      h += `<div style="${S.entry}">`;
-      h += `<div style="${S.eRow}"><span style="${S.eName}">${_esc(proj.name)}</span><span style="${S.eDate}">${_esc(dates)}</span></div>`;
-      if (proj.description) h += `<div style="${S.text}">${_esc(_truncate(proj.description, CHAR_LIMITS.projDescription))}</div>`;
-      if (proj.technologies?.length) h += `<div style="${S.text};font-style:italic;color:#777;">${isAr?'التقنيات:':'Tech:'} ${_esc(proj.technologies.join(', '))}</div>`;
-      if (proj.link) h += `<div style="${S.text};color:#2a5ab0;">${_esc(proj.link)}</div>`;
-      h += `</div>`;
+  // ── المشاريع ──
+  const projects = cvData.projects || [];
+  if (projects.length) {
+    y = _checkPage(doc, y, btm, pageH);
+    y = _sectionTitle(doc, isAr ? 'المشاريع' : 'Projects', y, lx, rx);
+    projects.forEach(x => {
+      y = _checkPage(doc, y, btm, pageH);
+      const dates = [x.startDate, x.endDate].filter(Boolean).join(' – ');
+      y = _entryRow(doc, x.name, dates, lx, rx, y, 10, [17,17,17], 'bold', 7.5, [136,136,136]);
+      if (x.description) y = _textBlock(doc, x.description, lx, y, cw, 8.5, [51,51,51], 'normal', 0);
+      if (x.technologies?.length) y = _textBlock(doc, (isAr ? 'التقنيات: ' : 'Tech: ') + x.technologies.join(', '), lx, y, cw, 8, [119,119,119], 'italic', 0);
+      if (x.link)  y = _textBlock(doc, x.link, lx, y, cw, 8, [42,90,176], 'normal', 0);
+      y += 2;
     });
   }
 
-  if (_cv.certificates.length) {
-    h += `<div style="${S.secTitle}">${isAr?'الشهادات':'CERTIFICATIONS'}</div>`;
-    _cv.certificates.forEach(cert => {
-      h += `<div style="${S.entry}">`;
-      h += `<div style="${S.eRow}"><span style="${S.eName}">${_esc(cert.name)}</span><span style="${S.eDate}">${_esc(cert.issueDate)}</span></div>`;
-      h += `<div style="${S.eSub}">${_esc(cert.issuer)}</div>`;
-      if (cert.credentialId) h += `<div style="${S.text}">ID: ${_esc(cert.credentialId)}</div>`;
-      h += `</div>`;
+  // ── الشهادات ──
+  const certs = cvData.certificates || [];
+  if (certs.length) {
+    y = _checkPage(doc, y, btm, pageH);
+    y = _sectionTitle(doc, isAr ? 'الشهادات' : 'Certifications', y, lx, rx);
+    certs.forEach(x => {
+      y = _checkPage(doc, y, btm, pageH);
+      y = _entryRow(doc, x.name, x.issueDate, lx, rx, y, 10, [17,17,17], 'bold', 7.5, [136,136,136]);
+      if (x.issuer) y = _textBlock(doc, x.issuer, lx, y, cw, 8.5, [42,90,176], 'italic', 0);
+      if (x.credentialId) y = _textBlock(doc, 'ID: ' + x.credentialId, lx, y, cw, 8, [85,85,85], 'normal', 0);
+      y += 2;
     });
   }
 
-  if (_cv.languages.length) {
-    h += `<div style="${S.secTitle}">${isAr?'اللغات':'LANGUAGES'}</div>`;
-    h += `<div style="${S.text}">${_cv.languages.map(l=>`${_esc(l.language)}: ${profs[l.proficiency]||''}`).join('    ')}</div>`;
+  // ── اللغات ──
+  const langs = cvData.languages || [];
+  if (langs.length) {
+    y = _checkPage(doc, y, btm, pageH);
+    y = _sectionTitle(doc, isAr ? 'اللغات' : 'Languages', y, lx, rx);
+    const langText = langs.map(l => `${l.language}: ${profs[l.proficiency] || ''}`).join('    ');
+    y = _textBlock(doc, langText, lx, y, cw, 8.5, [51,51,51], 'normal', 0);
   }
 
-  h += `</div>`;
-  return h;
+  return doc;
 }
 
 async function downloadPdf() {
@@ -1740,42 +1884,14 @@ async function downloadPdf() {
   btn.textContent = '⏳ Generating...';
 
   try {
-    // Lazy-load html2pdf
-    if (!window.html2pdf) {
-      await new Promise((res, rej) => {
-        const s = document.createElement('script');
-        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-        s.onload = res; s.onerror = () => rej(new Error('html2pdf load failed'));
-        document.head.appendChild(s);
-      });
-    }
-
+    await _loadJsPDF();
     save();
+
     const name = (_cv.personal.fullName || 'CV')
-      .toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'') || 'cv';
+      .toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') || 'cv';
 
-    // ── الحل النهائي: html2pdf.from(string) ──────────────
-    // بنبعت HTML string مباشرة — html2pdf بيعمل iframe داخلي
-    // خاص بيه ومش بيتأثر بـ scroll الصفحة الحالية خالص
-    const htmlContent = `<!DOCTYPE html><html><head>
-      <meta charset="UTF-8">
-      <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        html, body { background: #fff; }
-      </style>
-    </head><body>${_buildPdfHtml()}</body></html>`;
-
-    await window.html2pdf()
-      .set({
-        margin:       [15, 15, 15, 15],
-        filename:     `${name}-cv.pdf`,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true, logging: false },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak:    { mode: ['css', 'legacy'] },
-      })
-      .from(htmlContent, 'string')
-      .save();
+    const doc = _buildPdfWithJsPDF(_cv);
+    doc.save(`${name}-cv.pdf`);
 
     window._cvToast('CV downloaded! ✓', 'success');
 
