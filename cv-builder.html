@@ -1394,6 +1394,18 @@ function _updateCompletion() {
   document.getElementById('completion-pct').textContent  = pct + '%';
 }
 
+// ── Character limits ──────────────────────────────────
+const CHAR_LIMITS = {
+  summary:         400,
+  respBullet:      120,
+  projDescription: 200,
+};
+
+function _truncate(str, limit) {
+  const s = String(str || '');
+  return s.length > limit ? s.slice(0, limit) + '…' : s;
+}
+
 // ════════════════════════════════════════════════════
 // ATS PREVIEW
 // ════════════════════════════════════════════════════
@@ -1726,15 +1738,15 @@ function _buildPdfWithJsPDF(cvData) {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
     doc.setTextColor(85, 85, 85);
-    const contactLines = doc.splitTextToSize(contactParts.join('  |  '), cw);
-    contactLines.forEach(line => { doc.text(line, lx, y); y += 4; });
+    doc.text(contactParts.join('  |  '), lx, y);
+    y += 4;
   }
   if (linkParts.length) {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
     doc.setTextColor(42, 90, 176);
-    const linkLines = doc.splitTextToSize(linkParts.join('  |  '), cw);
-    linkLines.forEach(line => { doc.text(line, lx, y); y += 4; });
+    doc.text(linkParts.join('  |  '), lx, y);
+    y += 4;
   }
 
   // ── خط فاصل ──
