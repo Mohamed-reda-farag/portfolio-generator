@@ -12,6 +12,65 @@
   <link rel="stylesheet" href="css/main.css" />
   <link rel="stylesheet" href="css/dashboard.css" />
 
+  <!-- ══ Inline design tokens fallback — يعمل حتى لو main.css مش محمّل ══ -->
+  <style>
+    :root {
+      --clr-bg:#080C0A; --clr-bg-2:#0D1410; --clr-bg-3:#111A14;
+      --clr-surface:#162019;
+      --clr-border:rgba(0,255,136,0.10); --clr-border-dim:rgba(255,255,255,0.05);
+      --clr-accent:#00FF88; --clr-accent-dim:rgba(0,255,136,0.12);
+      --clr-accent-glow:rgba(0,255,136,0.25);
+      --clr-text:#E8F0EB; --clr-text-2:#8A9E90; --clr-text-3:#4A5E52;
+      --clr-text-muted:#8A9E90; --clr-text-inv:#080C0A;
+      --clr-error:#FF4F4F; --clr-warn:#FFB547;
+      --font-display:'Syne',sans-serif; --font-body:'DM Mono',monospace;
+      --fs-xs:0.70rem; --fs-sm:0.80rem; --fs-base:0.875rem; --fs-md:1rem;
+      --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px;
+      --sp-6:24px; --sp-8:32px; --sp-10:40px; --sp-12:48px; --sp-20:80px;
+      --radius-sm:4px; --radius-md:8px; --radius-lg:12px; --radius-full:9999px;
+      --shadow-glow:0 0 24px rgba(0,255,136,0.25);
+      --shadow-glow-sm:0 0 10px rgba(0,255,136,0.3);
+      --ease-out:cubic-bezier(0.16,1,0.3,1); --ease-in:cubic-bezier(0.7,0,0.84,0);
+      --dur-fast:150ms; --dur-base:250ms;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    /* Button fallbacks */
+    .btn {
+      display:inline-flex; align-items:center; justify-content:center;
+      gap:var(--sp-2); padding:12px 24px; border-radius:var(--radius-md);
+      font-family:var(--font-body); font-size:var(--fs-base); font-weight:500;
+      letter-spacing:0.08em; text-transform:uppercase; cursor:pointer;
+      border:none; white-space:nowrap; position:relative; overflow:hidden;
+      transition:background 250ms,color 250ms,box-shadow 250ms,transform 150ms;
+    }
+    .btn:active { transform:scale(0.97); }
+    .btn:disabled { opacity:0.4; cursor:not-allowed; pointer-events:none; }
+    .btn--primary { background:var(--clr-accent); color:var(--clr-text-inv); box-shadow:var(--shadow-glow-sm); }
+    .btn--primary:hover { box-shadow:var(--shadow-glow); }
+    .btn--ghost { background:transparent; color:var(--clr-text); border:1px solid var(--clr-border); }
+    .btn--ghost:hover { border-color:var(--clr-accent); color:var(--clr-accent); background:var(--clr-accent-dim); }
+    .btn--sm { padding:6px 14px !important; font-size:var(--fs-xs) !important; border-radius:var(--radius-sm) !important; }
+    .btn--primary:disabled, .btn--ghost:disabled { opacity:0.4; cursor:not-allowed; pointer-events:none; }
+    /* Toast fallback */
+    .toast-container {
+      position:fixed; bottom:var(--sp-6); right:var(--sp-6);
+      display:flex; flex-direction:column; gap:var(--sp-3);
+      z-index:200; pointer-events:none;
+    }
+    .toast {
+      display:flex; align-items:center; gap:var(--sp-3);
+      background:var(--clr-bg-3); border:1px solid var(--clr-border-dim);
+      border-radius:var(--radius-md); padding:var(--sp-3) var(--sp-4);
+      font-size:var(--fs-sm); color:var(--clr-text);
+      pointer-events:all; min-width:240px; max-width:360px;
+      animation:toast-in 250ms var(--ease-out) forwards;
+    }
+    .toast.is-leaving { animation:toast-out 250ms var(--ease-in) forwards; }
+    @keyframes toast-in  { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:translateX(0)} }
+    @keyframes toast-out { from{opacity:1;transform:translateX(0)} to{opacity:0;transform:translateX(20px)} }
+    @keyframes spin { to { transform:rotate(360deg); } }
+  </style>
+
   <script>
     window.SUPABASE_URL     = "https://zxybqbjsnriwpjehinwb.supabase.co";
     window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4eWJxYmpzbnJpd3BqZWhpbndiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMjI1NDEsImV4cCI6MjA5MDY5ODU0MX0.ED8CX81h78oga482b9pepZPsqfvX7znMqmtO0VRn3AM";
@@ -525,6 +584,41 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/app.js"></script>
   <script src="js/auth.js"></script>
+
+  <!-- ══ Toast fallback — يعمل حتى لو app.js فشل في التحميل ══ -->
+  <script>
+  (function() {
+    function initToastFallback() {
+      if (typeof window.toast === 'function') return;
+      var container = document.getElementById('toast-container');
+      if (!container) return;
+      window.toast = function(message, type, duration) {
+        type = type || 'success'; duration = duration || 4000;
+        var el = document.createElement('div');
+        el.className = 'toast toast--' + type;
+        el.setAttribute('role', 'status');
+        var colors = { success:'#00FF88', error:'#FF4F4F', warn:'#FFB547' };
+        var icons  = { success:'✓', error:'✕', warn:'⚠' };
+        el.innerHTML =
+          '<span style="color:' + (colors[type]||'#00FF88') + ';flex-shrink:0;font-size:14px;">' + (icons[type]||'✓') + '</span>' +
+          '<span>' + message + '</span>';
+        container.appendChild(el);
+        setTimeout(function() {
+          el.classList.add('is-leaving');
+          el.addEventListener('animationend', function(){ el.remove(); }, { once: true });
+          setTimeout(function(){ if (el.parentNode) el.remove(); }, 700);
+        }, duration);
+      };
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initToastFallback);
+    } else {
+      initToastFallback();
+    }
+    window.addEventListener('load', initToastFallback);
+  })();
+  </script>
+
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       if (!window._supabaseClient && window.supabase?.createClient && window.SUPABASE_URL) {
@@ -575,8 +669,8 @@
         if (dlBtn) {
           dlBtn.addEventListener('click', async () => {
             if (!cvData || pct === 0) {
-              alert('Please build your CV first in the CV Builder.');
-              window.location.href = 'cv-builder.html';
+              ( typeof window.toast === 'function' ? window.toast : console.log)('لا يوجد CV — سيتم تحويلك لـ CV Builder.', 'warn');
+              setTimeout(() => { window.location.href = 'cv-builder.html'; }, 1200);
               return;
             }
 
@@ -584,12 +678,18 @@
             dlBtn.textContent = '⏳ Generating…';
 
             try {
-              // تحميل jsPDF
-              if (!window.jspdf) {
+              // تحميل jsPDF مع timeout
+              if (!window.jspdf?.jsPDF) {
                 await new Promise((res, rej) => {
+                  const timer = setTimeout(() => rej(new Error('jsPDF load timed out')), 15000);
                   const s = document.createElement('script');
                   s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-                  s.onload = res; s.onerror = () => rej(new Error('jsPDF load failed'));
+                  s.onload = () => {
+                    clearTimeout(timer);
+                    if (window.jspdf?.jsPDF) { res(); }
+                    else { rej(new Error('jsPDF loaded but class not found')); }
+                  };
+                  s.onerror = () => { clearTimeout(timer); rej(new Error('Failed to load jsPDF from CDN')); };
                   document.head.appendChild(s);
                 });
               }
@@ -733,11 +833,15 @@
 
               const name = (p.fullName||'CV').toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'')||'cv';
               doc.save(`${name}-cv.pdf`);
-              window.toast?.('CV downloaded! ✓', 'success');
+              (window.toast || console.log)('CV downloaded! ✓', 'success');
 
             } catch(err) {
-              console.error(err);
-              window.toast?.('Failed to generate PDF: ' + err.message, 'error');
+              console.error('[Dashboard PDF]', err);
+              if (typeof window.toast === 'function') {
+                window.toast('Failed to generate PDF: ' + (err.message || err), 'error');
+              } else {
+                alert('Failed to generate PDF: ' + (err.message || err));
+              }
             } finally {
               dlBtn.disabled = false;
               dlBtn.textContent = '⬇ Download PDF';
@@ -793,7 +897,7 @@
         btn.textContent = '✓ Copied';
         btn.classList.add('copied');
         setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 2000);
-      } catch { window.toast?.('Copy failed', 'error'); }
+      } catch { ( typeof window.toast === 'function' ? window.toast : console.log)('Copy failed', 'error'); }
     }
 
     function previewPortfolio(slug) {
@@ -979,8 +1083,8 @@
         btn.textContent = '✓ Copied!';
         btn.classList.add('copied');
         setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 2000);
-        window.toast?.('Referral link copied! 🔗', 'success');
-      } catch { window.toast?.('Copy failed', 'error'); }
+        ( typeof window.toast === 'function' ? window.toast : console.log)('Referral link copied! 🔗', 'success');
+      } catch { ( typeof window.toast === 'function' ? window.toast : console.log)('Copy failed', 'error'); }
     }
 
     // ─── Track Referral (لو جه من ref link) ──────────────────
@@ -1142,7 +1246,7 @@
         if (error) throw error;
 
         document.querySelector(`[data-id="${_pendingDeleteId}"]`)?.remove();
-        window.toast?.('Portfolio deleted ✓', 'success');
+        ( typeof window.toast === 'function' ? window.toast : console.log)('Portfolio deleted ✓', 'success');
 
         const remaining = [...document.querySelectorAll('.portfolio-card')];
         $('stat-portfolios').textContent = remaining.length;
@@ -1152,7 +1256,7 @@
           renderGrid([]);
         }
       } catch (err) {
-        window.toast?.('Failed to delete: ' + (err.message || err), 'error');
+        ( typeof window.toast === 'function' ? window.toast : console.log)('Failed to delete: ' + (err.message || err), 'error');
       }
 
       $('delete-modal').classList.remove('active');
