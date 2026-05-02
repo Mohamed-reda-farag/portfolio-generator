@@ -26,7 +26,7 @@ No templates to wrestle with. No design decisions to make. Just paste your GitHu
 
 ### Pro ⚡
 - Everything in Free
-- 3 exclusive themes: Glass 3D, Cyberpunk, Space
+- 8 exclusive themes: Glass 3D, Cyberpunk, Space, Blueprint, Editorial, Liquid, Noir, Terminal
 - All future Pro themes
 - Monthly and yearly plans available
 
@@ -43,7 +43,6 @@ No templates to wrestle with. No design decisions to make. Just paste your GitHu
 | Animations | GSAP |
 | PDF Export | html2pdf.js |
 | Hosting | Vercel |
-| Payment Bot | Telegram Bot (Python) + Railway |
 
 ---
 
@@ -56,7 +55,6 @@ portfolio-generator/
 ├── portfolio.html      # Public portfolio view (by slug)
 ├── dashboard.html      # User dashboard
 ├── cv-builder.html     # ATS CV Builder
-├── auth-bot.html       # Telegram account linking
 ├── pricing.html        # Pricing page
 ├── privacy.html        # Privacy Policy
 ├── terms.html          # Terms of Service
@@ -69,16 +67,30 @@ portfolio-generator/
 │       ├── light.css
 │       ├── dark.css
 │       ├── minimal.css
-│       ├── glass3d.css   # Pro
-│       ├── cyberpunk.css # Pro
-│       └── space.css     # Pro
+│       ├── glass3d.css    # Pro
+│       ├── cyberpunk.css  # Pro
+│       ├── space.css      # Pro
+│       ├── blueprint.css  # Pro
+│       ├── editorial.css  # Pro
+│       ├── liquid.css     # Pro
+│       ├── noir.css       # Pro
+│       └── terminal.css   # Pro
 │
 ├── js/
 │   ├── app.js          # GSAP animations + toast system
 │   ├── auth.js         # GitHub OAuth via Supabase
 │   ├── github.js       # GitHub API + smart sorting
 │   ├── ai.js           # Edge Function call + progress bar
-│   └── portfolio.js    # Inline editing + theme switcher + paywall
+│   ├── portfolio.js    # Inline editing + theme switcher + paywall
+│   └── themes/         # Per-theme interactive effects
+│       ├── blueprint.js
+│       ├── cyberpunk.js
+│       ├── editorial.js
+│       ├── glass3d.js
+│       ├── liquid.js
+│       ├── noir.js
+│       ├── space.js
+│       └── terminal.js
 │
 └── supabase/
     └── functions/
@@ -107,14 +119,16 @@ referrals      — id, referrer_id, referred_id, created_at
 
 ## Payment & Activation System
 
-Payments are handled manually via InstaPay / Vodafone Cash. A Telegram bot manages the flow:
+Payments are handled manually via InstaPay / Vodafone Cash.
 
 ```
-User sends payment screenshot to @GPORT_Payment_BOT
+User sends payment screenshot to @medo_faraj on Telegram
               ↓
-Admin reviews and approves (one tap)
+Admin reviews and confirms payment
               ↓
-Bot generates HMAC activation code and sends it to user
+Admin generates HMAC activation code using local admin tool
+              ↓
+Code is sent to the user via Telegram
               ↓
 User enters code on the website → Pro activated instantly
 ```
@@ -184,42 +198,11 @@ Use any static server (e.g. Live Server in VS Code) on port 5500.
 
 ---
 
-## Telegram Bot (Optional)
-
-The payment bot lives in a separate repository:
-
-```
-github.com/Mohamed-reda-farag/gport-bot
-```
-
-**Setup:**
-```bash
-pip install python-telegram-bot python-dotenv httpx
-cp .env.example .env   # fill in your values
-python telegram_bot.py
-```
-
-**Required environment variables:**
-```
-TELEGRAM_BOT_TOKEN
-ADMIN_CHAT_ID
-GPORT_SECRET          # must match the value in portfolio.js
-SUPABASE_URL
-SUPABASE_SERVICE_KEY
-SITE_URL
-PAYMENT_NUMBER
-PRICE_MONTHLY
-PRICE_YEARLY
-```
-
----
-
 ## Deployment
 
 | Service | Purpose |
 |---|---|
 | Vercel | Static site hosting (auto-deploy on push) |
-| Railway | Telegram bot (24/7 Python worker) |
 | Supabase | Database, auth, edge functions |
 
 ---
