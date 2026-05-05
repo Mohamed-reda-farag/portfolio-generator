@@ -69,7 +69,7 @@ interface LinkedInResponse {
   posts: ProjectPost[];
 }
 
-// ─── CORS Headers ────────────────────────────────────────────────────────────
+// ─── CORS Headers ─────────────────────────────────────────────────────────────
 
 const ALLOWED_ORIGINS = [
   "https://portfolio-generator-taupe.vercel.app",
@@ -90,7 +90,7 @@ function getCorsHeaders(requestOrigin: string | null): Record<string, string> {
   };
 }
 
-// ─── Helper: Update generation status ────────────────────────────────────────
+// ─── Helper: Update generation status ─────────────────────────────────────────
 
 async function updateGenerationStatus(
   supabase: ReturnType<typeof createClient>,
@@ -105,18 +105,85 @@ async function updateGenerationStatus(
     .eq("id", generationId);
 }
 
-// ─── Helper: Build Prompt ─────────────────────────────────────────────────────
+// ─── Score Calculation (deterministic — not AI) ───────────────────────────────
 
-function buildPrompt(req: LinkedInRequest): { system: string; user: string } {
+function calculateScore(data: LinkedInRequest["githubData"]): {
+  score: number;
+  breakdown: ScoreBreakdown;
+} {
+  const { user, top_repos, languages } = data;
+
+  // ── readme_quality (0-20) ──
+  const reposWithReadme = top_repos.filter((r) => r.readme && r.readme.length > 100);
+  const reposWithLongReadme = top_repos.filter((r) => r.readme && r.readme.length > 500);
+  const readme_quality = Math.round(
+    Math.min(20, (reposWithReadme.length / Math.max(top_repos.length, 1)) * 12 +
+      (reposWithLongReadme.length / Math.max(top_repos.length, 1)) * 8)
+  );
+
+  // ── commit_frequency (0-20) ──
+  const ninetyDaysAgo = Date.now() - 90 * 24 * 3600 * 1000;
+  const thirtyDaysAgo = Date.now() - 30 * 24 * 3600 * 1000;
+  const activeIn90 = top_repos.filter(
+    (r) => r.pushed_at && new Date(r.pushed_at).getTime() > ninetyDaysAgo
+  ).length;
+  const activeIn30 = top_repos.filter(
+    (r) => r.pushed_at && new Date(r.pushed_at).getTime() > thirtyDaysAgo
+  ).length;
+  const commit_frequency = Math.round(Math.min(20, activeIn30 * 5 + activeIn90 * 2));
+
+  // ── repo_descriptions (0-20) ──
+  const reposWithDesc = top_repos.filter(
+    (r) => r.description && r.description.trim().length > 10
+  );
+  const repo_descriptions = Math.round(
+    Math.min(20, (reposWithDesc.length / Math.max(top_repos.length, 1)) * 20)
+  );
+
+  // ── project_diversity (0-20) ──
+  const uniqueLangs = (languages || []).length;
+  const uniqueTopics = new Set(top_repos.flatMap((r) => r.topics || [])).size;
+  const project_diversity = Math.round(Math.min(20, uniqueLangs * 2.5 + uniqueTopics * 0.5));
+
+  // ── profile_completeness (0-20) ──
+  const fields = [user.bio, user.location, user.company, user.blog];
+  const filledFields = fields.filter(Boolean).length;
+  const hasAvatar = true; // GitHub OAuth يضمن وجود الـ avatar
+  const profile_completeness = Math.round(
+    filledFields * 4 + (hasAvatar ? 4 : 0)
+  );
+
+  const score = Math.min(
+    100,
+    readme_quality + commit_frequency + repo_descriptions +
+    project_diversity + profile_completeness
+  );
+
+  return {
+    score,
+    breakdown: {
+      readme_quality,
+      commit_frequency,
+      repo_descriptions,
+      project_diversity,
+      profile_completeness,
+    },
+  };
+}
+
+// ─── Helper: Build Prompt ──────────────────────────────────────────────────────
+
+function buildPrompt(
+  req: LinkedInRequest,
+  scoreData: { score: number; breakdown: ScoreBreakdown }
+): { system: string; user: string } {
   const { user, top_repos, languages, total_stars, total_repos } = req.githubData;
   const lang = req.lang || "en";
   const isArabic = lang === "ar";
   const fullName = user.name || user.login;
 
-  // Top languages
   const topLangs = (languages || []).slice(0, 8).map((l) => l.language);
 
-  // Account age in years
   const accountAge = user.created_at
     ? Math.floor(
         (Date.now() - new Date(user.created_at).getTime()) /
@@ -124,152 +191,139 @@ function buildPrompt(req: LinkedInRequest): { system: string; user: string } {
       )
     : 1;
 
-  // Repos with descriptions
-  const reposWithDesc = (top_repos || []).filter((r) => r.description && r.description.trim().length > 10);
-  const reposWithReadme = (top_repos || []).filter((r) => r.readme && r.readme.length > 100);
-
-  // Recent activity (repos pushed in last 90 days)
-  const ninetyDaysAgo = Date.now() - 90 * 24 * 3600 * 1000;
-  const recentlyActive = (top_repos || []).filter(
-    (r) => r.pushed_at && new Date(r.pushed_at).getTime() > ninetyDaysAgo
-  );
-
-  // Prepare repo summaries for prompt
+  // Rich repo summaries
   const repoSummaries = (top_repos || []).slice(0, 6).map((r) => ({
     name: r.name,
     description: r.description || "",
     language: r.language || "",
     stars: r.stars || 0,
-    topics: (r.topics || []).slice(0, 5),
+    topics: (r.topics || []).slice(0, 6),
     readme_snippet: r.readme
-      ? r.readme.slice(0, 400).replace(/\n+/g, " ").trim()
+      ? r.readme
+          .slice(0, 1000)
+          .replace(/#{1,6}\s/g, "")
+          .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+          .replace(/!\[[^\]]*\]\([^)]+\)/g, "")
+          .replace(/\n+/g, " ")
+          .trim()
       : "",
     url: r.html_url || `https://github.com/${user.login}/${r.name}`,
   }));
 
-  const viralTag = isArabic
-    ? `\n\n🔗 Generated by DevPresence · portfolio-generator-taupe.vercel.app/linkedin.html`
-    : `\n\n🔗 Generated by DevPresence · portfolio-generator-taupe.vercel.app/linkedin.html`;
+  // viral tag — always English for brand consistency
+  const viralTag = `\n\n🔗 Generated by DevPresence · portfolio-generator-taupe.vercel.app/linkedin.html`;
 
-  const systemAr = `أنت خبير في بناء الحضور المهني على LinkedIn للمطورين.
-مهمتك: تحليل بيانات GitHub وإنشاء محتوى LinkedIn احترافي وجذاب.
-اكتب بالعربية الفصحى الواضحة، مع الحفاظ على المصطلحات التقنية بالإنجليزية.
+  // ── System Prompts ──
+  const systemAr = `أنت خبير في بناء الحضور المهني على LinkedIn للمطورين وكتابة المحتوى الذي يحقق انتشاراً واسعاً.
+تعرف بالضبط ما الذي يجعل منشور LinkedIn يحصل على آلاف التفاعلات: hook قوي، قصة حقيقية، قيمة واضحة، CTA جذاب.
+مهمتك: إنشاء محتوى LinkedIn يجعل المطور يبرز فعلاً — بناءً على بيانات GitHub الحقيقية.
+اكتب بالعربية الفصحى السلسة، مع الحفاظ على المصطلحات التقنية بالإنجليزية.
+الـ weak_points يجب أن تكون 3 خطوات محددة وقابلة للتنفيذ في أقل من أسبوع.
 IMPORTANT: أجب دائماً بـ JSON صالح فقط — بدون markdown أو backticks أو مقدمة.`;
 
-  const systemEn = `You are an expert LinkedIn personal brand strategist for software developers.
-Your job: analyze GitHub data and generate compelling, authentic LinkedIn content.
-Be specific, data-driven, and professional. Avoid generic phrases.
+  const systemEn = `You are a top LinkedIn content strategist and personal brand expert for software developers.
+You know exactly what makes a LinkedIn post go viral: a scroll-stopping hook, a relatable story, concrete value, and a strong CTA.
+Your job: create LinkedIn content that makes this developer genuinely stand out — based on their real GitHub data.
+Weak points must be exactly 3 specific, actionable steps completable in under a week.
 IMPORTANT: Always respond with valid JSON only — no markdown, no backticks, no preamble.`;
 
-  const promptAr = `بناءً على بيانات GitHub التالية، أنشئ محتوى LinkedIn احترافياً:
+  // ── Arabic User Prompt ──
+  const promptAr = `بناءً على بيانات GitHub التالية، أنشئ محتوى LinkedIn احترافياً يحقق انتشاراً حقيقياً:
 
 المطور: ${fullName}
 GitHub: ${user.login}
 المتابعون: ${user.followers}
-المتابَعون: ${user.following}
 المستودعات العامة: ${total_repos}
 إجمالي النجوم: ${total_stars}
-سنوات الخبرة (تقديرياً): ${accountAge}+
+سنوات على GitHub: ${accountAge}+
 اللغات الأساسية: ${topLangs.join(", ")}
 النبذة على GitHub: ${user.bio || "غير محددة"}
 الموقع: ${user.location || "غير محدد"}
 الشركة: ${user.company || "غير محددة"}
 
-أهم المستودعات:
+الـ Score المحسوب مسبقاً (لا تغيره):
+- الإجمالي: ${scoreData.score}/100
+- readme_quality: ${scoreData.breakdown.readme_quality}/20
+- commit_frequency: ${scoreData.breakdown.commit_frequency}/20
+- repo_descriptions: ${scoreData.breakdown.repo_descriptions}/20
+- project_diversity: ${scoreData.breakdown.project_diversity}/20
+- profile_completeness: ${scoreData.breakdown.profile_completeness}/20
+
+أهم المستودعات (اقرأ readme_snippet بعناية قبل كتابة كل منشور):
 ${JSON.stringify(repoSummaries, null, 2)}
 
-إحصائيات للـ Score:
-- مستودعات مع وصف: ${reposWithDesc.length} من ${top_repos.length}
-- مستودعات مع README: ${reposWithReadme.length} من ${top_repos.length}
-- نشاط في آخر 90 يوم: ${recentlyActive.length} مستودع
-- تنوع اللغات: ${topLangs.length} لغة
-
-أنشئ هذا الـ JSON فقط (بدون نص إضافي):
+أنشئ هذا الـ JSON فقط:
 {
-  "score": <رقم من 0 إلى 100 بناءً على تحليل موضوعي>,
-  "score_breakdown": {
-    "readme_quality": <0-20: جودة الـ README والتوثيق>,
-    "commit_frequency": <0-20: انتظام النشاط والـ commits>,
-    "repo_descriptions": <0-20: وصف المستودعات>,
-    "project_diversity": <0-20: تنوع المشاريع والتقنيات>,
-    "profile_completeness": <0-20: اكتمال الملف الشخصي>
-  },
   "weak_points": [
-    "<نقطة ضعف محددة مع اقتراح تحسين>",
-    "<نقطة ضعف 2>",
-    "<نقطة ضعف 3 — اختياري>"
+    "<خطوة 1 محددة وقابلة للتنفيذ — مثال: أضف وصفاً لمستودع X يشرح المشكلة التي يحلها في جملتين>",
+    "<خطوة 2 — محددة بنفس الأسلوب>",
+    "<خطوة 3 — محددة بنفس الأسلوب>"
   ],
-  "headline": "<عنوان LinkedIn واحد — 120 حرف كحد أقصى — محدد ومؤثر>",
-  "about": "<قسم About كامل — 3-5 فقرات — احترافي وجذاب — يبدأ بـ hook قوي>",
+  "headline": "<عنوان LinkedIn — 220 حرف كحد أقصى — يجمع الدور + التقنية + القيمة — لا تستخدم passionate أو love coding>",
+  "about": "<قسم About كامل — 4-5 فقرات — يبدأ بـ hook مميز (إحصائية أو سؤال) ثم الخبرة والمشاريع والمهارات وكيفية التواصل — لا تبدأ بالاسم أو بـ أنا>",
   "posts": [
     {
-      "repo_name": "<اسم المستودع من القائمة>",
-      "post_content": "<منشور LinkedIn جاهز للنشر — 150-300 كلمة — يبدأ بـ hook — يشرح المشكلة والحل والتقنيات — ينتهي بـ CTA>${viralTag}"
+      "repo_name": "<اسم المستودع من القائمة بالضبط>",
+      "post_content": "<منشور LinkedIn فيروسي — بنية: Hook صادم ← مشكلة ← رحلة البناء ← تقنيات مستخرجة من readme ← نتيجة أو درس ← CTA — أسطر فردية وemojis باعتدال${viralTag}"
     }
   ]
 }
 
-قواعد:
-- الـ score موضوعي بناءً على الإحصائيات الفعلية أعلاه
-- weak_points محددة وقابلة للتنفيذ — لا عموميات
-- headline: لا تستخدم "passionate about" أو "love coding"
-- posts: لكل مستودع في القائمة منشور واحد بالترتيب
-- about: يبدأ بـ hook قوي (إحصائية أو سؤال أو جملة مميزة)`;
+قواعد صارمة:
+- weak_points: 3 فقط، محددة جداً — "أضف README لمشروع X" وليس "حسّن التوثيق"
+- headline: لا تستخدم "passionate" أو "love coding" أو "enthusiastic" — ممنوعة
+- posts: منشور واحد لكل مستودع في نفس الترتيب — استخرج تفاصيل حقيقية من readme_snippet
+- كل منشور يجب أن يبدأ بـ hook مختلف تماماً عن الآخرين
+- about: لا تبدأ بـ "أنا" أو اسم المطور`;
 
-  const promptEn = `Based on the following GitHub data, generate professional LinkedIn content:
+  // ── English User Prompt ──
+  const promptEn = `Based on the following GitHub data, generate LinkedIn content that gets real engagement:
 
 Developer: ${fullName}
 GitHub: ${user.login}
 Followers: ${user.followers}
-Following: ${user.following}
 Public Repos: ${total_repos}
 Total Stars: ${total_stars}
-Years on GitHub (estimated): ${accountAge}+
+Years on GitHub: ${accountAge}+
 Primary Languages: ${topLangs.join(", ")}
 GitHub Bio: ${user.bio || "Not provided"}
 Location: ${user.location || "Not provided"}
 Company: ${user.company || "Not provided"}
 
-Top Repositories:
+Pre-calculated Score (do NOT change these values):
+- Total: ${scoreData.score}/100
+- readme_quality: ${scoreData.breakdown.readme_quality}/20
+- commit_frequency: ${scoreData.breakdown.commit_frequency}/20
+- repo_descriptions: ${scoreData.breakdown.repo_descriptions}/20
+- project_diversity: ${scoreData.breakdown.project_diversity}/20
+- profile_completeness: ${scoreData.breakdown.profile_completeness}/20
+
+Top Repositories (read readme_snippet carefully before writing each post):
 ${JSON.stringify(repoSummaries, null, 2)}
 
-Stats for Score Calculation:
-- Repos with description: ${reposWithDesc.length} of ${top_repos.length}
-- Repos with README: ${reposWithReadme.length} of ${top_repos.length}
-- Active in last 90 days: ${recentlyActive.length} repos
-- Language diversity: ${topLangs.length} languages
-
-Generate ONLY this JSON (no extra text):
+Generate ONLY this JSON:
 {
-  "score": <number 0-100 based on objective analysis of above stats>,
-  "score_breakdown": {
-    "readme_quality": <0-20: README quality and documentation>,
-    "commit_frequency": <0-20: activity consistency>,
-    "repo_descriptions": <0-20: repo description quality>,
-    "project_diversity": <0-20: project and tech diversity>,
-    "profile_completeness": <0-20: profile completeness>
-  },
   "weak_points": [
-    "<specific weak point with actionable improvement suggestion>",
-    "<weak point 2>",
-    "<weak point 3 — optional>"
+    "<specific actionable step 1 — e.g. 'Add a README to repo X that explains the problem it solves in 2 sentences'>",
+    "<specific actionable step 2 — same level of specificity>",
+    "<specific actionable step 3 — same level of specificity>"
   ],
-  "headline": "<single LinkedIn headline — max 120 chars — specific and impactful>",
-  "about": "<full About section — 3-5 paragraphs — professional and compelling — starts with a strong hook>",
+  "headline": "<LinkedIn headline — max 220 chars — combine role + tech + value — no 'passionate', 'love coding', 'enthusiastic'>",
+  "about": "<Full About section — 4-5 paragraphs — start with a scroll-stopping hook (a stat or a bold claim) then expertise, key projects with real details, skills, and how to reach them — never start with the developer's name or 'I am'>",
   "posts": [
     {
-      "repo_name": "<exact repo name from list above>",
-      "post_content": "<ready-to-post LinkedIn post — 150-300 words — starts with hook — explains problem/solution/tech — ends with CTA>${viralTag}"
+      "repo_name": "<exact repo name from the list>",
+      "post_content": "<Viral LinkedIn post — structure: Shocking/curious Hook ← Problem ← Building journey ← Specific tech from readme ← Result/Lesson ← CTA — single-line breaks, emojis sparingly${viralTag}"
     }
   ]
 }
 
-Rules:
-- score is objective based on the actual stats provided above
-- weak_points must be specific and actionable — no generic advice
-- headline: avoid "passionate about" or "love coding" clichés
-- posts: one post per repo in the list, in order
-- about: start with a strong hook (stat, question, or standout statement)`;
+Strict rules:
+- weak_points: exactly 3, highly specific — 'Add description to repo X' not 'improve documentation'
+- headline: 'passionate', 'love coding', 'enthusiastic', 'dedicated' are BANNED
+- posts: one per repo in order — mine readme_snippet for real technical details
+- every post must start with a completely different hook type
+- about: never start with "I am" or the developer's name`;
 
   return {
     system: isArabic ? systemAr : systemEn,
@@ -277,11 +331,12 @@ Rules:
   };
 }
 
-// ─── Helper: Call Groq API ────────────────────────────────────────────────────
+// ─── Helper: Call Groq API ─────────────────────────────────────────────────────
 
 async function callGroqAPI(
   prompt: { system: string; user: string },
-  apiKey: string
+  apiKey: string,
+  scoreData: { score: number; breakdown: ScoreBreakdown }
 ): Promise<LinkedInResponse & { _tokensUsed: number }> {
   const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
   const MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
@@ -299,7 +354,7 @@ async function callGroqAPI(
         { role: "user", content: prompt.user },
       ],
       max_tokens: 4000,
-      temperature: 0.72,
+      temperature: 0.68,
       top_p: 0.9,
       response_format: { type: "json_object" },
     }),
@@ -322,7 +377,7 @@ async function callGroqAPI(
 
   const tokensUsed = data?.usage?.total_tokens || 0;
 
-  let parsed: LinkedInResponse;
+  let parsed: Omit<LinkedInResponse, "score" | "score_breakdown">;
   try {
     parsed = JSON.parse(content);
   } catch {
@@ -331,10 +386,7 @@ async function callGroqAPI(
     parsed = JSON.parse(jsonMatch[0]);
   }
 
-  // Validate required fields
   if (
-    typeof parsed.score !== "number" ||
-    !parsed.score_breakdown ||
     !Array.isArray(parsed.weak_points) ||
     !parsed.headline ||
     !parsed.about ||
@@ -343,17 +395,11 @@ async function callGroqAPI(
     throw new Error("INVALID_STRUCTURE: AI response missing required fields.");
   }
 
-  // Sanitize & clamp
   return {
-    score: Math.min(100, Math.max(0, Math.round(parsed.score))),
-    score_breakdown: {
-      readme_quality:       Math.min(20, Math.max(0, Math.round(parsed.score_breakdown.readme_quality || 0))),
-      commit_frequency:     Math.min(20, Math.max(0, Math.round(parsed.score_breakdown.commit_frequency || 0))),
-      repo_descriptions:    Math.min(20, Math.max(0, Math.round(parsed.score_breakdown.repo_descriptions || 0))),
-      project_diversity:    Math.min(20, Math.max(0, Math.round(parsed.score_breakdown.project_diversity || 0))),
-      profile_completeness: Math.min(20, Math.max(0, Math.round(parsed.score_breakdown.profile_completeness || 0))),
-    },
-    weak_points: parsed.weak_points.slice(0, 4).map((w: unknown) => String(w).trim()).filter(Boolean),
+    // Score من الحسبة الحقيقية — مش من الـ AI
+    score: scoreData.score,
+    score_breakdown: scoreData.breakdown,
+    weak_points: parsed.weak_points.slice(0, 3).map((w: unknown) => String(w).trim()).filter(Boolean),
     headline: String(parsed.headline).trim().slice(0, 220),
     about: String(parsed.about).trim(),
     posts: parsed.posts.map((p: { repo_name?: unknown; post_content?: unknown }) => ({
@@ -364,13 +410,12 @@ async function callGroqAPI(
   };
 }
 
-// ─── Main Handler ─────────────────────────────────────────────────────────────
+// ─── Main Handler ──────────────────────────────────────────────────────────────
 
 serve(async (req: Request) => {
   const requestOrigin = req.headers.get("origin");
   const corsHeaders = getCorsHeaders(requestOrigin);
 
-  // CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -387,25 +432,24 @@ serve(async (req: Request) => {
   const groqApiKey = Deno.env.get("GROQ_API_KEY") || "";
 
   if (!groqApiKey) {
-    return new Response(
-      JSON.stringify({ error: "Server configuration error." }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: "Server configuration error." }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
   let generationId = "";
 
   try {
-    // Parse body
     let body: LinkedInRequest;
     try {
       body = await req.json();
     } catch {
-      return new Response(
-        JSON.stringify({ error: "Invalid JSON in request body." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Invalid JSON in request body." }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     if (!body.githubData?.user || !body.githubData?.top_repos) {
@@ -418,7 +462,7 @@ serve(async (req: Request) => {
     const lang = body.lang === "ar" ? "ar" : "en";
     generationId = body.generationId || "";
 
-    // Rate Limiting: reuse ai_generations table — max 5/day per user
+    // Rate limiting
     const authHeader = req.headers.get("authorization") || "";
     const token = authHeader.replace("Bearer ", "").trim();
 
@@ -426,7 +470,6 @@ serve(async (req: Request) => {
       try {
         const { data: userPayload } = await supabase.auth.getUser(token);
         const userId = userPayload?.user?.id;
-
         if (userId) {
           const since24h = new Date(Date.now() - 86_400_000).toISOString();
           const { count } = await supabase
@@ -453,12 +496,17 @@ serve(async (req: Request) => {
 
     await updateGenerationStatus(supabase, generationId, "processing", {
       github_data: body.githubData,
+      function_type: "linkedin",
     });
 
     console.log(`[linkedin-generate] Starting for: ${body.githubData.user.login} | lang: ${lang}`);
 
-    const prompt = buildPrompt({ ...body, lang });
-    const result = await callGroqAPI(prompt, groqApiKey);
+    // ── حساب الـ Score في الكود — مش بالـ AI ──
+    const scoreData = calculateScore(body.githubData);
+    console.log(`[linkedin-generate] Score calculated: ${scoreData.score}/100`);
+
+    const prompt = buildPrompt({ ...body, lang }, scoreData);
+    const result = await callGroqAPI(prompt, groqApiKey, scoreData);
 
     const tokensUsed = result._tokensUsed;
     // @ts-ignore
@@ -468,6 +516,7 @@ serve(async (req: Request) => {
 
     await updateGenerationStatus(supabase, generationId, "completed", {
       tokens_used: tokensUsed,
+      function_type: "linkedin",
     });
 
     return new Response(JSON.stringify({ success: true, data: result }), {
@@ -481,6 +530,7 @@ serve(async (req: Request) => {
 
     await updateGenerationStatus(supabase, generationId, "failed", {
       error_message: errorMessage.slice(0, 500),
+      function_type: "linkedin",
     });
 
     let statusCode = 500;
