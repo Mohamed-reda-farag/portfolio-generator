@@ -23,11 +23,13 @@ No templates to wrestle with. No design decisions to make. Just paste your GitHu
 - Public portfolio URL you can share
 - CV Builder (8-step, ATS-optimised)
 - Referral system — earn discounts by inviting friends
+- LinkedIn Presence — GitHub Profile Score + Headline (limited)
 
 ### Pro ⚡
 - Everything in Free
 - 8 exclusive themes: Glass 3D, Cyberpunk, Space, Blueprint, Editorial, Liquid, Noir, Terminal
 - All future Pro themes
+- LinkedIn Presence — full report, all posts, AR/EN toggle, benchmark
 - Monthly and yearly plans available
 
 ---
@@ -55,6 +57,7 @@ portfolio-generator/
 ├── portfolio.html      # Public portfolio view (by slug)
 ├── dashboard.html      # User dashboard
 ├── cv-builder.html     # ATS CV Builder
+├── linkedin.html       # LinkedIn Presence generator (DevPresence)
 ├── pricing.html        # Pricing page
 ├── privacy.html        # Privacy Policy
 ├── terms.html          # Terms of Service
@@ -94,8 +97,10 @@ portfolio-generator/
 │
 └── supabase/
     └── functions/
-        └── generate/
-            └── index.ts  # Edge Function (Groq API)
+        ├── generate/
+        │   └── index.ts  # Portfolio Edge Function (Groq API)
+        └── linkedin-generate/
+            └── index.ts  # LinkedIn Presence Edge Function (Groq API)
 ```
 
 ---
@@ -110,10 +115,13 @@ users          — id, email, github_username, is_pro, pro_plan,
 portfolios     — id, user_id, bio, skills[], theme, slug, is_published
 projects       — id, portfolio_id, github_repo_name, ai_description,
                  stars, language, topics
-ai_generations — id, user_id, status, github_data, tokens_used
+ai_generations — id, user_id, status, github_data, tokens_used,
+                 function_type, error_message, created_at, updated_at
 used_codes     — code, user_id, code_type, discount, used_at
 referrals      — id, referrer_id, referred_id, created_at
 ```
+
+> `function_type` values: `'portfolio'` (default) | `'linkedin'`
 
 ---
 
@@ -187,9 +195,10 @@ Homepage URL:            http://localhost:5500
 Authorization callback:  https://YOUR_PROJECT.supabase.co/auth/v1/callback
 ```
 
-**4. Deploy the Supabase Edge Function**
+**4. Deploy the Supabase Edge Functions**
 ```bash
 supabase functions deploy generate
+supabase functions deploy linkedin-generate
 ```
 
 **5. Serve locally**
