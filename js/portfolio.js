@@ -865,7 +865,7 @@
   ═══════════════════════════════════════════════════════════════ */
 
   function saveDraft() {
-    const PRO_THEMES = new Set(['glass3d', 'cyberpunk', 'space']);
+    const PRO_THEMES = new Set(['glass3d', 'cyberpunk', 'space', 'editorial', 'noir', 'blueprint', 'terminal', 'liquid']);
     if (!_isPro && PRO_THEMES.has(_draft?.theme)) {
       _showProPaywall('save');
       return;
@@ -883,7 +883,7 @@
     if (btn) { btn.disabled = true; btn.textContent = 'Publishing...'; }
     _showSaveIndicator('saving');
 
-    const PRO_THEMES_SET = new Set(['glass3d', 'cyberpunk', 'space']);
+    const PRO_THEMES_SET = new Set(['glass3d', 'cyberpunk', 'space', 'editorial', 'noir', 'blueprint', 'terminal', 'liquid']);
     if (!_isPro && PRO_THEMES_SET.has(_draft?.theme)) {
       _showProPaywall('publish');
       if (btn) { btn.disabled = false; btn.textContent = 'Publish'; }
