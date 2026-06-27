@@ -586,6 +586,15 @@
 
     .skill-level-dot.filled { background: var(--clr-accent); }
 
+    /* Bug 4B: Locked (read-only) field — email comes from session */
+    .field--locked {
+      background: rgba(0,255,136,0.04) !important;
+      border-color: rgba(0,255,136,0.15) !important;
+      color: var(--clr-text-2, #8A9E90) !important;
+      cursor: not-allowed !important;
+    }
+    .field--locked::after { content: '🔒'; }
+
     /* Download PDF button */
     #download-pdf-btn {
       position: relative; overflow: hidden;
@@ -881,6 +890,24 @@
 })();
 </script>
 
+<!-- ══ Supabase client init — يضمن وجود _supabaseClient لـ auth prefill ══ -->
+<script>
+(function() {
+  function ensureSupabase() {
+    if (window._supabaseClient) return;
+    if (!window.supabase?.createClient || !window.SUPABASE_URL) return;
+    window._supabaseClient = window.supabase.createClient(
+      window.SUPABASE_URL, window.SUPABASE_ANON_KEY
+    );
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', ensureSupabase);
+  } else {
+    ensureSupabase();
+  }
+})();
+</script>
+
 <script>
 ;(function() {
 'use strict';
@@ -907,8 +934,35 @@ let _cv = {
 const STEPS_EN = ['Language','Personal','Summary','Experience','Education','Skills','Projects','Extras'];
 const STEPS_AR = ['اللغة','البيانات','الملخص','الخبرات','التعليم','المهارات','المشاريع','إضافات'];
 
-const SKILL_CATS_EN = ['Programming Languages','Frameworks & Libraries','Databases','Cloud & DevOps','Design','Soft Skills','Other'];
-const SKILL_CATS_AR = ['لغات البرمجة','الأطر والمكتبات','قواعد البيانات','السحابة','التصميم','المهارات الشخصية','أخرى'];
+// Bug 4C: Expanded skill categories covering technical, business, creative, and general roles
+const SKILL_CATEGORIES = [
+  // Technical
+  { id: 'programming',  en: 'Programming Languages',  ar: 'لغات البرمجة' },
+  { id: 'frameworks',   en: 'Frameworks & Libraries',  ar: 'أطر العمل والمكتبات' },
+  { id: 'databases',    en: 'Databases',               ar: 'قواعد البيانات' },
+  { id: 'devops',       en: 'DevOps & Cloud',          ar: 'DevOps والسحابة' },
+  { id: 'design',       en: 'Design & UI/UX',          ar: 'التصميم وتجربة المستخدم' },
+  // Business & Management
+  { id: 'management',  en: 'Project Management',       ar: 'إدارة المشاريع' },
+  { id: 'marketing',   en: 'Marketing & SEO',          ar: 'التسويق وتحسين محركات البحث' },
+  { id: 'sales',       en: 'Sales & CRM',              ar: 'المبيعات وإدارة العملاء' },
+  { id: 'finance',     en: 'Finance & Accounting',     ar: 'المالية والمحاسبة' },
+  { id: 'hr',          en: 'HR & Recruitment',         ar: 'الموارد البشرية والتوظيف' },
+  // Creative
+  { id: 'content',     en: 'Content & Copywriting',    ar: 'كتابة المحتوى' },
+  { id: 'video',       en: 'Video & Photography',      ar: 'الفيديو والتصوير' },
+  { id: 'social',      en: 'Social Media',             ar: 'وسائل التواصل الاجتماعي' },
+  // General
+  { id: 'languages',   en: 'Languages',                ar: 'اللغات' },
+  { id: 'soft_skills', en: 'Soft Skills',              ar: 'المهارات الشخصية' },
+  { id: 'tools',       en: 'Tools & Software',         ar: 'الأدوات والبرامج' },
+  // Custom — shows a text input
+  { id: 'other',       en: 'Other',                    ar: 'أخرى' },
+];
+
+// Computed arrays (used in existing code paths)
+const SKILL_CATS_EN = SKILL_CATEGORIES.map(c => c.en);
+const SKILL_CATS_AR = SKILL_CATEGORIES.map(c => c.ar);
 
 const PROF_EN = ['Elementary','Limited Working','Professional','Full Professional','Native / Bilingual'];
 const PROF_AR = ['أساسية','محدودة','احترافية','احترافية كاملة','اللغة الأم'];
@@ -935,6 +989,7 @@ function init() {
         _cv.personal.portfolio = `${location.origin}/portfolio.html?slug=${draft.githubUsername}`;
         _cv.personal.fullName  = _cv.personal.fullName  || draft.fullName || '';
         _cv.personal.jobTitle  = _cv.personal.jobTitle  || draft.jobTitle || '';
+        // Bug 4A: GitHub is now optional — only pre-fill if available
         _cv.personal.github    = _cv.personal.github    || (draft.githubUsername ? `github.com/${draft.githubUsername}` : '');
       }
     } catch {}
@@ -944,6 +999,84 @@ function init() {
   _renderCurrentStep();
   _updateCompletion();
   _renderPreview();
+
+  // Bug 4B: Pre-fill email from session and lock it (read-only for all users)
+  // The guard is now user.id — not github_username
+  _initAuthPrefill();
+}
+
+// Bug 4B: Fill email from authenticated session — works for both GitHub and Google users
+async function _initAuthPrefill() {
+  try {
+    const sb = window._supabaseClient || (() => {
+      if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) return null;
+      const client = window.supabase?.createClient?.(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+      if (client) window._supabaseClient = client;
+      return client;
+    })();
+    if (!sb) return;
+
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session?.user?.id) return; // Bug 4B: guard is user.id, not github_username
+
+    const userEmail    = session.user.email || '';
+    const userMeta     = session.user.user_metadata || {};
+    const userFullName = userMeta.full_name || userMeta.name || '';
+
+    // Lock the email field — it must come from the session, never user-editable
+    const emailField = document.getElementById('f-email');
+    if (emailField) {
+      emailField.value = userEmail;
+      emailField.setAttribute('readonly', true);
+      emailField.classList.add('field--locked');
+      // Store in CV data immediately
+      _cv.personal.email = userEmail;
+      save();
+    }
+
+    // Pre-fill full name from DB if not already set
+    if (!_cv.personal.fullName && userFullName) {
+      _cv.personal.fullName = userFullName;
+      const nameField = document.getElementById('f-fullname');
+      if (nameField) nameField.value = userFullName;
+      save();
+    }
+
+    // Bug 4A: GitHub is optional — only fetch if user has github_username in DB
+    // No blocking or error if it's missing
+    try {
+      const { data: dbUser } = await sb
+        .from('users')
+        .select('full_name, github_username, auth_provider')
+        .eq('id', session.user.id)
+        .single();
+
+      if (dbUser) {
+        // Fill full_name from DB (more reliable than OAuth meta)
+        if (!_cv.personal.fullName && dbUser.full_name) {
+          _cv.personal.fullName = dbUser.full_name;
+          const nameField = document.getElementById('f-fullname');
+          if (nameField) nameField.value = dbUser.full_name;
+        }
+
+        // Bug 4A: GitHub optional — only fill if present
+        if (dbUser.github_username && !_cv.personal.github) {
+          _cv.personal.github = `github.com/${dbUser.github_username}`;
+          const ghField = document.getElementById('f-github');
+          if (ghField) ghField.value = _cv.personal.github;
+        }
+        // If github_username is null/empty → skip silently, no error
+      }
+    } catch (dbErr) {
+      // DB fetch failure is non-fatal — user can still use the CV builder
+      console.warn('[CV Builder] Could not fetch user DB data (non-fatal):', dbErr.message);
+    }
+
+    _renderPreview();
+  } catch (err) {
+    // Auth failure is non-fatal — CV builder works without auth
+    console.warn('[CV Builder] Auth prefill skipped:', err.message);
+  }
 }
 
 // ════════════════════════════════════════════════════
@@ -987,13 +1120,22 @@ function prevStep() {
 }
 
 function _updateBottomNav() {
+  const isAr = _cv.language === 'arabic';
+
   document.getElementById('prev-btn').style.visibility = _step > 0 ? 'visible' : 'hidden';
+  // Bug 4E: Translate navigation button labels
+  document.getElementById('prev-btn').textContent = isAr ? '→ السابق' : '← Back';
+
   const nextBtn = document.getElementById('next-btn');
   if (_step === TOTAL_STEPS - 1) {
-    nextBtn.textContent = '✓ Save & Finish';
-    nextBtn.onclick = () => { CVBuilder.save(); window._cvToast('CV saved! ✓', 'success'); setTimeout(() => location.href = 'dashboard.html', 1200); };
+    nextBtn.textContent = isAr ? '✓ حفظ وإنهاء' : '✓ Save & Finish';
+    nextBtn.onclick = () => {
+      CVBuilder.save();
+      window._cvToast(isAr ? 'تم حفظ السيرة الذاتية ✓' : 'CV saved! ✓', 'success');
+      setTimeout(() => location.href = 'dashboard.html', 1200);
+    };
   } else {
-    nextBtn.textContent = 'Next →';
+    nextBtn.textContent = isAr ? 'التالي ←' : 'Next →';
     nextBtn.onclick = CVBuilder.nextStep;
   }
   document.getElementById('step-counter').textContent = `${_step + 1} / ${TOTAL_STEPS}`;
@@ -1010,6 +1152,10 @@ function _renderCurrentStep() {
 
   const isAr = _cv.language === 'arabic';
 
+  // Bug 4E: Apply RTL direction to entire form when Arabic is active
+  const cvContent = document.getElementById('cv-content');
+  if (cvContent) cvContent.dir = isAr ? 'rtl' : 'ltr';
+
   // Populate fields from state
   if (_step === 0) _renderStep0();
   if (_step === 1) _renderStep1(isAr);
@@ -1020,8 +1166,56 @@ function _renderCurrentStep() {
   if (_step === 6) _renderProjectsList();
   if (_step === 7) _renderExtras();
 
+  // Bug 4E: Translate step section subtitles
+  _translateStepSubtitles(isAr);
+
   _updateBottomNav();
   _renderPreview();
+}
+
+// Bug 4E: Translate all static section subtitles and labels when Arabic is active
+function _translateStepSubtitles(isAr) {
+  const T = {
+    's1-sub':   { en: 'Your basic contact details. Keep them accurate and professional.',
+                  ar: 'بيانات التواصل الأساسية. احرص على دقتها وأسلوبها المهني.' },
+    's2-sub':   { en: '3-5 sentences highlighting your skills, experience, and goals. The first section ATS scans!',
+                  ar: '3-5 جمل تبرز مهاراتك وخبرتك وأهدافك. أول قسم يفحصه نظام ATS!' },
+    's3-title': { en: 'Work Experience', ar: 'الخبرة العملية' },
+    's4-title': { en: 'Education',       ar: 'التعليم' },
+    's5-title': { en: 'Skills',          ar: 'المهارات' },
+    's6-title': { en: 'Projects',        ar: 'المشاريع' },
+    's7-title': { en: 'Certifications & Languages', ar: 'الشهادات واللغات' },
+    'certs-title': { en: '📜 Certifications', ar: '📜 الشهادات' },
+    'langs-title': { en: '🌐 Languages',      ar: '🌐 اللغات' },
+  };
+
+  Object.entries(T).forEach(([id, { en, ar }]) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = isAr ? ar : en;
+  });
+
+  // "Add" buttons text
+  const addBtnMap = [
+    { selector: 'button[onclick="CVBuilder.addExperience()"]', en: '+ Add Work Experience', ar: '+ إضافة خبرة' },
+    { selector: 'button[onclick="CVBuilder.addEducation()"]',  en: '+ Add Education',       ar: '+ إضافة تعليم' },
+    { selector: 'button[onclick="CVBuilder.addSkill()"]',      en: '+ Add Skill',           ar: '+ إضافة مهارة' },
+    { selector: 'button[onclick="CVBuilder.addProject()"]',    en: '+ Add Project',         ar: '+ إضافة مشروع' },
+    { selector: 'button[onclick="CVBuilder.addCertificate()"]',en: '+ Add Certification',   ar: '+ إضافة شهادة' },
+    { selector: 'button[onclick="CVBuilder.addLanguage()"]',   en: '+ Add Language',        ar: '+ إضافة لغة' },
+  ];
+
+  addBtnMap.forEach(({ selector, en, ar }) => {
+    document.querySelectorAll(selector).forEach(btn => {
+      btn.textContent = isAr ? ar : en;
+    });
+  });
+
+  // Topbar save/download buttons
+  const saveBtn = document.getElementById('save-btn');
+  if (saveBtn) saveBtn.textContent = isAr ? 'حفظ' : 'Save';
+
+  const dlBtn = document.getElementById('download-pdf-btn');
+  if (dlBtn && !dlBtn.disabled) dlBtn.textContent = isAr ? '⬇ تحميل PDF' : '⬇ Download PDF';
 }
 
 function _renderStep0() {
@@ -1042,6 +1236,13 @@ function _renderStep1(isAr) {
   $('f-linkedin').value  = p.linkedIn  || '';
   $('f-github').value    = p.github    || '';
   $('f-portfolio').value = p.portfolio || '';
+
+  // Bug 4B: Re-apply readonly lock on the email field whenever we return to step 1
+  const emailField = $('f-email');
+  if (emailField && p.email) {
+    emailField.setAttribute('readonly', true);
+    emailField.classList.add('field--locked');
+  }
 
   if (isAr) {
     document.getElementById('s1-title').textContent  = 'البيانات الشخصية';
@@ -1081,7 +1282,12 @@ function _readCurrentStep() {
   if (_step === 1) {
     _cv.personal.fullName  = $('f-fullname')?.value?.trim() || '';
     _cv.personal.jobTitle  = $('f-jobtitle')?.value?.trim() || '';
-    _cv.personal.email     = $('f-email')?.value?.trim()    || '';
+    // Bug 4B: Email is locked (read-only from session) — never overwrite from DOM
+    // Only update if field is not locked
+    const emailField = $('f-email');
+    if (emailField && !emailField.hasAttribute('readonly')) {
+      _cv.personal.email = emailField.value?.trim() || '';
+    }
     _cv.personal.phone     = $('f-phone')?.value?.trim()    || '';
     _cv.personal.city      = $('f-city')?.value?.trim()     || '';
     _cv.personal.country   = $('f-country')?.value?.trim()  || '';
@@ -1103,9 +1309,11 @@ function setLanguage(lang) {
   document.querySelectorAll('.lang-option').forEach(el => {
     el.classList.toggle('selected', el.dataset.lang === lang);
   });
+  // Bug 4E: Apply RTL direction at document level
   document.documentElement.dir  = lang === 'arabic' ? 'rtl' : 'ltr';
   document.documentElement.lang = lang === 'arabic' ? 'ar'  : 'en';
   _buildStepIndicator();
+  _translateStepSubtitles(lang === 'arabic');
   save();
 }
 
@@ -1301,30 +1509,71 @@ function _renderSkillsList() {
   const isAr = _cv.language === 'arabic';
   const cats  = isAr ? SKILL_CATS_AR : SKILL_CATS_EN;
   const levels = isAr ? SKILL_LEVELS_AR : SKILL_LEVELS_EN;
+  const otherLabel = isAr ? 'أخرى' : 'Other';
   const container = document.getElementById('skills-list');
   if (!container) return;
   if (!_cv.skills.length) {
     container.innerHTML = `<div class="cv-empty"><div class="cv-empty__icon">⚡</div><div class="cv-empty__text">${isAr?'لا توجد مهارات':'No skills added yet.'}</div></div>`;
     return;
   }
-  container.innerHTML = _cv.skills.map(sk => `
+  container.innerHTML = _cv.skills.map(sk => {
+    // Determine if the category is a custom "Other" value
+    // (i.e. the stored category is not in the predefined list)
+    const isOtherSelected = sk.category === otherLabel;
+    const customVal = (!cats.includes(sk.category) && sk.category) ? sk.category : '';
+    const selectVal = customVal ? otherLabel : (sk.category || '');
+
+    return `
     <div class="cv-card" style="padding:var(--sp-4);">
       <div style="display:flex;gap:var(--sp-3);align-items:flex-start;">
         <div style="flex:1;">
-          <input class="cv-input" value="${_esc(sk.name)}" placeholder="${isAr?'Flutter, Python, React...':'Flutter, Python, React...'}" oninput="CVBuilder.updateSkill(${sk.id},'name',this.value)" style="margin-bottom:var(--sp-2);" />
+          <input class="cv-input" value="${_esc(sk.name)}"
+            placeholder="${isAr?'Flutter, Python, React...':'Flutter, Python, React...'}"
+            oninput="CVBuilder.updateSkill(${sk.id},'name',this.value)"
+            style="margin-bottom:var(--sp-2);" />
           <div style="display:flex;gap:var(--sp-3);">
-            <select class="cv-select" style="flex:1;" onchange="CVBuilder.updateSkill(${sk.id},'category',this.value)">
-              ${cats.map(c => `<option value="${c}" ${sk.category===c?'selected':''}>${c}</option>`).join('')}
+            <select class="cv-select" style="flex:1;"
+              onchange="CVBuilder.handleSkillCategoryChange(${sk.id},this.value,this)">
+              ${cats.map(c => `<option value="${c}" ${selectVal===c?'selected':''}>${c}</option>`).join('')}
             </select>
-            <select class="cv-select" style="flex:1;" onchange="CVBuilder.updateSkill(${sk.id},'level',parseInt(this.value))">
+            <select class="cv-select" style="flex:1;"
+              onchange="CVBuilder.updateSkill(${sk.id},'level',parseInt(this.value))">
               ${levels.map((l,i) => `<option value="${i}" ${sk.level===i?'selected':''}>${l}</option>`).join('')}
             </select>
           </div>
+          <!-- Bug 4C: Custom category input shown when "Other" selected -->
+          <input class="cv-input skill-custom-cat"
+            id="custom-cat-${sk.id}"
+            placeholder="${isAr?'اكتب اسم القسم...':'Type category name...'}"
+            value="${_esc(customVal)}"
+            oninput="CVBuilder.updateSkill(${sk.id},'category',this.value)"
+            style="margin-top:var(--sp-2);${(isOtherSelected||customVal)?'':'display:none;'}" />
         </div>
         <button class="cv-card-delete" onclick="CVBuilder.removeSkill(${sk.id})">🗑</button>
       </div>
     </div>
-  `).join('');
+  `}).join('');
+}
+
+// Bug 4C: Handle category dropdown change — show/hide custom input
+function handleSkillCategoryChange(id, value, selectEl) {
+  const isAr = _cv.language === 'arabic';
+  const otherLabel = isAr ? 'أخرى' : 'Other';
+  const customInput = document.getElementById(`custom-cat-${id}`);
+
+  if (value === otherLabel) {
+    // Show custom input; don't save "Other" as the category yet
+    if (customInput) {
+      customInput.style.display = '';
+      customInput.focus();
+    }
+    // Clear stored category until user types their own
+    CVBuilder.updateSkill(id, 'category', '');
+  } else {
+    // Standard category selected
+    if (customInput) customInput.style.display = 'none';
+    CVBuilder.updateSkill(id, 'category', value);
+  }
 }
 
 function updateSkill(id, field, val) {
@@ -1776,6 +2025,50 @@ function _loadJsPDF() {
   });
 }
 
+// Bug 4D: Load Amiri Arabic font and register it in jsPDF's global VFS.
+// Once loaded, any new jsPDF instance can call addFont to use it.
+let _arabicFontLoaded = false;
+let _arabicFontB64    = null; // cached base64 string
+
+async function _loadArabicFont() {
+  if (_arabicFontLoaded) return true;
+  try {
+    const fontUrl = 'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/amiri/Amiri-Regular.ttf';
+    const resp = await fetch(fontUrl);
+    if (!resp.ok) throw new Error(`Font fetch failed: ${resp.status}`);
+    const buf  = await resp.arrayBuffer();
+
+    // Convert ArrayBuffer → binary string → base64
+    const bytes = new Uint8Array(buf);
+    let binary  = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+    }
+    _arabicFontB64 = btoa(binary);
+
+    _arabicFontLoaded = true;
+    console.log('[PDF] Amiri Arabic font loaded successfully');
+    return true;
+  } catch (err) {
+    console.warn('[PDF] Arabic font load failed — falling back to Helvetica:', err.message);
+    return false; // Non-fatal: PDF generates, Arabic may render as boxes
+  }
+}
+
+// Register cached Amiri font into a jsPDF doc instance
+function _registerArabicFont(doc) {
+  if (!_arabicFontLoaded || !_arabicFontB64) return false;
+  try {
+    doc.addFileToVFS('Amiri-Regular.ttf', _arabicFontB64);
+    doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal');
+    return true;
+  } catch (err) {
+    console.warn('[PDF] Failed to register Amiri font in doc:', err.message);
+    return false;
+  }
+}
+
 // ── مساعد لتقسيم النص الطويل على سطور بعرض محدد ──
 function _splitText(doc, text, maxWidth) {
   return doc.splitTextToSize(String(text || ''), maxWidth);
@@ -1789,38 +2082,50 @@ function _hLine(doc, x1, x2, y, color) {
 }
 
 // ── رسم عنوان قسم بخط تحته ──
-function _sectionTitle(doc, label, y, lx, rx) {
-  doc.setFont('helvetica', 'bold');
+// Bug 4D: Added textAlign and setFont params for Arabic support
+function _sectionTitle(doc, label, y, lx, rx, textAlign, setFontFn) {
+  if (setFontFn) setFontFn('bold');
+  else doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
   doc.setTextColor(26, 58, 107);
-  doc.text(label.toUpperCase(), lx, y);
-  _hLine(doc, lx, rx, y + 1.2, [200, 200, 200]);
+  doc.text(label.toUpperCase(), lx, y, { align: textAlign || 'left' });
+  _hLine(doc, 15, doc.internal.pageSize.getWidth() - 15, y + 1.2, [200, 200, 200]);
   return y + 5;
 }
 
 // ── كتابة سطر نص عادي مع wrap تلقائي، يرجع الـ y الجديد ──
-function _textBlock(doc, text, x, y, maxWidth, fontSize, color, style, bottomMargin) {
-  doc.setFont('helvetica', style || 'normal');
+// Bug 4D: Added textAlign and setFont params
+function _textBlock(doc, text, x, y, maxWidth, fontSize, color, style, bottomMargin, textAlign, setFontFn) {
+  if (setFontFn) setFontFn(style || 'normal');
+  else doc.setFont('helvetica', style || 'normal');
   doc.setFontSize(fontSize || 8.5);
   doc.setTextColor(...(color || [51, 51, 51]));
   const lines = _splitText(doc, text, maxWidth);
-  lines.forEach(line => { doc.text(line, x, y); y += (fontSize || 8.5) * 0.3528 * 1.45; });
+  lines.forEach(line => {
+    doc.text(line, x, y, { align: textAlign || 'left' });
+    y += (fontSize || 8.5) * 0.3528 * 1.45;
+  });
   return y + (bottomMargin || 0);
 }
 
 // ── صف فيه نصين: يسار وبيين ──
-function _entryRow(doc, left, right, x, rx, y, lSize, lColor, lStyle, rSize, rColor) {
+// Bug 4D: Added textAlign and setFont params
+function _entryRow(doc, left, right, lx, rx, y, lSize, lColor, lStyle, rSize, rColor, textAlign, setFontFn) {
   if (left) {
-    doc.setFont('helvetica', lStyle || 'bold');
+    if (setFontFn) setFontFn(lStyle || 'bold');
+    else doc.setFont('helvetica', lStyle || 'bold');
     doc.setFontSize(lSize || 10);
     doc.setTextColor(...(lColor || [17, 17, 17]));
-    doc.text(String(left), x, y);
+    doc.text(String(left), lx, y, { align: textAlign || 'left' });
   }
   if (right) {
-    doc.setFont('helvetica', 'italic');
+    if (setFontFn) setFontFn('italic');
+    else doc.setFont('helvetica', 'italic');
     doc.setFontSize(rSize || 7.5);
     doc.setTextColor(...(rColor || [136, 136, 136]));
-    doc.text(String(right), rx, y, { align: 'right' });
+    // Right-side annotation always goes on the opposite side
+    const oppAlign = textAlign === 'right' ? 'left' : 'right';
+    doc.text(String(right), rx, y, { align: oppAlign });
   }
   return y + (lSize || 10) * 0.3528 * 1.4;
 }
@@ -1835,7 +2140,8 @@ function _checkPage(doc, y, margin, pageH) {
 }
 
 // ── الدالة الرئيسية لبناء الـ PDF ──
-function _buildPdfWithJsPDF(cvData) {
+// Bug 4D: When Arabic, uses Amiri font (if loaded) and flips text alignment to RTL
+function _buildPdfWithJsPDF(cvData, arabicFontAvailable) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
 
@@ -1843,10 +2149,29 @@ function _buildPdfWithJsPDF(cvData) {
   const p      = cvData.personal || {};
   const pageW  = 210;
   const pageH  = 297;
-  const lx     = 15;          // left margin
-  const rx     = pageW - 15;  // right margin
-  const cw     = rx - lx;     // content width
   const btm    = 20;          // bottom safe zone
+
+  // Bug 4D: Register Amiri font in this doc instance if it was loaded
+  let amiriRegistered = false;
+  if (isAr && arabicFontAvailable) {
+    amiriRegistered = _registerArabicFont(doc);
+  }
+
+  // Bug 4D: For Arabic CVs, flip margins so text starts from right side
+  const lx = isAr ? pageW - 15 : 15;  // text origin x
+  const rx = isAr ? 15 : pageW - 15;  // opposite margin
+  const cw = pageW - 30;               // content width (same either way)
+  const textAlign = isAr ? 'right' : 'left';
+
+  // Helper: set font — Amiri for Arabic if registered, Helvetica otherwise
+  function setFont(style) {
+    if (isAr && amiriRegistered) {
+      // Amiri Regular only (no Bold variant in our loaded subset)
+      doc.setFont('Amiri', 'normal');
+    } else {
+      doc.setFont('helvetica', style || 'normal');
+    }
+  }
 
   const PROF_EN = ['Elementary','Limited Working','Professional','Full Professional','Native / Bilingual'];
   const PROF_AR = ['أساسية','محدودة','احترافية','احترافية كاملة','اللغة الأم'];
@@ -1856,19 +2181,19 @@ function _buildPdfWithJsPDF(cvData) {
 
   // ── الاسم ──
   if (p.fullName) {
-    doc.setFont('helvetica', 'bold');
+    setFont('bold');
     doc.setFontSize(20);
     doc.setTextColor(26, 58, 107);
-    doc.text(p.fullName, lx, y);
+    doc.text(p.fullName, lx, y, { align: textAlign });
     y += 7;
   }
 
   // ── المسمى الوظيفي ──
   if (p.jobTitle) {
-    doc.setFont('helvetica', 'normal');
+    setFont('normal');
     doc.setFontSize(11);
     doc.setTextColor(42, 90, 176);
-    doc.text(p.jobTitle, lx, y);
+    doc.text(p.jobTitle, lx, y, { align: textAlign });
     y += 5.5;
   }
 
@@ -1877,63 +2202,63 @@ function _buildPdfWithJsPDF(cvData) {
   const linkParts    = [p.linkedIn, p.github, p.portfolio].filter(Boolean);
 
   if (contactParts.length) {
-    doc.setFont('helvetica', 'normal');
+    setFont('normal');
     doc.setFontSize(8.5);
     doc.setTextColor(85, 85, 85);
-    doc.text(contactParts.join('  |  '), lx, y);
-    y += 4;
+    doc.splitTextToSize(contactParts.join('  |  '), cw).forEach(l => {
+      doc.text(l, lx, y, { align: textAlign }); y += 4;
+    });
   }
   if (linkParts.length) {
-    doc.setFont('helvetica', 'normal');
+    setFont('normal');
     doc.setFontSize(8.5);
     doc.setTextColor(42, 90, 176);
-    doc.text(linkParts.join('  |  '), lx, y);
-    y += 4;
+    doc.splitTextToSize(linkParts.join('  |  '), cw).forEach(l => {
+      doc.text(l, lx, y, { align: textAlign }); y += 4;
+    });
   }
 
   // ── خط فاصل ──
   if (p.fullName || p.jobTitle) {
     doc.setDrawColor(26, 58, 107);
     doc.setLineWidth(0.8);
-    doc.line(lx, y, rx, y);
+    // Draw line full width regardless of direction
+    doc.line(15, y, pageW - 15, y);
     y += 5;
   }
 
   // ── الملخص ──
   if (p.summary) {
     y = _checkPage(doc, y, btm, pageH);
-    y = _sectionTitle(doc, isAr ? 'الملخص المهني' : 'Professional Summary', y, lx, rx);
-    y = _textBlock(doc, p.summary, lx, y, cw, 8.5, [51, 51, 51], 'normal', 3);
+    y = _sectionTitle(doc, isAr ? 'الملخص المهني' : 'Professional Summary', y, lx, rx, textAlign, setFont);
+    y = _textBlock(doc, p.summary, lx, y, cw, 8.5, [51, 51, 51], 'normal', 3, textAlign, setFont);
   }
 
   // ── الخبرة العملية ──
   const exp = cvData.experience || [];
   if (exp.length) {
     y = _checkPage(doc, y, btm, pageH);
-    y = _sectionTitle(doc, isAr ? 'الخبرة العملية' : 'Work Experience', y, lx, rx);
+    y = _sectionTitle(doc, isAr ? 'الخبرة العملية' : 'Work Experience', y, lx, rx, textAlign, setFont);
     exp.forEach(x => {
       y = _checkPage(doc, y, btm, pageH);
       const end   = x.isCurrent ? (isAr ? 'حتى الآن' : 'Present') : (x.endDate || '');
       const dates = [x.startDate, end].filter(Boolean).join(' – ');
       const loc   = [x.city, x.country].filter(Boolean).join(', ');
-      // اسم الوظيفة + التاريخ
-      y = _entryRow(doc, x.jobTitle, dates, lx, rx, y, 10, [17,17,17], 'bold', 7.5, [136,136,136]);
-      // الشركة + الموقع
-      y = _entryRow(doc, x.company, loc, lx, rx, y, 8.5, [42,90,176], 'italic', 7.5, [136,136,136]);
-      // المسؤوليات
+      y = _entryRow(doc, x.jobTitle, dates, lx, rx, y, 10, [17,17,17], 'bold', 7.5, [136,136,136], textAlign, setFont);
+      y = _entryRow(doc, x.company, loc, lx, rx, y, 8.5, [42,90,176], 'italic', 7.5, [136,136,136], textAlign, setFont);
       (x.responsibilities || []).forEach(r => {
         if (!r) return;
         y = _checkPage(doc, y, btm, pageH);
-        doc.setFont('helvetica', 'normal');
+        setFont('normal');
         doc.setFontSize(8.5);
         doc.setTextColor(51, 51, 51);
         const lines = _splitText(doc, r, cw - 5);
         lines.forEach((line, i) => {
           if (i === 0) {
-            doc.text('\u2013', lx, y);
-            doc.text(line, lx + 4, y);
+            doc.text(isAr ? '–' : '\u2013', isAr ? lx - 0 : lx, y);
+            doc.text(line, isAr ? lx - 4 : lx + 4, y, { align: textAlign });
           } else {
-            doc.text(line, lx + 4, y);
+            doc.text(line, isAr ? lx - 4 : lx + 4, y, { align: textAlign });
           }
           y += 3.8;
         });
@@ -1946,15 +2271,15 @@ function _buildPdfWithJsPDF(cvData) {
   const edu = cvData.education || [];
   if (edu.length) {
     y = _checkPage(doc, y, btm, pageH);
-    y = _sectionTitle(doc, isAr ? 'التعليم' : 'Education', y, lx, rx);
+    y = _sectionTitle(doc, isAr ? 'التعليم' : 'Education', y, lx, rx, textAlign, setFont);
     edu.forEach(x => {
       y = _checkPage(doc, y, btm, pageH);
       const dates   = [x.startDate, x.endDate].filter(Boolean).join(' – ');
       const loc     = [x.city, x.country].filter(Boolean).join(', ');
-      const degree  = [x.degree, x.major].filter(Boolean).join(' in ');
-      y = _entryRow(doc, degree, dates, lx, rx, y, 10, [17,17,17], 'bold', 7.5, [136,136,136]);
-      y = _entryRow(doc, x.institution, loc, lx, rx, y, 8.5, [42,90,176], 'italic', 7.5, [136,136,136]);
-      if (x.gpa) y = _textBlock(doc, 'GPA: ' + x.gpa, lx, y, cw, 8.5, [51,51,51], 'normal', 0);
+      const degree  = [x.degree, x.major].filter(Boolean).join(isAr ? ' في ' : ' in ');
+      y = _entryRow(doc, degree, dates, lx, rx, y, 10, [17,17,17], 'bold', 7.5, [136,136,136], textAlign, setFont);
+      y = _entryRow(doc, x.institution, loc, lx, rx, y, 8.5, [42,90,176], 'italic', 7.5, [136,136,136], textAlign, setFont);
+      if (x.gpa) y = _textBlock(doc, (isAr ? 'المعدل: ' : 'GPA: ') + x.gpa, lx, y, cw, 8.5, [51,51,51], 'normal', 0, textAlign, setFont);
       y += 2;
     });
   }
@@ -1963,7 +2288,7 @@ function _buildPdfWithJsPDF(cvData) {
   const skills = cvData.skills || [];
   if (skills.length) {
     y = _checkPage(doc, y, btm, pageH);
-    y = _sectionTitle(doc, isAr ? 'المهارات' : 'Skills', y, lx, rx);
+    y = _sectionTitle(doc, isAr ? 'المهارات' : 'Skills', y, lx, rx, textAlign, setFont);
     const grouped = {};
     skills.forEach(s => {
       const cat = s.category || (isAr ? 'عام' : 'General');
@@ -1972,18 +2297,16 @@ function _buildPdfWithJsPDF(cvData) {
     Object.entries(grouped).forEach(([cat, names]) => {
       y = _checkPage(doc, y, btm, pageH);
       doc.setFontSize(8.5);
-      // اسم الفئة بولد
-      doc.setFont('helvetica', 'bold');
+      setFont('bold');
       doc.setTextColor(51, 51, 51);
       const catLabel = cat + ': ';
       const catW = doc.getTextWidth(catLabel);
-      doc.text(catLabel, lx, y);
-      // المهارات بعدها
-      doc.setFont('helvetica', 'normal');
+      doc.text(catLabel, lx, y, { align: textAlign });
+      setFont('normal');
       const skillsText = names.join(' / ');
       const skillLines = _splitText(doc, skillsText, cw - catW);
       skillLines.forEach((line, i) => {
-        doc.text(line, i === 0 ? lx + catW : lx, y);
+        doc.text(line, isAr ? lx - catW : lx + catW, y, { align: textAlign });
         if (i < skillLines.length - 1) y += 3.8;
       });
       y += 4.2;
@@ -1994,14 +2317,14 @@ function _buildPdfWithJsPDF(cvData) {
   const projects = cvData.projects || [];
   if (projects.length) {
     y = _checkPage(doc, y, btm, pageH);
-    y = _sectionTitle(doc, isAr ? 'المشاريع' : 'Projects', y, lx, rx);
+    y = _sectionTitle(doc, isAr ? 'المشاريع' : 'Projects', y, lx, rx, textAlign, setFont);
     projects.forEach(x => {
       y = _checkPage(doc, y, btm, pageH);
       const dates = [x.startDate, x.endDate].filter(Boolean).join(' – ');
-      y = _entryRow(doc, x.name, dates, lx, rx, y, 10, [17,17,17], 'bold', 7.5, [136,136,136]);
-      if (x.description) y = _textBlock(doc, x.description, lx, y, cw, 8.5, [51,51,51], 'normal', 0);
-      if (x.technologies?.length) y = _textBlock(doc, (isAr ? 'التقنيات: ' : 'Tech: ') + x.technologies.join(', '), lx, y, cw, 8, [119,119,119], 'italic', 0);
-      if (x.link)  y = _textBlock(doc, x.link, lx, y, cw, 8, [42,90,176], 'normal', 0);
+      y = _entryRow(doc, x.name, dates, lx, rx, y, 10, [17,17,17], 'bold', 7.5, [136,136,136], textAlign, setFont);
+      if (x.description) y = _textBlock(doc, x.description, lx, y, cw, 8.5, [51,51,51], 'normal', 0, textAlign, setFont);
+      if (x.technologies?.length) y = _textBlock(doc, (isAr ? 'التقنيات: ' : 'Tech: ') + x.technologies.join(', '), lx, y, cw, 8, [119,119,119], 'italic', 0, textAlign, setFont);
+      if (x.link)  y = _textBlock(doc, x.link, lx, y, cw, 8, [42,90,176], 'normal', 0, textAlign, setFont);
       y += 2;
     });
   }
@@ -2010,12 +2333,12 @@ function _buildPdfWithJsPDF(cvData) {
   const certs = cvData.certificates || [];
   if (certs.length) {
     y = _checkPage(doc, y, btm, pageH);
-    y = _sectionTitle(doc, isAr ? 'الشهادات' : 'Certifications', y, lx, rx);
+    y = _sectionTitle(doc, isAr ? 'الشهادات' : 'Certifications', y, lx, rx, textAlign, setFont);
     certs.forEach(x => {
       y = _checkPage(doc, y, btm, pageH);
-      y = _entryRow(doc, x.name, x.issueDate, lx, rx, y, 10, [17,17,17], 'bold', 7.5, [136,136,136]);
-      if (x.issuer) y = _textBlock(doc, x.issuer, lx, y, cw, 8.5, [42,90,176], 'italic', 0);
-      if (x.credentialId) y = _textBlock(doc, 'ID: ' + x.credentialId, lx, y, cw, 8, [85,85,85], 'normal', 0);
+      y = _entryRow(doc, x.name, x.issueDate, lx, rx, y, 10, [17,17,17], 'bold', 7.5, [136,136,136], textAlign, setFont);
+      if (x.issuer) y = _textBlock(doc, x.issuer, lx, y, cw, 8.5, [42,90,176], 'italic', 0, textAlign, setFont);
+      if (x.credentialId) y = _textBlock(doc, (isAr ? 'رقم الاعتماد: ' : 'ID: ') + x.credentialId, lx, y, cw, 8, [85,85,85], 'normal', 0, textAlign, setFont);
       y += 2;
     });
   }
@@ -2024,9 +2347,9 @@ function _buildPdfWithJsPDF(cvData) {
   const langs = cvData.languages || [];
   if (langs.length) {
     y = _checkPage(doc, y, btm, pageH);
-    y = _sectionTitle(doc, isAr ? 'اللغات' : 'Languages', y, lx, rx);
+    y = _sectionTitle(doc, isAr ? 'اللغات' : 'Languages', y, lx, rx, textAlign, setFont);
     const langText = langs.map(l => `${l.language}: ${profs[l.proficiency] || ''}`).join('    ');
-    y = _textBlock(doc, langText, lx, y, cw, 8.5, [51,51,51], 'normal', 0);
+    y = _textBlock(doc, langText, lx, y, cw, 8.5, [51,51,51], 'normal', 0, textAlign, setFont);
   }
 
   return doc;
@@ -2049,10 +2372,18 @@ async function downloadPdf() {
       throw new Error('jsPDF library failed to load. Check your internet connection.');
     }
 
+    const isAr = _cv.language === 'arabic';
+
+    // Bug 4D: Load Arabic font from CDN if needed — non-blocking (falls back gracefully)
+    let arabicFontAvailable = false;
+    if (isAr) {
+      arabicFontAvailable = await _loadArabicFont();
+    }
+
     const name = (_cv.personal.fullName || 'CV')
       .toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') || 'cv';
 
-    const doc = _buildPdfWithJsPDF(_cv);
+    const doc = _buildPdfWithJsPDF(_cv, arabicFontAvailable);
     doc.save(`${name}-cv.pdf`);
 
     window._cvToast('CV downloaded! ✓', 'success');
@@ -2115,7 +2446,7 @@ window.CVBuilder = {
   setLanguage, goToStep, nextStep, prevStep, save,
   addExperience, updateExp, removeExperience, addResp, updateResp, removeResp,
   addEducation, updateEdu, removeEducation,
-  addSkill, updateSkill, removeSkill,
+  addSkill, updateSkill, removeSkill, handleSkillCategoryChange,
   addProject, updateProject, removeProject, addTech, removeTech,
   addCertificate, updateCert, removeCert,
   addLanguage, updateLang, removeLang,
@@ -2129,7 +2460,8 @@ document.getElementById('f-summary')?.addEventListener('input', _updateSummaryCo
 // Save btn
 document.getElementById('save-btn')?.addEventListener('click', () => {
   save();
-  window._cvToast('Saved ✓', 'success');
+  const isAr = _cv.language === 'arabic';
+  window._cvToast(isAr ? 'تم الحفظ ✓' : 'Saved ✓', 'success');
 });
 
 // Download PDF

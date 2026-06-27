@@ -133,18 +133,20 @@
         _currentUser = user;
         _notifyListeners(user);
 
-        // ── Early Adopter check — only on first sign-in of a brand-new account ──
-        // Supabase fires SIGNED_IN on every login, but also fires it with
-        // a separate "USER_UPDATED" event after OAuth. We detect a truly new
-        // user by checking if their created_at is within the last 30 seconds.
+        // ── Ensure public.users row exists on EVERY sign-in ──────────────────
+        // Bug 0 fix: _ensureUserRow must run for ALL providers on every SIGNED_IN
+        // event — not only for new users. Without this, users who register without
+        // triggering the DB trigger get 406 errors on all subsequent queries.
         if (event === 'SIGNED_IN' && session?.user) {
           const rawUser = session.user;
+
+          // Always ensure the row exists (upsert is idempotent — safe to call repeatedly)
+          await _ensureUserRow(rawUser);
+
+          // Early Adopter grant — only on truly new accounts (created within last 30s)
           const createdAt = new Date(rawUser.created_at).getTime();
           const isNewUser = (Date.now() - createdAt) < 30_000; // 30-second window
           if (isNewUser) {
-            // تأكد إن صف public.users موجود (GitHub أو Google) قبل أي
-            // خطوة تانية بتفترض وجوده (زي _maybeGrantEarlyAdopter)
-            await _ensureUserRow(rawUser);
             await _maybeGrantEarlyAdopter(rawUser.id);
           }
         }
@@ -211,10 +213,10 @@
   // ─── Helpers ───────────────────────────────────────────────────────────────
 
   /**
-   * يضمن وجود صف المستخدم في public.users بعد أول SIGNED_IN (GitHub أو Google)
-   * — upsert بدل insert: لو فيه صف موجود بالفعل (مثلاً من DB trigger قديم)
-   * بيكمّل عليه auth_provider/avatar_url/github_username الصحيحين بدل ما يفشل
-   * بسبب الـ UNIQUE/PK constraint.
+   * يضمن وجود صف المستخدم في public.users بعد كل SIGNED_IN (GitHub أو Google)
+   * — upsert بـ ON CONFLICT (id) DO UPDATE: يُنشئ الصف لو مش موجود، أو
+   * يحدّث auth_provider/avatar_url/github_username لو موجود.
+   * آمن تمامًا للاستدعاء المتكرر.
    *
    * ملاحظة: لا نحط referral_code هنا — موجود RPC منفصلة
    * (generate_user_referral_code) بتتولاه lazy عند فتح الـ Referral section.
@@ -245,13 +247,30 @@
           full_name:       meta.full_name || meta.name || null,
           auth_provider:   provider,
           avatar_url:      avatarUrl,
-        }, { onConflict: 'id' });
+        }, {
+          onConflict: 'id',          // ON CONFLICT (id) DO UPDATE
+          ignoreDuplicates: false,   // always update the existing row
+        });
 
       if (error) {
-        console.error('[Auth] _ensureUserRow error:', error.message);
+        // Log clearly so it's easy to spot in the console
+        console.error('[Auth] _ensureUserRow upsert FAILED:', {
+          userId:   rawUser.id,
+          provider,
+          email:    rawUser.email,
+          errorMsg: error.message,
+          errorCode: error.code,
+          details:  error.details,
+        });
+      } else {
+        console.log('[Auth] _ensureUserRow: row ensured for', provider, 'user', rawUser.id);
       }
     } catch (err) {
-      console.error('[Auth] _ensureUserRow exception:', err);
+      console.error('[Auth] _ensureUserRow exception:', {
+        userId:  rawUser.id,
+        message: err.message,
+        err,
+      });
     }
   }
 

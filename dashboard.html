@@ -416,6 +416,44 @@
       background: var(--clr-accent-dim, rgba(0,255,136,0.1));
       border-color: var(--clr-accent, #00FF88);
     }
+
+    /* ── Generate New Dropdown (Bug 3) ── */
+    .gen-dropdown {
+      position: relative;
+      display: inline-flex;
+    }
+    .gen-dropdown__trigger { cursor: pointer; }
+    .gen-dropdown__menu {
+      display: none;
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 0;
+      min-width: 210px;
+      background: var(--clr-bg-3, #111A14);
+      border: 1px solid var(--clr-border, rgba(0,255,136,0.1));
+      border-radius: var(--radius-md, 8px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      z-index: 50;
+      overflow: hidden;
+      flex-direction: column;
+    }
+    .gen-dropdown__menu.open { display: flex; }
+    .gen-dropdown__item {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-2, 8px);
+      padding: 10px 16px;
+      font-family: var(--font-body, 'DM Mono', monospace);
+      font-size: var(--fs-sm, 0.80rem);
+      color: var(--clr-text, #E8F0EB);
+      text-decoration: none;
+      transition: background 150ms;
+      white-space: nowrap;
+    }
+    .gen-dropdown__item:hover {
+      background: var(--clr-accent-dim, rgba(0,255,136,0.08));
+      color: var(--clr-accent, #00FF88);
+    }
   </style>
 </head>
 <body class="dashboard-page">
@@ -424,7 +462,7 @@
   <header class="dashboard-header">
     <a href="index.html" class="dashboard-header__logo">Portfolio Generator</a>
     <div class="dashboard-header__actions">
-      <a href="index.html" class="btn btn--ghost btn--sm">+ New Portfolio</a>
+      <a href="portfolio-builder.html" class="btn btn--ghost btn--sm">+ New Portfolio</a>
       <img id="nav-avatar" class="nav-avatar hidden" src="" alt="avatar"
            data-nav-avatar title="Your account" />
       <button id="signout-btn" class="btn btn--ghost btn--sm hidden"
@@ -448,9 +486,22 @@
         <a href="linkedin.html" class="btn btn--ghost btn--sm" style="text-decoration:none;">
           💼 LinkedIn Presence
         </a>
-        <a href="index.html" class="btn btn--primary btn--sm" style="text-decoration:none;">
-          + Generate New
-        </a>
+        <!-- Bug 3: Generate New → dropdown with GitHub + Manual options -->
+        <div class="gen-dropdown" id="gen-dropdown">
+          <button class="btn btn--primary btn--sm gen-dropdown__trigger"
+                  onclick="Dashboard.toggleGenDropdown(event)"
+                  aria-haspopup="true" aria-expanded="false" id="gen-dropdown-btn">
+            + Generate New ▾
+          </button>
+          <div class="gen-dropdown__menu" id="gen-dropdown-menu" role="menu">
+            <a class="gen-dropdown__item" href="index.html" role="menuitem">
+              🔗 Generate from GitHub
+            </a>
+            <a class="gen-dropdown__item" href="portfolio-builder.html" role="menuitem">
+              ✍️ Build Manually
+            </a>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1252,8 +1303,31 @@
       }
     }
 
-    // ─── Activate Code Modal ──────────────────────────────────
-    function showActivateModal() {
+    // ─── Generate New Dropdown (Bug 3) ───────────────────────
+    // لو المستخدم Google بدون GitHub، بيروح مباشرة لـ portfolio-builder.html
+    // لو المستخدم GitHub، بيظهر dropdown بخيارين
+    function toggleGenDropdown(e) {
+      e.stopPropagation();
+      const menu = document.getElementById('gen-dropdown-menu');
+      const btn  = document.getElementById('gen-dropdown-btn');
+      if (!menu) return;
+
+      // لو الـ dropdown مش موجود بعد أو needsProviderChoice:
+      // في حال Google user — مش بيوصلوا لهنا (الـ dropdown مش هيتعرض)
+      const isOpen = menu.classList.contains('open');
+      menu.classList.toggle('open', !isOpen);
+      btn?.setAttribute('aria-expanded', String(!isOpen));
+    }
+
+    // إغلاق الـ dropdown لو ضغط برّاه
+    document.addEventListener('click', () => {
+      const menu = document.getElementById('gen-dropdown-menu');
+      const btn  = document.getElementById('gen-dropdown-btn');
+      if (menu?.classList.contains('open')) {
+        menu.classList.remove('open');
+        btn?.setAttribute('aria-expanded', 'false');
+      }
+    });
       $('activate-modal').classList.add('active');
       $('activate-code-input').focus();
       $('activate-code-msg').textContent = '';
@@ -1509,6 +1583,22 @@
       // Render
       renderProStatus(isPro);
 
+      // ── Bug 3: If Google user without GitHub, make "Generate New" go directly ──
+      // to portfolio-builder.html (no dropdown needed — they can't use GitHub gen)
+      if (needsProviderChoice) {
+        const genBtn = document.getElementById('gen-dropdown-btn');
+        const genDropdown = document.getElementById('gen-dropdown');
+        if (genBtn && genDropdown) {
+          // Replace the entire dropdown with a direct link
+          const link = document.createElement('a');
+          link.href = 'portfolio-builder.html';
+          link.className = 'btn btn--primary btn--sm';
+          link.style.textDecoration = 'none';
+          link.textContent = '+ New Portfolio';
+          genDropdown.replaceWith(link);
+        }
+      }
+
       // ── Early Adopter Badge ───────────────────────────────────
       if (isPro && isEarlyAdopter && eaExpiresAt) {
         const expiryDate = new Date(eaExpiresAt);
@@ -1546,6 +1636,7 @@
       copyReferralLink,
       showActivateModal,
       connectGithub,
+      toggleGenDropdown,
     };
 
     document.addEventListener('DOMContentLoaded', init);
