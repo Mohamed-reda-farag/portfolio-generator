@@ -116,6 +116,37 @@
       flex-shrink: 0;
     }
 
+    /* ── Early Adopter Badge (داخل الـ Pro Banner) ── */
+    .early-adopter-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: linear-gradient(135deg, rgba(255,181,71,0.15), rgba(255,130,0,0.10));
+      border: 1px solid rgba(255,181,71,0.25);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.68rem;
+      color: var(--clr-warn, #FFB547);
+      letter-spacing: 0.06em;
+      margin-top: 0.4rem;
+      white-space: nowrap;
+    }
+
+    .early-adopter-badge__dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--clr-warn, #FFB547);
+      flex-shrink: 0;
+      animation: ea-dot-pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes ea-dot-pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.5; transform: scale(0.8); }
+    }
+
     /* ── Referral Section ── */
     .referral-section {
       background: var(--clr-surface, rgba(255,255,255,0.03));
@@ -324,6 +355,67 @@
       border: 1px solid rgba(255,255,255,0.1);
     }
     .upgrade-btn--ghost:hover { border-color: rgba(255,255,255,0.2); }
+
+    /* ── Provider Choice (Google users بدون GitHub) ── */
+    .provider-choice {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--sp-5, 1.25rem);
+      padding: var(--sp-4, 1rem) 0;
+    }
+    @media (max-width: 640px) {
+      .provider-choice { grid-template-columns: 1fr; }
+    }
+    .choice-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(0,255,136,0.12);
+      border-radius: var(--radius-xl, 16px);
+      padding: var(--sp-8, 2rem) var(--sp-6, 1.5rem);
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--sp-2, 0.5rem);
+      transition: border-color 200ms ease, transform 200ms ease;
+    }
+    .choice-card:hover {
+      border-color: rgba(0,255,136,0.3);
+      transform: translateY(-2px);
+    }
+    .choice-icon {
+      font-size: 2rem;
+      margin-bottom: var(--sp-2, 0.5rem);
+    }
+    .choice-card h3 {
+      font-family: var(--font-display, 'Syne', sans-serif);
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--clr-text, #E8F0EB);
+      margin: 0;
+    }
+    .choice-card p {
+      font-family: var(--font-body, 'DM Mono', monospace);
+      font-size: 0.8rem;
+      color: var(--clr-text-2, #8A9E90);
+      margin: 0 0 var(--sp-3, 0.75rem);
+      line-height: 1.5;
+    }
+    .btn--secondary {
+      background: transparent;
+      color: var(--clr-accent, #00FF88);
+      border: 1px solid rgba(0,255,136,0.35);
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: var(--sp-2); padding: 12px 24px; border-radius: var(--radius-md, 8px);
+      font-family: var(--font-body); font-size: var(--fs-base, 0.875rem); font-weight: 500;
+      letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;
+      white-space: nowrap; transition: background 200ms ease, border-color 200ms ease;
+      text-decoration: none;
+    }
+    .btn--secondary:hover {
+      background: var(--clr-accent-dim, rgba(0,255,136,0.1));
+      border-color: var(--clr-accent, #00FF88);
+    }
   </style>
 </head>
 <body class="dashboard-page">
@@ -368,6 +460,11 @@
       <div class="pro-banner__body">
         <p class="pro-banner__title">You're on Pro!</p>
         <p class="pro-banner__sub">All themes unlocked · Priority support</p>
+        <!-- يظهر فقط للـ Early Adopters الذين لا يزال اشتراكهم نشطاً -->
+        <div id="early-adopter-badge" class="early-adopter-badge" style="display:none;">
+          <span class="early-adopter-badge__dot"></span>
+          ⚡ Early Adopter — Pro expires: <span id="ea-expires-date">—</span>
+        </div>
       </div>
       <span class="pro-banner__badge">PRO</span>
     </div>
@@ -966,10 +1063,37 @@
     }
 
     // ─── Render Grid ──────────────────────────────────────────
-    function renderGrid(portfolios) {
+    function renderGrid(portfolios, needsProviderChoice) {
       const grid = $('portfolio-grid');
       grid.innerHTML = '';
       if (!portfolios || portfolios.length === 0) {
+
+        // Google users بدون GitHub username متصل — مايقدروش يستخدموا
+        // الـ auto-generate من repos، فنعرض ليهم اختيار بدل "Generate Now"
+        if (needsProviderChoice) {
+          grid.innerHTML = `
+            <div class="provider-choice">
+              <div class="choice-card" id="connect-github-card">
+                <span class="choice-icon">🔗</span>
+                <h3>Connect GitHub</h3>
+                <p>Auto-generate your portfolio from your repos</p>
+                <button class="btn btn--primary btn--sm" id="connect-github-btn">Connect GitHub</button>
+              </div>
+
+              <div class="choice-card" id="manual-builder-card">
+                <span class="choice-icon">✍️</span>
+                <h3>Build Manually</h3>
+                <p>Create your portfolio step by step</p>
+                <button class="btn btn--secondary btn--sm"
+                        onclick="location.href='portfolio-builder.html'">
+                  Start Building
+                </button>
+              </div>
+            </div>`;
+          $('connect-github-btn')?.addEventListener('click', connectGithub);
+          return;
+        }
+
         grid.innerHTML = `
           <div class="empty-state">
             <span class="empty-state__icon">⬡</span>
@@ -1275,8 +1399,71 @@
       }
     });
 
+    // ─── Connect GitHub (لـ Google users اللي عايزين يربطوا GitHub) ──
+    async function connectGithub() {
+      const sb = window._supabaseClient;
+      if (!sb) return;
+
+      const base = window.location.origin + window.location.pathname.replace(/[^/]*$/, '');
+      const { error } = await sb.auth.linkIdentity({
+        provider: 'github',
+        options: { redirectTo: `${base}dashboard.html?linked=github` },
+      });
+
+      if (error) {
+        (typeof window.toast === 'function' ? window.toast : console.log)(
+          'Failed to connect GitHub: ' + error.message, 'error'
+        );
+      }
+    }
+
+    /**
+     * بعد ما يرجع المستخدم من GitHub OAuth (linkIdentity)، نجيب الـ identity
+     * الجديدة المضافة ونحدّث github_username في users table.
+     */
+    async function _handleGithubLinkReturn() {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('linked') !== 'github') return;
+
+      // نشيل الـ query param فوراً عشان مايتكررش لو عمل refresh للصفحة
+      window.history.replaceState({}, '', window.location.pathname);
+
+      const sb = window._supabaseClient;
+      if (!sb) return;
+
+      try {
+        const { data: { user: freshUser } } = await sb.auth.getUser();
+        const ghIdentity = freshUser?.identities?.find(i => i.provider === 'github');
+        const ghUsername =
+          ghIdentity?.identity_data?.user_name ||
+          ghIdentity?.identity_data?.preferred_username ||
+          ghIdentity?.identity_data?.login ||
+          null;
+
+        if (ghUsername && freshUser?.id) {
+          const { error } = await sb
+            .from('users')
+            .update({ github_username: ghUsername })
+            .eq('id', freshUser.id);
+
+          (typeof window.toast === 'function' ? window.toast : console.log)(
+            error ? 'Connected, but failed to save username.' : 'GitHub connected ✓',
+            error ? 'error' : 'success'
+          );
+        } else {
+          (typeof window.toast === 'function' ? window.toast : console.log)(
+            'GitHub connected, but no username was found.', 'error'
+          );
+        }
+      } catch (err) {
+        console.error('[Dashboard] _handleGithubLinkReturn error:', err);
+      }
+    }
+
     // ─── Init ─────────────────────────────────────────────────
     async function init() {
+      await _handleGithubLinkReturn();
+
       const { user, portfolios } = await Auth.getDashboardData();
       if (!user) return;
 
@@ -1289,29 +1476,57 @@
       greetEl.append('Hey, ', span, ' 👋');
       $('greeting-sub').textContent = portfolios.length === 0
         ? 'Generate your first portfolio below.'
-        : `You have ${portfolios.length} portfolio${portfolios.length !== 1 ? 's' : ''} · ${user.githubUsername}`;
+        : `You have ${portfolios.length} portfolio${portfolios.length !== 1 ? 's' : ''} · ${user.githubUsername || user.name || user.email}`;
 
       // Avatar
       const avatarEl = document.querySelector('[data-nav-avatar]');
       if (avatarEl) { avatarEl.src = user.avatarUrl; avatarEl.classList.remove('hidden'); }
       document.querySelector('[data-nav-signout]')?.classList.remove('hidden');
 
-      // جيب الـ Pro status
+      // جيب الـ Pro status + Early Adopter data + auth_provider/github_username
+      // (auth_provider/github_username محتاجينهم نحدد لو نعرض provider-choice
+      //  بدل الـ "Generate Now" التقليدي — Google users بدون GitHub متصل)
       const sb = window._supabaseClient;
-      let isPro = false;
+      let isPro          = false;
+      let isEarlyAdopter = false;
+      let eaExpiresAt    = null;
+      let needsProviderChoice = false;
+
       if (sb) {
         const { data: userData } = await sb
           .from('users')
-          .select('is_pro')
+          .select('is_pro, is_early_adopter, early_adopter_expires_at, auth_provider, github_username')
           .eq('id', user.id)
           .single();
-        isPro = userData?.is_pro === true;
+
+        isPro          = userData?.is_pro              === true;
+        isEarlyAdopter = userData?.is_early_adopter    === true;
+        eaExpiresAt    = userData?.early_adopter_expires_at || null;
+        needsProviderChoice =
+          userData?.auth_provider === 'google' || !userData?.github_username;
       }
 
       // Render
       renderProStatus(isPro);
+
+      // ── Early Adopter Badge ───────────────────────────────────
+      if (isPro && isEarlyAdopter && eaExpiresAt) {
+        const expiryDate = new Date(eaExpiresAt);
+        const now        = new Date();
+        const badge      = document.getElementById('early-adopter-badge');
+        const dateEl     = document.getElementById('ea-expires-date');
+
+        if (badge && expiryDate > now) {
+          // فرمات التاريخ: "Jun 25, 2026"
+          const formatted = expiryDate.toLocaleDateString('en-US', {
+            month: 'short', day: 'numeric', year: 'numeric',
+          });
+          if (dateEl) dateEl.textContent = formatted;
+          badge.style.display = 'inline-flex';
+        }
+      }
       renderStats(portfolios);
-      renderGrid(portfolios);
+      renderGrid(portfolios, needsProviderChoice);
 
       // تحديث رابط البوت بالـ telegram username الصح
       const botUsername = window.TELEGRAM_BOT_USERNAME || 'GPortBot';
@@ -1330,6 +1545,7 @@
       copyLink,
       copyReferralLink,
       showActivateModal,
+      connectGithub,
     };
 
     document.addEventListener('DOMContentLoaded', init);

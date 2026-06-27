@@ -35,6 +35,95 @@
   const MAX_UNDO = 20;
   const AUTOSAVE_DEBOUNCE = 600; // ms
 
+  // Theme classification — used by checkProStatus and saveDraft/publish
+  const PRO_THEME_IDS  = ['glass3d', 'cyberpunk', 'space', 'editorial', 'noir', 'blueprint', 'terminal', 'liquid'];
+  const FREE_THEME_IDS = ['light', 'dark', 'minimal'];
+  const DEFAULT_FREE_THEME = 'dark'; // يطابق DEFAULT في الـ DB
+
+  /* ═══════════════════════════════════════════════════════════════
+     PRO STATUS CHECK + THEME FALLBACK
+     ────────────────────────────────────────────────────────────
+     checkProStatus — تُستدعى عند init() بعد تحميل الـ draft والـ user data
+     بتعمل:
+       1. تتحقق إن المستخدم Pro فعلاً (مش expired)
+       2. لو مش Pro → تُنزّل الـ Pro theme للـ dark وتحفظ القديم في last_pro_theme
+       3. لو Pro ورجع → ترجّع last_pro_theme وتمسح الـ column
+  ═══════════════════════════════════════════════════════════════ */
+
+  /**
+   * @param {object} options
+   * @param {string} options.userId
+   * @param {boolean} options.isPro
+   */
+  async function checkProStatus({ userId, isPro }) {
+    const sb = window._supabaseClient;
+    if (!sb || !userId) return;
+
+    try {
+      // جيب بيانات الـ portfolio من الـ DB
+      const { data: port, error } = await sb
+        .from('portfolios')
+        .select('id, theme, last_pro_theme')
+        .eq('user_id', userId)
+        .single();
+
+      if (error || !port) return;
+
+      if (!isPro) {
+        // المستخدم مش Pro — تحقق لو الـ theme بتاعه Pro
+        if (PRO_THEME_IDS.includes(port.theme)) {
+          // احفظ الـ theme القديم واستبدله بـ dark
+          const { error: updateErr } = await sb
+            .from('portfolios')
+            .update({
+              last_pro_theme: port.theme,
+              theme:          DEFAULT_FREE_THEME,
+            })
+            .eq('user_id', userId);
+
+          if (!updateErr) {
+            // حدّث الـ draft في الـ memory
+            if (_draft) _draft.theme = DEFAULT_FREE_THEME;
+            setTimeout(() => {
+              window.toast?.(
+                'Your Pro subscription has ended — theme switched to Dark',
+                'warn'
+              );
+            }, 1500);
+          }
+        }
+
+      } else {
+        // المستخدم Pro — لو عنده last_pro_theme رجّعه
+        if (port.last_pro_theme && PRO_THEME_IDS.includes(port.last_pro_theme)) {
+          const restoredTheme = port.last_pro_theme;
+
+          const { error: restoreErr } = await sb
+            .from('portfolios')
+            .update({
+              theme:          restoredTheme,
+              last_pro_theme: null,
+            })
+            .eq('user_id', userId);
+
+          if (!restoreErr) {
+            if (_draft) _draft.theme = restoredTheme;
+            setTimeout(() => {
+              const label = restoredTheme.charAt(0).toUpperCase() + restoredTheme.slice(1);
+              window.toast?.(
+                `Welcome back! Your ${label} theme has been restored`,
+                'success'
+              );
+            }, 1500);
+          }
+        }
+      }
+
+    } catch (err) {
+      console.warn('[Portfolio] checkProStatus error:', err);
+    }
+  }
+
   /* ═══════════════════════════════════════════════════════════════
      CODE VALIDATION
      ────────────────────────────────────────────────────────────
@@ -244,6 +333,26 @@
   }
 
   /* ═══════════════════════════════════════════════════════════════
+     SLUGIFY HELPER
+  ═══════════════════════════════════════════════════════════════ */
+
+  /**
+   * يحوّل اسم المشروع لـ slug مناسب للـ github_repo_name (NOT NULL column)
+   * مثال: "My Awesome App!" → "custom-my-awesome-app"
+   */
+  function _slugify(str) {
+    return 'custom-' + String(str || 'project')
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, '')   // ازل أي حرف غير مسموح
+      .replace(/\s+/g, '-')            // المسافات → hyphens
+      .replace(/-+/g, '-')             // hyphens متتالية → واحد
+      .replace(/^-|-$/g, '')           // ازل hyphens في الحواف
+      .slice(0, 50)                    // حد أقصى معقول
+      || 'custom-project';
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
      PROJECTS RENDERING & EDITING
   ═══════════════════════════════════════════════════════════════ */
 
@@ -288,23 +397,37 @@
 
     const langColor = _getLangColor(proj.language);
 
+    // اسم المشروع المعروض: للـ custom نعرض الاسم الحقيقي (بدون prefix custom-)
+    const displayName = proj.is_custom
+      ? (proj.display_name || proj.github_repo_name?.replace(/^custom-/, '') || proj.name || '')
+      : (proj.github_repo_name || proj.name || '');
+
+    // رابط الخروج: custom → external_url أو repo_url، GitHub → repo_url
+    const extUrl = proj.is_custom
+      ? (proj.external_url || proj.repo_url || null)
+      : (proj.repo_url || '#');
+
     card.innerHTML = `
       <div class="project-card__header">
         <div class="project-card__meta">
           ${proj.language ? `<span class="lang-dot" style="background:${langColor}" aria-label="${proj.language}"></span>
           <span class="project-card__lang">${proj.language}</span>` : ''}
           ${index === 0 ? '<span class="featured-badge">Featured</span>' : ''}
+          ${proj.is_custom ? '<span class="custom-project-badge" aria-label="Custom project">🔧 Custom</span>' : ''}
         </div>
         <div class="project-card__actions">
           <button class="icon-btn move-up-btn" data-index="${index}" title="Move up" aria-label="Move project up" ${index === 0 ? 'disabled' : ''}>↑</button>
           <button class="icon-btn move-down-btn" data-index="${index}" title="Move down" aria-label="Move project down">↓</button>
-          <a href="${proj.repo_url || '#'}" target="_blank" rel="noopener" class="icon-btn ext-link" aria-label="Open on GitHub">↗</a>
+          ${extUrl
+            ? `<a href="${extUrl}" target="_blank" rel="noopener" class="icon-btn ext-link" aria-label="${proj.is_custom ? 'Open live demo' : 'Open on GitHub'}" title="${proj.is_custom ? 'Live Demo' : 'GitHub'}">↗</a>`
+            : ''}
+          <button class="icon-btn delete-project-btn" data-index="${index}" title="Remove project" aria-label="Remove project" style="color:rgba(255,80,80,0.7);">×</button>
         </div>
       </div>
 
       <h3 class="project-card__name" contenteditable="true" spellcheck="false"
           data-edit="projectName" data-project-index="${index}"
-          aria-label="Edit project name">${proj.github_repo_name || proj.name || ''}</h3>
+          aria-label="Edit project name">${displayName}</h3>
 
       <p class="project-card__desc" contenteditable="true" spellcheck="false"
          data-edit="projectDesc" data-project-index="${index}"
@@ -324,8 +447,17 @@
     const nameEl = card.querySelector('[data-edit="projectName"]');
     nameEl.addEventListener('blur', () => {
       const before = snapshot(); pushUndo(before);
-      _draft.projects[index].github_repo_name = nameEl.textContent.trim();
-      _draft.projects[index].name = nameEl.textContent.trim();
+      const newName = nameEl.textContent.trim();
+      if (_draft.projects[index].is_custom) {
+        // للـ custom projects: نحفظ الاسم الحقيقي في display_name
+        // ونحدّث github_repo_name (slug) بناءً عليه
+        _draft.projects[index].display_name = newName;
+        _draft.projects[index].github_repo_name = _slugify(newName);
+        _draft.projects[index].name = newName;
+      } else {
+        _draft.projects[index].github_repo_name = newName;
+        _draft.projects[index].name = newName;
+      }
       _scheduleAutosave();
     });
     nameEl.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); nameEl.blur(); } });
@@ -340,6 +472,7 @@
 
     card.querySelector('.move-up-btn').addEventListener('click', () => _moveProject(index, -1));
     card.querySelector('.move-down-btn').addEventListener('click', () => _moveProject(index, 1));
+    card.querySelector('.delete-project-btn').addEventListener('click', () => _deleteProject(index));
 
     return card;
   }
@@ -353,6 +486,17 @@
     _draft.projects[newIndex] = temp;
     _renderProjects(_draft.projects);
     _scheduleAutosave();
+  }
+
+  function _deleteProject(index) {
+    const proj = _draft.projects[index];
+    const name = proj?.display_name || proj?.github_repo_name?.replace(/^custom-/, '') || proj?.name || 'this project';
+    if (!confirm(`Remove "${name}" from your portfolio?`)) return;
+    const before = snapshot(); pushUndo(before);
+    _draft.projects.splice(index, 1);
+    _renderProjects(_draft.projects);
+    _scheduleAutosave();
+    window.toast?.(`Project removed`, 'success');
   }
 
   /* ═══════════════════════════════════════════════════════════════
@@ -579,6 +723,319 @@
   }
 
   /* ═══════════════════════════════════════════════════════════════
+     FEATURE: ADD CUSTOM PROJECT
+     ────────────────────────────────────────────────────────────
+     Modal يسمح للمستخدم بإضافة مشروع يدوي (غير GitHub)
+     github_repo_name = slug من الاسم بـ prefix "custom-" (NOT NULL constraint)
+     is_custom = true → يحميه من الحذف عند الـ regenerate
+  ═══════════════════════════════════════════════════════════════ */
+
+  function _showCustomProjectModal() {
+    // ازل أي modal موجود
+    document.getElementById('custom-project-modal')?.remove();
+
+    // ── inject styles (مرة واحدة) ────────────────────────────
+    if (!document.getElementById('custom-project-modal-style')) {
+      const style = document.createElement('style');
+      style.id = 'custom-project-modal-style';
+      style.textContent = `
+        #custom-project-modal {
+          position: fixed; inset: 0; z-index: 9998;
+          display: flex; align-items: center; justify-content: center;
+          background: rgba(0,0,0,0.72);
+          backdrop-filter: blur(6px);
+          animation: toast-in 0.22s ease;
+        }
+        #custom-project-modal .cpm-box {
+          background: var(--clr-bg-2, #0a100c);
+          border: 1px solid rgba(0,255,136,0.18);
+          border-radius: 18px;
+          width: min(500px, 94vw);
+          max-height: 92vh;
+          overflow-y: auto;
+          box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+          font-family: var(--font-body, 'DM Mono', monospace);
+          scrollbar-width: thin;
+          scrollbar-color: rgba(0,255,136,0.2) transparent;
+        }
+        #custom-project-modal .cpm-header {
+          display: flex; align-items: center; justify-content: space-between;
+          padding: 1.25rem 1.5rem 0;
+        }
+        #custom-project-modal .cpm-title {
+          font-family: var(--font-display, 'Syne', sans-serif);
+          font-weight: 700; font-size: 1rem;
+          color: var(--clr-text, #f0f0f0);
+          letter-spacing: -0.01em;
+        }
+        #custom-project-modal .cpm-close {
+          background: transparent; border: none; cursor: pointer;
+          color: var(--clr-text-3, #6b7280); font-size: 1.25rem;
+          padding: 4px; line-height: 1; border-radius: 6px;
+          transition: color 0.15s;
+        }
+        #custom-project-modal .cpm-close:hover { color: var(--clr-text, #f0f0f0); }
+        #custom-project-modal .cpm-body { padding: 1.25rem 1.5rem 1.5rem; }
+        #custom-project-modal .cpm-field { margin-bottom: 1rem; }
+        #custom-project-modal .cpm-label {
+          display: block; font-size: 0.7rem; font-weight: 500;
+          letter-spacing: 0.08em; text-transform: uppercase;
+          color: var(--clr-text-3, #6b7280); margin-bottom: 0.4rem;
+        }
+        #custom-project-modal .cpm-label .cpm-req {
+          color: var(--clr-accent, #00FF88); margin-left: 2px;
+        }
+        #custom-project-modal .cpm-input,
+        #custom-project-modal .cpm-textarea {
+          width: 100%; box-sizing: border-box;
+          background: var(--clr-bg-3, #111814);
+          border: 1px solid var(--clr-border-dim, rgba(255,255,255,0.08));
+          border-radius: 8px;
+          padding: 0.6rem 0.85rem;
+          font-size: 0.82rem; color: var(--clr-text, #f0f0f0);
+          font-family: var(--font-body, 'DM Mono', monospace);
+          outline: none;
+          transition: border-color 0.15s;
+        }
+        #custom-project-modal .cpm-input:focus,
+        #custom-project-modal .cpm-textarea:focus {
+          border-color: rgba(0,255,136,0.45);
+        }
+        #custom-project-modal .cpm-input::placeholder,
+        #custom-project-modal .cpm-textarea::placeholder {
+          color: var(--clr-text-3, #6b7280); opacity: 1;
+        }
+        #custom-project-modal .cpm-textarea {
+          resize: vertical; min-height: 80px; line-height: 1.5;
+        }
+        /* Technologies chips */
+        #custom-project-modal .cpm-tech-list {
+          display: flex; flex-wrap: wrap; gap: 0.4rem;
+          margin-bottom: 0.5rem; min-height: 28px;
+        }
+        #custom-project-modal .cpm-tech-chip {
+          display: inline-flex; align-items: center; gap: 5px;
+          background: var(--clr-accent-dim, rgba(0,255,136,0.08));
+          border: 1px solid rgba(0,255,136,0.2);
+          border-radius: 99px; padding: 3px 10px;
+          font-size: 0.72rem; color: var(--clr-accent, #00FF88);
+          font-family: var(--font-body, monospace);
+        }
+        #custom-project-modal .cpm-tech-chip button {
+          background: transparent; border: none; cursor: pointer;
+          color: inherit; font-size: 0.85rem; padding: 0; line-height: 1;
+          opacity: 0.6; transition: opacity 0.15s;
+        }
+        #custom-project-modal .cpm-tech-chip button:hover { opacity: 1; }
+        /* Footer */
+        #custom-project-modal .cpm-footer {
+          display: flex; align-items: center; justify-content: flex-end;
+          gap: 0.65rem; padding-top: 0.5rem;
+        }
+        /* Error shake */
+        @keyframes cpm-shake {
+          0%,100% { transform: translateX(0); }
+          20%,60%  { transform: translateX(-5px); }
+          40%,80%  { transform: translateX(5px); }
+        }
+        .cpm-input--error {
+          border-color: rgba(255,80,80,0.6) !important;
+          animation: cpm-shake 0.35s ease;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    // ── State ─────────────────────────────────────────────────
+    const techList = [];
+
+    // ── Build Modal DOM ───────────────────────────────────────
+    const modal = document.createElement('div');
+    modal.id = 'custom-project-modal';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-label', 'Add Custom Project');
+    modal.innerHTML = `
+      <div class="cpm-box">
+        <div class="cpm-header">
+          <span class="cpm-title">🔧 Add Custom Project</span>
+          <button class="cpm-close" id="cpm-close-btn" aria-label="Close">✕</button>
+        </div>
+        <div class="cpm-body">
+
+          <div class="cpm-field">
+            <label class="cpm-label" for="cpm-name">Project Name <span class="cpm-req">*</span></label>
+            <input id="cpm-name" class="cpm-input" type="text"
+              placeholder="e.g. My Awesome App" autocomplete="off" />
+          </div>
+
+          <div class="cpm-field">
+            <label class="cpm-label" for="cpm-desc">Description <span class="cpm-req">*</span></label>
+            <textarea id="cpm-desc" class="cpm-textarea" rows="3"
+              placeholder="Describe what the project does, the tech stack, and what makes it impressive…"></textarea>
+          </div>
+
+          <div class="cpm-field">
+            <label class="cpm-label" for="cpm-url">Live Demo / External URL</label>
+            <input id="cpm-url" class="cpm-input" type="url"
+              placeholder="https://myapp.com" autocomplete="off" />
+          </div>
+
+          <div class="cpm-field">
+            <label class="cpm-label">Technologies Used</label>
+            <div class="cpm-tech-list" id="cpm-tech-list"></div>
+            <div style="display:flex; gap:0.5rem;">
+              <input id="cpm-tech-input" class="cpm-input" type="text"
+                placeholder="e.g. React" autocomplete="off"
+                style="flex:1;" />
+              <button id="cpm-tech-add-btn" class="btn btn--ghost btn--sm"
+                style="white-space:nowrap; flex-shrink:0;">+ Add</button>
+            </div>
+          </div>
+
+          <div class="cpm-field">
+            <label class="cpm-label" for="cpm-lang">Main Language</label>
+            <input id="cpm-lang" class="cpm-input" type="text"
+              placeholder="e.g. JavaScript" autocomplete="off" />
+          </div>
+
+          <div class="cpm-footer">
+            <button id="cpm-cancel-btn" class="btn btn--ghost btn--sm">Cancel</button>
+            <button id="cpm-submit-btn" class="btn btn--primary btn--sm">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:4px;" aria-hidden="true">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              Add Project
+            </button>
+          </div>
+
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // ── DOM refs ──────────────────────────────────────────────
+    const nameInput    = modal.querySelector('#cpm-name');
+    const descTextarea = modal.querySelector('#cpm-desc');
+    const urlInput     = modal.querySelector('#cpm-url');
+    const techInput    = modal.querySelector('#cpm-tech-input');
+    const techAddBtn   = modal.querySelector('#cpm-tech-add-btn');
+    const techListEl   = modal.querySelector('#cpm-tech-list');
+    const cancelBtn    = modal.querySelector('#cpm-cancel-btn');
+    const closeBtn     = modal.querySelector('#cpm-close-btn');
+    const submitBtn    = modal.querySelector('#cpm-submit-btn');
+
+    // ── Tech chip rendering ───────────────────────────────────
+    function _renderTechChips() {
+      techListEl.innerHTML = '';
+      techList.forEach((tech, i) => {
+        const chip = document.createElement('span');
+        chip.className = 'cpm-tech-chip';
+        chip.innerHTML = `${tech} <button aria-label="Remove ${tech}" data-tech-idx="${i}">×</button>`;
+        chip.querySelector('button').addEventListener('click', () => {
+          techList.splice(i, 1);
+          _renderTechChips();
+        });
+        techListEl.appendChild(chip);
+      });
+    }
+
+    function _addTech() {
+      const val = techInput.value.trim();
+      if (!val || techList.includes(val) || techList.length >= 10) return;
+      techList.push(val);
+      techInput.value = '';
+      _renderTechChips();
+      techInput.focus();
+    }
+
+    techAddBtn.addEventListener('click', _addTech);
+    techInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); _addTech(); }
+    });
+
+    // ── Close logic ───────────────────────────────────────────
+    function _close() { modal.remove(); }
+    closeBtn.addEventListener('click', _close);
+    cancelBtn.addEventListener('click', _close);
+    modal.addEventListener('click', e => { if (e.target === modal) _close(); });
+    document.addEventListener('keydown', function _esc(e) {
+      if (e.key === 'Escape') { _close(); document.removeEventListener('keydown', _esc); }
+    });
+
+    // ── Submit logic ──────────────────────────────────────────
+    submitBtn.addEventListener('click', () => {
+      const name = nameInput.value.trim();
+      const desc = descTextarea.value.trim();
+      const url  = urlInput.value.trim() || null;
+      const lang = modal.querySelector('#cpm-lang').value.trim() || null;
+
+      // validation
+      let valid = true;
+      if (!name) {
+        nameInput.classList.add('cpm-input--error');
+        setTimeout(() => nameInput.classList.remove('cpm-input--error'), 400);
+        nameInput.focus();
+        valid = false;
+      }
+      if (!desc) {
+        descTextarea.classList.add('cpm-input--error');
+        setTimeout(() => descTextarea.classList.remove('cpm-input--error'), 400);
+        if (valid) descTextarea.focus();
+        valid = false;
+      }
+      if (!valid) return;
+
+      const before = snapshot(); pushUndo(before);
+
+      const customProject = {
+        // slug للـ NOT NULL constraint
+        github_repo_name: _slugify(name),
+        // الاسم الحقيقي للعرض
+        display_name:     name,
+        name:             name,
+        // الوصف
+        ai_description:   desc,
+        description:      desc,
+        // الروابط
+        repo_url:         url,
+        external_url:     url,
+        // اللغة والتقنيات
+        language:         lang,
+        topics:           [...techList],
+        // metadata
+        is_custom:        true,
+        is_featured:      false,
+        stars:            0,
+        sort_order:       (_draft.projects || []).length,
+        imageUrls:        [],
+        imageUrl:         null,
+      };
+
+      if (!_draft.projects) _draft.projects = [];
+      _draft.projects.push(customProject);
+      _renderProjects(_draft.projects);
+      _scheduleAutosave();
+
+      window.toast?.(`"${name}" added to your portfolio`, 'success');
+      _close();
+
+      // Scroll to new card
+      setTimeout(() => {
+        const cards = document.querySelectorAll('[data-project-index]');
+        const last = cards[cards.length - 1];
+        last?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 100);
+    });
+
+    // ── Focus first field ─────────────────────────────────────
+    setTimeout(() => nameInput.focus(), 50);
+  }
+
+
+
+  /* ═══════════════════════════════════════════════════════════════
      CONTENTEDITABLE FIELDS
   ═══════════════════════════════════════════════════════════════ */
 
@@ -665,6 +1122,30 @@
   function _buildThemePanel() {
     $('#theme-panel')?.remove();
 
+    // ── Pro Theme Badge styles (one-time injection) ──────────
+    if (!document.getElementById('pro-theme-badge-style')) {
+      const style = document.createElement('style');
+      style.id = 'pro-theme-badge-style';
+      style.textContent = `
+        .pro-theme-badge {
+          position: absolute;
+          top: 5px;
+          right: 5px;
+          background: linear-gradient(135deg, #00FF88, #00ccff);
+          color: #080C0A;
+          font-size: 0.52rem;
+          font-weight: 700;
+          letter-spacing: 0.1em;
+          padding: 2px 6px;
+          border-radius: 4px;
+          pointer-events: none;
+          z-index: 2;
+        }
+        .theme-swatch { position: relative; }
+      `;
+      document.head.appendChild(style);
+    }
+
     const panel = document.createElement('div');
     panel.id = 'theme-panel';
     panel.className = 'theme-panel';
@@ -706,7 +1187,9 @@
               <span class="theme-swatch__preview theme-swatch__preview--${t.id}"></span>
               <span class="theme-swatch__icon">${t.icon}</span>
               <span class="theme-swatch__label">${t.label}</span>
-              ${_isPro ? '' : '<span class="lock-icon" title="Preview free — Publish requires Pro" aria-hidden="true">👁</span>'}
+              ${_isPro
+                ? '<span class="pro-theme-badge" aria-hidden="true">PRO</span>'
+                : '<span class="lock-icon" title="Preview free — Publish requires Pro" aria-hidden="true">👁</span>'}
             </button>
           `).join('')}
         </div>
@@ -958,8 +1441,19 @@
               topics: p.topics || [], sort_order: i, is_featured: i === 0,
               image_url:  (p.imageUrls && p.imageUrls[0]) || p.imageUrl || null,
               image_urls: p.imageUrls || (p.imageUrl ? [p.imageUrl] : []),
+              // Custom project fields
+              is_custom:             p.is_custom    || false,
+              external_url:          p.external_url || null,
+              custom_thumbnail_url:  p.custom_thumbnail_url || null,
             }));
-            await sb.from('projects').delete().eq('portfolio_id', portData.id);
+
+            // ⚠️ حذف GitHub projects فقط — الـ custom projects محمية
+            // WHERE is_custom = FALSE (أو IS NULL للـ rows القديمة)
+            await sb.from('projects')
+              .delete()
+              .eq('portfolio_id', portData.id)
+              .or('is_custom.is.null,is_custom.eq.false');
+
             await sb.from('projects').insert(projectsPayload);
           }
 
@@ -1244,7 +1738,7 @@
 
       // تحديث الـ UI
       _setCodeMsg(msgEl, 'success',
-        result.type === 'yearly'
+        formatResult.type === 'yearly'
           ? '🎉 Code accepted! You\'re now Pro for a full year!'
           : '🎉 Code accepted! You\'re now Pro for a month!'
       );
@@ -1418,6 +1912,23 @@
       return;
     }
 
+    // ── Theme Fallback check (Feature 2) ──────────────────────────────────
+    // نجيب الـ userId من الـ session عشان نعدّي لـ checkProStatus
+    try {
+      const sb = window._supabaseClient;
+      if (sb) {
+        const { data: authData } = await sb.auth.getUser();
+        const userId = authData?.user?.id;
+        if (userId) {
+          await checkProStatus({ userId, isPro: _isPro });
+          // إعادة تحميل الـ draft بعد التعديل المحتمل على الـ theme
+          _draft = window.AI?.getDraft?.() || options.draft || _draft;
+        }
+      }
+    } catch (e) {
+      console.warn('[Portfolio] checkProStatus skipped:', e);
+    }
+
     _start();
   }
 
@@ -1516,8 +2027,11 @@
     activateProTheme,
     deactivateCurrentProTheme,
     handleThemeScriptLifecycle,
+    checkProStatus,
     // Feature 2: Custom Sections
     _addCustomSection,
+    // Feature: Custom Projects
+    _showCustomProjectModal,
   };
 
 })();

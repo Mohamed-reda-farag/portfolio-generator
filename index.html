@@ -879,6 +879,69 @@
 
     /* ── Auth hidden utility ──────────────────────────────────── */
     .hidden { display: none !important; }
+
+    /* ── Early Adopter Banner ──────────────────────────────────── */
+    .early-adopter-banner {
+      position: relative;
+      z-index: 1;
+      margin: 0;
+      padding: var(--sp-3) var(--sp-6);
+      text-align: center;
+      font-family: var(--font-body);
+      font-size: var(--fs-sm);
+      letter-spacing: var(--ls-wide);
+      background: linear-gradient(
+        90deg,
+        rgba(0,255,136,0.06) 0%,
+        rgba(0,204,255,0.08) 50%,
+        rgba(0,255,136,0.06) 100%
+      );
+      border-top: 1px solid rgba(0,255,136,0.15);
+      border-bottom: 1px solid rgba(0,255,136,0.15);
+      color: var(--clr-text-2);
+    }
+
+    .early-adopter-banner strong,
+    .early-adopter-banner #spots-remaining {
+      color: var(--clr-accent);
+      font-weight: 600;
+    }
+
+    .early-adopter-banner .ea-fire {
+      animation: ea-pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes ea-pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.6; }
+    }
+
+    .early-adopter-banner.closed {
+      background: rgba(255,255,255,0.02);
+      border-color: rgba(255,255,255,0.05);
+      color: var(--clr-text-3);
+    }
+
+    @media (max-width: 480px) {
+      .early-adopter-banner {
+        font-size: var(--fs-xs);
+        padding: var(--sp-2) var(--sp-4);
+      }
+    }
+
+    /* ── Google Sign-In Button ──────────────────────────────── */
+    .btn--google {
+      gap: 6px;
+    }
+    .btn--google svg {
+      flex-shrink: 0;
+    }
+    @media (max-width: 860px) {
+      /* الـ nav بيضيق بسرعة — نخلي زرار Google نص دائري بس بدون نص */
+      .btn--google .btn--google-label {
+        display: none;
+      }
+    }
   </style>
 </head>
 
@@ -922,6 +985,21 @@
             onclick="Auth.signIn()"
           >
             Sign in with GitHub
+          </button>
+
+          <!-- يظهر لو مش logged in — Google OAuth -->
+          <button
+            class="btn btn--ghost btn--sm btn--google"
+            id="google-login-btn"
+            data-nav-signin-google
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v2.97h3.86c2.26-2.09 3.56-5.17 3.56-8.79z"/>
+              <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-2.97c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.09-6.73-4.96H1.27v3.07C3.24 21.3 7.31 24 12 24z"/>
+              <path fill="#FBBC05" d="M5.27 14.32A7.07 7.07 0 0 1 4.86 12c0-.8.14-1.58.41-2.32V6.61H1.27A11.96 11.96 0 0 0 0 12c0 1.93.46 3.76 1.27 5.39l4-3.07z"/>
+              <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.18 15.24 0 12 0 7.31 0 3.24 2.7 1.27 6.61l4 3.07C6.22 6.84 8.87 4.75 12 4.75z"/>
+            </svg>
+            <span class="btn--google-label">Continue with Google</span>
           </button>
 
           <!-- يظهر لو logged in -->
@@ -1170,6 +1248,21 @@
       </div>
     </div>
   </section>
+
+
+  <!-- ── Early Adopter Banner ─────────────────────────────────── -->
+  <!-- يظهر لو العدد أقل من 50 -->
+  <div id="early-adopter-banner" class="early-adopter-banner" style="display:none;" aria-live="polite">
+    <span class="ea-fire" aria-hidden="true">🔥</span>
+    Early Access:
+    <strong><span id="spots-remaining">??</span>/50 spots remaining</strong>
+    — Get Pro free for 30 days
+  </div>
+
+  <!-- يظهر لو العدد وصل 50 -->
+  <div id="early-adopter-closed" class="early-adopter-banner closed" style="display:none;">
+    Early Access is now closed — all 50 Pro spots have been claimed
+  </div>
 
 
   <!-- ── Marquee ──────────────────────────────────────────────── -->
@@ -1679,6 +1772,96 @@
         });
       });
     });
+  </script>
+
+  <!-- ── Early Adopter Banner Loader ─────────────────────────── -->
+  <!-- يشتغل بعد ما Supabase SDK يتحمّل — يجيب العداد ويظهر الـ banner -->
+  <script>
+  (function initEarlyAdopterBanner() {
+    const POLL_MAX     = 20;   // أقصى عدد محاولات (كل 200ms = 4 ثواني)
+    const POLL_DELAY   = 200;  // ms
+    let   pollAttempts = 0;
+
+    function tryInit() {
+      // استنّى Supabase SDK + الـ URL يتحدّدوا
+      if (!window.supabase?.createClient || !window.SUPABASE_URL) {
+        if (++pollAttempts < POLL_MAX) {
+          setTimeout(tryInit, POLL_DELAY);
+        }
+        return;
+      }
+
+      const sb = window._supabaseClient || window.supabase.createClient(
+        window.SUPABASE_URL,
+        window.SUPABASE_ANON_KEY
+      );
+      // اشارك الـ client مع auth.js
+      if (!window._supabaseClient) window._supabaseClient = sb;
+
+      sb.from('early_adopter_counter')
+        .select('count, max_count')
+        .eq('id', 1)
+        .single()
+        .then(({ data, error }) => {
+          const banner  = document.getElementById('early-adopter-banner');
+          const closed  = document.getElementById('early-adopter-closed');
+          const spotsEl = document.getElementById('spots-remaining');
+
+          if (error || !data) return; // مجدول — مش مشكلة
+
+          const remaining = data.max_count - data.count;
+
+          if (remaining > 0) {
+            if (spotsEl) spotsEl.textContent = remaining;
+            if (banner)  banner.style.display  = '';
+            if (closed)  closed.style.display  = 'none';
+          } else {
+            if (banner) banner.style.display  = 'none';
+            if (closed) closed.style.display  = '';
+          }
+        })
+        .catch(() => { /* صمت — الـ counter table ممكن تكون ما اتعملتش بعد */ });
+    }
+
+    // ابدأ بعد DOMContentLoaded عشان الـ Supabase SDK script يتحمّل
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', tryInit);
+    } else {
+      tryInit();
+    }
+  })();
+  </script>
+  <!-- ── Google Sign-In Wiring ────────────────────────────────── -->
+  <script>
+  (function initGoogleSignIn() {
+    function wire() {
+      const googleBtn = document.getElementById('google-login-btn');
+      if (googleBtn) {
+        googleBtn.addEventListener('click', async () => {
+          if (!window.Auth?.signInWithGoogle) return;
+          const { error } = await window.Auth.signInWithGoogle();
+          if (error) window.toast?.(error, 'error');
+        });
+      }
+
+      // الزرار ده مش معروف لـ auth.js (بيستخدم data-nav-signin-google
+      // بدل data-nav-signin)، فهنحدّث ظهوره يدوياً مع كل تغيير في auth state
+      window.Auth?.onAuthStateChange?.((user) => {
+        if (googleBtn) googleBtn.classList.toggle('hidden', !!user);
+      });
+
+      // الحالة الابتدائية (لو فيه مستخدم logged in من قبل تحميل الصفحة)
+      window.Auth?.getUser?.().then((user) => {
+        if (googleBtn) googleBtn.classList.toggle('hidden', !!user);
+      });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', wire);
+    } else {
+      wire();
+    }
+  })();
   </script>
 
 </body>

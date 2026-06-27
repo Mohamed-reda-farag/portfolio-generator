@@ -1040,7 +1040,11 @@
 
         // ── Image cards (behind) ──
         if (hasImages) {
-          const stackFrag = buildStackedCards(proj.imageUrls, proj.github_repo_name || proj.name);
+          // استخدم display_name للـ custom (بدون slug prefix) كـ alt text
+          const cardName = proj.is_custom
+            ? (proj.display_name || proj.github_repo_name?.replace(/^custom-/, '') || proj.repo_name || '')
+            : (proj.github_repo_name || proj.repo_name || proj.name || '');
+          const stackFrag = buildStackedCards(proj.imageUrls, cardName);
           if (stackFrag) wrapper.appendChild(stackFrag);
         }
 
@@ -1048,11 +1052,33 @@
         card.className = `project-card${index === 0 ? ' project-card--featured' : ''}`;
 
         const langColor = getLangColor(proj.language);
-        const name = proj.github_repo_name || proj.repo_name || proj.name || '';
-        const desc = proj.ai_description || proj.description || '—';
-        const url  = proj.repo_url || `https://github.com/${name}`;
-        const stars = proj.stars || 0;
+
+        // ── الاسم المعروض ─────────────────────────────────────────
+        // custom: display_name (بدون slug prefix) — GitHub: github_repo_name
+        const name = proj.is_custom
+          ? (proj.display_name || proj.github_repo_name?.replace(/^custom-/, '') || proj.repo_name || '')
+          : (proj.github_repo_name || proj.repo_name || proj.name || '');
+
+        const desc   = proj.ai_description || proj.description || '—';
+        const stars  = proj.stars || 0;
         const topics = proj.topics || [];
+
+        // ── رابط الخروج ───────────────────────────────────────────
+        // custom → external_url أو repo_url (لو موجود) وإلا لا رابط
+        // GitHub → repo_url دايماً
+        const extUrl = proj.is_custom
+          ? (proj.external_url || proj.repo_url || null)
+          : (proj.repo_url || null);
+
+        // ── زرار الرابط ───────────────────────────────────────────
+        // custom بدون رابط → الزرار مختفي تماماً
+        // custom مع رابط  → "↗" موجود بعنوان "Live Demo"
+        // GitHub           → "↗" موجود بعنوان "Open on GitHub"
+        const linkBtnHtml = extUrl
+          ? `<a href="${esc(extUrl)}" target="_blank" rel="noopener"
+               class="hero-link" style="padding:4px 8px;font-size:var(--fs-xs);"
+               aria-label="${proj.is_custom ? `Live demo: ${esc(name)}` : `Open ${esc(name)} on GitHub`}">↗</a>`
+          : '';
 
         card.innerHTML = `
           <div class="project-card__header">
@@ -1064,9 +1090,7 @@
               ` : ''}
               ${index === 0 ? '<span class="featured-badge">Featured</span>' : ''}
             </div>
-            <a href="${esc(url)}" target="_blank" rel="noopener"
-               class="hero-link" style="padding:4px 8px;font-size:var(--fs-xs);"
-               aria-label="Open ${esc(name)} on GitHub">↗</a>
+            ${linkBtnHtml}
           </div>
 
           <h3 class="project-card__name">${esc(name)}</h3>
@@ -1254,10 +1278,20 @@
       const normProjects = (projects || []).map(p => ({
         ...p,
         github_repo_name: p.github_repo_name || p.repo_name || p.name || '',
+        display_name: p.display_name
+          || (p.is_custom
+              ? (p.github_repo_name || p.repo_name || '').replace(/^custom-/, '')
+              : (p.github_repo_name || p.repo_name || p.name || '')),
         ai_description:   p.ai_description   || p.description || '',
+        // custom → لا يُبنى GitHub URL افتراضي
         repo_url: p.repo_url
-          || (githubRepos || []).find(r => r.name === (p.repo_name || p.github_repo_name))?.html_url
-          || `https://github.com/${githubUsername}/${p.repo_name || p.github_repo_name}`,
+          || (p.is_custom
+              ? null
+              : ((githubRepos || []).find(r => r.name === (p.repo_name || p.github_repo_name))?.html_url
+                 || `https://github.com/${githubUsername}/${p.repo_name || p.github_repo_name}`)
+             ),
+        external_url: p.external_url || null,
+        is_custom: p.is_custom || false,
         language: p.language
           || (githubRepos || []).find(r => r.name === (p.repo_name || p.github_repo_name))?.language
           || null,
@@ -1309,7 +1343,7 @@
             id, bio, skills, theme, slug, is_published,
             user_id, linkedin_url, gmail_address, custom_sections,
             full_name, github_username, job_title,
-            projects ( github_repo_name, ai_description, stars, language, topics, sort_order, repo_url, is_featured, image_url, image_urls )
+            projects ( github_repo_name, ai_description, stars, language, topics, sort_order, repo_url, is_featured, image_url, image_urls, is_custom, external_url )
           `)
           .eq('slug', slug)
           .eq('is_published', true)
@@ -1330,11 +1364,19 @@
           .map(p => ({
             github_repo_name: p.github_repo_name,
             repo_name:        p.github_repo_name,
+            // للـ custom: الاسم الحقيقي بدون prefix "custom-"
+            display_name:     p.is_custom
+              ? (p.github_repo_name?.replace(/^custom-/, '') || p.github_repo_name)
+              : p.github_repo_name,
             ai_description:   p.ai_description,
             stars:            p.stars || 0,
             language:         p.language,
             topics:           p.topics || [],
-            repo_url:         p.repo_url || `https://github.com/${userData?.github_username}/${p.github_repo_name}`,
+            // custom → لا نبني GitHub URL افتراضي
+            repo_url:         p.repo_url
+              || (p.is_custom ? null : `https://github.com/${userData?.github_username}/${p.github_repo_name}`),
+            external_url:     p.external_url || null,
+            is_custom:        p.is_custom || false,
             imageUrl:  toRawGithubUrl((p.image_urls && p.image_urls[0]) || p.image_url || null),
             imageUrls: (p.image_urls || (p.image_url ? [p.image_url] : []))
                          .map(u => toRawGithubUrl(u)).filter(Boolean),

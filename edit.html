@@ -307,6 +307,20 @@
       <section class="portfolio-section" aria-labelledby="projects-label">
         <div class="section-label" id="projects-label"><span>Projects</span></div>
         <div class="projects-grid" data-projects-grid></div>
+        <!-- Add Custom Project button — يظهر أسفل الـ grid -->
+        <div style="margin-top: var(--sp-4); display:flex; gap: var(--sp-3); flex-wrap:wrap;">
+          <button
+            id="add-custom-project-btn"
+            class="skill-tag skill-tag--add"
+            aria-label="Add a custom project manually"
+            style="display:flex; align-items:center; gap:var(--sp-2); font-size:var(--fs-sm);"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Add Custom Project
+          </button>
+        </div>
       </section>
 
       <!-- Feature 2: Custom Sections -->
@@ -371,7 +385,7 @@
             const { data: portfolio } = await sb
               .from('portfolios')
               .select(`id, bio, skills, theme, slug, user_id, linkedin_url, gmail_address, custom_sections,
-                projects ( github_repo_name, ai_description, stars, language, topics, sort_order, repo_url, is_featured, image_url )`)
+                projects ( github_repo_name, ai_description, stars, language, topics, sort_order, repo_url, is_featured, image_url, is_custom, external_url )`)
               .eq('id', portfolioId)
               .single();
 
@@ -387,13 +401,20 @@
                 .map(p => ({
                   repo_name:        p.github_repo_name,
                   github_repo_name: p.github_repo_name,
-                  description:      p.ai_description,
+                  // للـ custom projects: الاسم المعروض بدون الـ slug prefix
+                  display_name:     p.is_custom
+                    ? p.github_repo_name?.replace(/^custom-/, '') || p.github_repo_name
+                    : p.github_repo_name,
                   ai_description:   p.ai_description,
+                  description:      p.ai_description,
                   stars:            p.stars || 0,
                   language:         p.language,
                   topics:           p.topics || [],
-                  repo_url:         p.repo_url || `https://github.com/${userData?.github_username}/${p.github_repo_name}`,
+                  repo_url:         p.repo_url
+                    || (p.is_custom ? null : `https://github.com/${userData?.github_username}/${p.github_repo_name}`),
+                  external_url:     p.external_url || null,
                   imageUrl:         p.image_url || null,
+                  is_custom:        p.is_custom || false,
                 }));
 
               rawDraft = {
@@ -488,8 +509,9 @@
           github_repo_name: p.repo_name || p.github_repo_name || p.name || '',
           ai_description:   p.description || p.ai_description || '',
           repo_url: p.repo_url
-            || (rawDraft.githubRepos?.find(r => r.name === (p.repo_name || p.github_repo_name))?.html_url)
-            || `https://github.com/${rawDraft.githubUsername}/${p.repo_name || p.github_repo_name}`,
+            || (p.is_custom ? null : (rawDraft.githubRepos?.find(r => r.name === (p.repo_name || p.github_repo_name))?.html_url)
+            || `https://github.com/${rawDraft.githubUsername}/${p.repo_name || p.github_repo_name}`),
+          external_url: p.external_url || null,
           language: p.language
             || rawDraft.githubRepos?.find(r => r.name === (p.repo_name || p.github_repo_name))?.language
             || null,
@@ -500,6 +522,11 @@
             || rawDraft.githubRepos?.find(r => r.name === (p.repo_name || p.github_repo_name))?.topics
             || [],
           imageUrl: p.imageUrl || null,
+          is_custom: p.is_custom || false,
+          display_name: p.display_name
+            || (p.is_custom
+                ? (p.repo_name || p.github_repo_name || '').replace(/^custom-/, '')
+                : (p.repo_name || p.github_repo_name || p.name || '')),
         })),
       };
 
@@ -525,6 +552,11 @@
       // Feature 2: Add Section button listener
       document.getElementById('add-custom-section-btn')?.addEventListener('click', () => {
         window.Portfolio?._addCustomSection?.() || window._portfolioAddSection?.();
+      });
+
+      // Feature: Add Custom Project button listener
+      document.getElementById('add-custom-project-btn')?.addEventListener('click', () => {
+        window.Portfolio?._showCustomProjectModal?.();
       });
 
       // Re-trigger app.js animations if GSAP loaded after window.load

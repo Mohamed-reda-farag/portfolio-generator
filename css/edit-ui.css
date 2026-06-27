@@ -740,7 +740,36 @@
 }
 
 /* ─────────────────────────────────────────────
-   RESPONSIVE
+   CUSTOM PROJECT BADGE
+───────────────────────────────────────────── */
+
+.custom-project-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #f5a623;
+  border: 1px solid rgba(245, 166, 35, 0.3);
+  border-radius: var(--radius-sm, 4px);
+  padding: 2px 7px;
+  background: rgba(245, 166, 35, 0.06);
+  pointer-events: none;
+}
+
+/* Delete project button — visible on card hover */
+.delete-project-btn {
+  transition: background 0.15s, color 0.15s, border-color 0.15s !important;
+}
+.delete-project-btn:hover:not(:disabled) {
+  background: rgba(255, 80, 80, 0.12) !important;
+  color: rgba(255, 80, 80, 0.9) !important;
+  border-color: rgba(255, 80, 80, 0.25) !important;
+}
+
+/* ─────────────────────────────────────────────
 ───────────────────────────────────────────── */
 
 @media (max-width: 640px) {

@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en" data-page="readme-analyzer">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>README Analyzer — Portfolio Generator</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="css/main.css" />
+
+  <script>
+    window.SUPABASE_URL      = "https://zxybqbjsnriwpjehinwb.supabase.co";
+    window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4eWJxYmpzbnJpd3BqZWhpbndiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMjI1NDEsImV4cCI6MjA5MDY5ODU0MX0.ED8CX81h78oga482b9pepZPsqfvX7znMqmtO0VRn3AM";
+  </script>
+
+  <style>
+    /* ── Inline design tokens fallback ── */
+    :root {
+      --clr-bg:#080C0A; --clr-bg-2:#0D1410; --clr-bg-3:#111A14;
+      --clr-surface:#162019;
+      --clr-border:rgba(0,255,136,0.10); --clr-border-dim:rgba(255,255,255,0.05);
+      --clr-accent:#00FF88; --clr-accent-dim:rgba(0,255,136,0.12);
+      --clr-accent-glow:rgba(0,255,136,0.25);
+      --clr-text:#E8F0EB; --clr-text-2:#8A9E90; --clr-text-3:#4A5E52;
+      --clr-text-muted:#8A9E90; --clr-text-inv:#080C0A;
+      --clr-error:#FF4F4F; --clr-warn:#FFB547;
+      --font-display:'Syne',sans-serif; --font-body:'DM Mono',monospace;
+      --fs-xs:0.70rem; --fs-sm:0.80rem; --fs-base:0.875rem; --fs-md:1rem;
+      --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px;
+      --sp-6:24px; --sp-8:32px; --sp-10:40px; --sp-12:48px;
+      --radius-sm:4px; --radius-md:8px; --radius-lg:12px; --radius-full:9999px;
+      --shadow-glow:0 0 24px rgba(0,255,136,0.25);
+      --shadow-glow-sm:0 0 10px rgba(0,255,136,0.3);
+      --ease-out:cubic-bezier(0.16,1,0.3,1); --ease-in:cubic-bezier(0.7,0,0.84,0);
+      --dur-fast:150ms; --dur-base:250ms;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--clr-bg);
+      color: var(--clr-text);
+      font-family: var(--font-body);
+      font-size: var(--fs-base);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ── Shared button styles (matches dashboard) ── */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: var(--sp-2); padding: 12px 24px; border-radius: var(--radius-md);
+      font-family: var(--font-body); font-size: var(--fs-base); font-weight: 500;
+      letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;
+      border: none; white-space: nowrap; position: relative; overflow: hidden;
+      transition: background var(--dur-base), color var(--dur-base),
+                  box-shadow var(--dur-base), transform var(--dur-fast);
+      text-decoration: none;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+    .btn--primary { background: var(--clr-accent); color: var(--clr-text-inv); box-shadow: var(--shadow-glow-sm); }
+    .btn--primary:hover { box-shadow: var(--shadow-glow); }
+    .btn--ghost { background: transparent; color: var(--clr-text); border: 1px solid var(--clr-border); }
+    .btn--ghost:hover { border-color: var(--clr-accent); color: var(--clr-accent); background: var(--clr-accent-dim); }
+    .btn--sm { padding: 6px 14px !important; font-size: var(--fs-xs) !important; border-radius: var(--radius-sm) !important; }
+    .hidden { display: none !important; }
+
+    /* ── Toast (same as dashboard) ── */
+    #toast-container {
+      position: fixed; bottom: var(--sp-6); right: var(--sp-6);
+      display: flex; flex-direction: column; gap: var(--sp-3);
+      z-index: 200; pointer-events: none;
+    }
+    .toast {
+      display: flex; align-items: center; gap: var(--sp-3);
+      background: var(--clr-bg-3); border: 1px solid var(--clr-border-dim);
+      border-radius: var(--radius-md); padding: var(--sp-3) var(--sp-4);
+      font-size: var(--fs-sm); color: var(--clr-text);
+      pointer-events: all; min-width: 240px; max-width: 360px;
+      animation: toast-in 250ms var(--ease-out) forwards;
+    }
+    .toast.is-leaving { animation: toast-out 250ms var(--ease-in) forwards; }
+    @keyframes toast-in  { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes toast-out { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(20px); } }
+
+    /* ── Header (identical to dashboard) ── */
+    .dashboard-header {
+      height: 64px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 var(--sp-8);
+      border-bottom: 1px solid var(--clr-border-dim);
+      background: var(--clr-bg);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .dashboard-header__logo {
+      font-family: var(--font-display); font-weight: 700; font-size: 1.1rem;
+      color: var(--clr-text); text-decoration: none; letter-spacing: -0.02em;
+    }
+    .dashboard-header__actions { display: flex; align-items: center; gap: var(--sp-3); }
+    .nav-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      border: 2px solid var(--clr-border); object-fit: cover;
+    }
+
+    /* ── Main layout ── */
+    .analyzer-main {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: var(--sp-10) var(--sp-6) var(--sp-20);
+    }
+
+    /* ── Page header ── */
+    .analyzer-hero {
+      margin-bottom: var(--sp-10);
+    }
+    .analyzer-hero__eyebrow {
+      display: inline-flex; align-items: center; gap: var(--sp-2);
+      font-size: var(--fs-xs); letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--clr-accent); margin-bottom: var(--sp-4);
+    }
+    .analyzer-hero__eyebrow::before {
+      content: ''; display: block; width: 20px; height: 1px;
+      background: var(--clr-accent);
+    }
+    .analyzer-hero__title {
+      font-family: var(--font-display); font-weight: 800;
+      font-size: clamp(1.8rem, 4vw, 2.8rem); line-height: 1.1;
+      color: var(--clr-text); margin-bottom: var(--sp-3);
+    }
+    .analyzer-hero__sub {
+      font-size: var(--fs-sm); color: var(--clr-text-muted); line-height: 1.6;
+    }
+
+    /* ── Section label ── */
+    .step-label {
+      font-size: var(--fs-xs); letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--clr-text-muted); margin-bottom: var(--sp-3);
+      display: flex; align-items: center; gap: var(--sp-2);
+    }
+    .step-label__num {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 20px; height: 20px; border-radius: 50%;
+      background: var(--clr-accent-dim); border: 1px solid var(--clr-border);
+      font-size: 0.65rem; color: var(--clr-accent); flex-shrink: 0;
+    }
+
+    /* ── Upload zone ── */
+    .upload-zone {
+      border: 2px dashed var(--clr-border);
+      border-radius: var(--radius-lg);
+      padding: var(--sp-10) var(--sp-8);
+      text-align: center;
+      cursor: pointer;
+      transition: border-color var(--dur-base), background var(--dur-base);
+      background: var(--clr-bg-2);
+      margin-bottom: var(--sp-3);
+      position: relative;
+    }
+    .upload-zone:hover,
+    .upload-zone.drag-over {
+      border-color: var(--clr-accent);
+      background: var(--clr-accent-dim);
+    }
+    .upload-zone input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .upload-zone__icon { font-size: 2rem; margin-bottom: var(--sp-3); }
+    .upload-zone__text {
+      font-family: var(--font-display); font-size: 1rem; font-weight: 700;
+      color: var(--clr-text); margin-bottom: var(--sp-2);
+    }
+    .upload-zone__hint { font-size: var(--fs-xs); color: var(--clr-text-muted); }
+
+    /* ── File confirmation pill ── */
+    .file-pill {
+      display: inline-flex; align-items: center; gap: var(--sp-2);
+      background: rgba(0,255,136,0.08); border: 1px solid rgba(0,255,136,0.2);
+      border-radius: var(--radius-full); padding: var(--sp-2) var(--sp-4);
+      font-size: var(--fs-sm); color: var(--clr-accent);
+      margin-bottom: var(--sp-6);
+    }
+    .file-pill__remove {
+      background: none; border: none; color: var(--clr-text-muted);
+      cursor: pointer; font-size: var(--fs-xs); padding: 0 0 0 var(--sp-1);
+      line-height: 1; transition: color var(--dur-fast);
+    }
+    .file-pill__remove:hover { color: var(--clr-error); }
+
+    /* ── Output checkboxes ── */
+    .outputs-section { margin-bottom: var(--sp-6); }
+    .output-options { display: flex; flex-direction: column; gap: var(--sp-3); }
+    .output-option {
+      display: flex; align-items: center; gap: var(--sp-3);
+      padding: var(--sp-3) var(--sp-4);
+      background: var(--clr-bg-2); border: 1px solid var(--clr-border-dim);
+      border-radius: var(--radius-md); cursor: pointer;
+      transition: border-color var(--dur-base), background var(--dur-base);
+    }
+    .output-option:hover { border-color: var(--clr-border); }
+    .output-option input[type="checkbox"] { display: none; }
+    .output-option.is-checked {
+      border-color: var(--clr-border);
+      background: rgba(0,255,136,0.05);
+    }
+    .output-option__check {
+      width: 18px; height: 18px; border-radius: var(--radius-sm);
+      border: 1px solid var(--clr-border); flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: background var(--dur-fast), border-color var(--dur-fast);
+    }
+    .output-option.is-checked .output-option__check {
+      background: var(--clr-accent); border-color: var(--clr-accent);
+    }
+    .output-option__check-icon { display: none; }
+    .output-option.is-checked .output-option__check-icon { display: block; }
+    .output-option__label {
+      font-size: var(--fs-sm); color: var(--clr-text); flex: 1;
+    }
+    .output-option__badge {
+      font-size: 0.65rem; letter-spacing: 0.1em;
+      padding: 2px 8px; border-radius: var(--radius-full);
+      background: var(--clr-accent-dim); border: 1px solid var(--clr-border);
+      color: var(--clr-accent); text-transform: uppercase;
+    }
+
+    /* ── Usage counter ── */
+    .usage-bar {
+      display: flex; align-items: center; gap: var(--sp-4);
+      background: var(--clr-bg-2); border: 1px solid var(--clr-border-dim);
+      border-radius: var(--radius-md); padding: var(--sp-3) var(--sp-4);
+      margin-bottom: var(--sp-5);
+    }
+    .usage-bar__text { font-size: var(--fs-xs); color: var(--clr-text-muted); flex: 1; }
+    .usage-bar__text strong { color: var(--clr-accent); }
+    .usage-bar__upgrade {
+      font-size: var(--fs-xs); color: var(--clr-accent); text-decoration: none;
+      letter-spacing: 0.06em; opacity: 0.8; transition: opacity var(--dur-fast);
+    }
+    .usage-bar__upgrade:hover { opacity: 1; }
+
+    /* ── Generate button area ── */
+    .generate-area { margin-bottom: var(--sp-12); }
+    .btn--analyze {
+      width: 100%; padding: 16px 24px !important; font-size: var(--fs-md) !important;
+      gap: var(--sp-3) !important;
+    }
+
+    /* ── Progress bar ── */
+    .progress-wrap {
+      margin-top: var(--sp-4);
+      border-radius: var(--radius-full); overflow: hidden;
+      background: rgba(255,255,255,0.06); height: 3px;
+    }
+    .progress-bar {
+      height: 100%; width: 0%; background: var(--clr-accent);
+      border-radius: var(--radius-full);
+      transition: width 0.4s var(--ease-out);
+      animation: progress-shimmer 1.5s ease infinite;
+    }
+    @keyframes progress-shimmer {
+      0%   { opacity: 1; }
+      50%  { opacity: 0.7; }
+      100% { opacity: 1; }
+    }
+
+    /* ── Results section ── */
+    .results-section { display: none; }
+    .results-section.is-visible { display: block; }
+
+    .result-divider {
+      border: none; border-top: 1px solid var(--clr-border-dim);
+      margin: var(--sp-8) 0;
+    }
+
+    .result-block { margin-bottom: var(--sp-8); }
+    .result-block__header {
+      display: flex; align-items: center; gap: var(--sp-3);
+      margin-bottom: var(--sp-4);
+    }
+    .result-block__title {
+      font-family: var(--font-display); font-weight: 700;
+      font-size: 1.05rem; color: var(--clr-text); flex: 1;
+      display: flex; align-items: center; gap: var(--sp-2);
+    }
+    .result-block__actions { display: flex; gap: var(--sp-2); flex-shrink: 0; }
+
+    .result-content {
+      background: var(--clr-bg-2); border: 1px solid var(--clr-border-dim);
+      border-radius: var(--radius-md); padding: var(--sp-5);
+      font-size: var(--fs-sm); color: var(--clr-text); line-height: 1.75;
+      white-space: pre-wrap; word-break: break-word;
+    }
+
+    /* Edit mode — content becomes textarea */
+    .result-content[contenteditable="true"] {
+      outline: none; border-color: var(--clr-border);
+      box-shadow: 0 0 0 2px var(--clr-accent-dim);
+    }
+
+    /* Skills chips */
+    .skills-list {
+      display: flex; flex-wrap: wrap; gap: var(--sp-2);
+    }
+    .skill-chip {
+      background: var(--clr-accent-dim); border: 1px solid var(--clr-border);
+      border-radius: var(--radius-full); padding: var(--sp-1) var(--sp-3);
+      font-size: var(--fs-xs); color: var(--clr-accent);
+      letter-spacing: 0.06em;
+    }
+
+    /* LinkedIn posts */
+    .linkedin-posts { display: flex; flex-direction: column; gap: var(--sp-4); }
+    .linkedin-post {
+      background: var(--clr-bg-2); border: 1px solid var(--clr-border-dim);
+      border-radius: var(--radius-md); padding: var(--sp-4);
+    }
+    .linkedin-post__header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: var(--sp-3);
+    }
+    .linkedin-post__num {
+      font-size: var(--fs-xs); color: var(--clr-accent); letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .linkedin-post__body {
+      font-size: var(--fs-sm); color: var(--clr-text); line-height: 1.75;
+      white-space: pre-wrap;
+    }
+    .linkedin-post__hashtags {
+      margin-top: var(--sp-3); font-size: var(--fs-xs); color: var(--clr-text-muted);
+    }
+    .linkedin-post__body[contenteditable="true"] {
+      outline: none; border-radius: var(--radius-sm);
+      box-shadow: 0 0 0 2px var(--clr-accent-dim);
+    }
+
+    /* Copy feedback */
+    .btn--copied {
+      background: rgba(0,255,136,0.12) !important;
+      color: var(--clr-accent) !important;
+      border-color: rgba(0,255,136,0.25) !important;
+    }
+
+    /* ── Reset button ── */
+    .reset-area {
+      text-align: center; margin-top: var(--sp-8);
+    }
+
+    /* ── Modal (paywall) ── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 300; padding: var(--sp-4);
+    }
+    .modal-overlay.hidden { display: none; }
+    .modal-box {
+      background: var(--clr-bg-3); border: 1px solid var(--clr-border);
+      border-radius: var(--radius-lg); padding: var(--sp-8);
+      max-width: 420px; width: 100%; text-align: center;
+    }
+    .modal-box__icon { font-size: 2.5rem; margin-bottom: var(--sp-4); }
+    .modal-box__title {
+      font-family: var(--font-display); font-weight: 800;
+      font-size: 1.3rem; color: var(--clr-text); margin-bottom: var(--sp-3);
+    }
+    .modal-box__body {
+      font-size: var(--fs-sm); color: var(--clr-text-muted);
+      line-height: 1.6; margin-bottom: var(--sp-6);
+    }
+    .modal-box__actions { display: flex; flex-direction: column; gap: var(--sp-3); }
+
+    /* ── Loading spinner overlay ── */
+    .spinner-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(8,12,10,0.6); z-index: 200;
+      align-items: center; justify-content: center; flex-direction: column;
+      gap: var(--sp-4);
+    }
+    .spinner-overlay.is-visible { display: flex; }
+    .spinner {
+      width: 36px; height: 36px; border: 3px solid rgba(0,255,136,0.2);
+      border-top-color: var(--clr-accent); border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner-label { font-size: var(--fs-sm); color: var(--clr-text-muted); }
+
+    /* ── Results header ── */
+    .results-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: var(--sp-6); padding-bottom: var(--sp-4);
+      border-bottom: 1px solid var(--clr-border-dim);
+    }
+    .results-header__title {
+      font-family: var(--font-display); font-weight: 800;
+      font-size: 1.2rem; color: var(--clr-text);
+    }
+    .results-header__badge {
+      font-size: var(--fs-xs); background: var(--clr-accent-dim);
+      border: 1px solid var(--clr-border); border-radius: var(--radius-full);
+      padding: var(--sp-1) var(--sp-3); color: var(--clr-accent);
+      letter-spacing: 0.1em;
+    }
+
+    @media (max-width: 600px) {
+      .analyzer-main { padding: var(--sp-6) var(--sp-4) var(--sp-16); }
+      .dashboard-header { padding: 0 var(--sp-4); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ─── Header (نفس dashboard) ── -->
+  <header class="dashboard-header">
+    <a href="index.html" class="dashboard-header__logo">Portfolio Generator</a>
+    <div class="dashboard-header__actions">
+      <a href="dashboard.html" class="btn btn--ghost btn--sm">← Dashboard</a>
+      <img id="nav-avatar" class="nav-avatar hidden" src="" alt="avatar"
+           data-nav-avatar title="Your account" />
+      <button id="signout-btn" class="btn btn--ghost btn--sm hidden"
+              data-nav-signout onclick="Auth.signOut()">Sign Out</button>
+    </div>
+  </header>
+
+  <!-- ─── Main ── -->
+  <main class="analyzer-main">
+
+    <!-- Page hero -->
+    <div class="analyzer-hero">
+      <div class="analyzer-hero__eyebrow">🔍 AI Tool</div>
+      <h1 class="analyzer-hero__title">README Analyzer</h1>
+      <p class="analyzer-hero__sub">
+        Upload any project README and instantly generate a professional bio,
+        portfolio description, LinkedIn posts, and more.
+      </p>
+    </div>
+
+    <!-- ── Step 1: Upload ── -->
+    <div class="step-label">
+      <span class="step-label__num">1</span>
+      Upload your README
+    </div>
+
+    <div class="upload-zone" id="upload-zone">
+      <input type="file" id="file-input" accept=".md" />
+      <div class="upload-zone__icon">📄</div>
+      <div class="upload-zone__text">Drag & drop or click to upload</div>
+      <div class="upload-zone__hint">.md files only · max 500KB</div>
+    </div>
+
+    <!-- File pill (shown after upload) -->
+    <div id="file-pill" class="file-pill hidden">
+      <span>✓</span>
+      <span id="file-name">filename.md</span>
+      <button class="file-pill__remove" id="remove-file" title="Remove file">✕</button>
+    </div>
+
+    <!-- ── Step 2: Outputs ── -->
+    <div class="outputs-section">
+      <div class="step-label" style="margin-top: var(--sp-6);">
+        <span class="step-label__num">2</span>
+        What do you want to generate?
+      </div>
+
+      <div class="output-options" id="output-options">
+        <label class="output-option is-checked" data-key="bio">
+          <input type="checkbox" checked />
+          <span class="output-option__check">
+            <svg class="output-option__check-icon" width="10" height="10" viewBox="0 0 12 12" fill="none">
+              <polyline points="2 6 5 9 10 3" stroke="#080C0A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <span class="output-option__label">📝 Professional Bio</span>
+        </label>
+
+        <label class="output-option is-checked" data-key="project">
+          <input type="checkbox" checked />
+          <span class="output-option__check">
+            <svg class="output-option__check-icon" width="10" height="10" viewBox="0 0 12 12" fill="none">
+              <polyline points="2 6 5 9 10 3" stroke="#080C0A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <span class="output-option__label">💼 Project Description</span>
+        </label>
+
+        <label class="output-option is-checked" data-key="linkedin_posts">
+          <input type="checkbox" checked />
+          <span class="output-option__check">
+            <svg class="output-option__check-icon" width="10" height="10" viewBox="0 0 12 12" fill="none">
+              <polyline points="2 6 5 9 10 3" stroke="#080C0A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <span class="output-option__label">🔗 LinkedIn Posts</span>
+          <span class="output-option__badge">3 posts</span>
+        </label>
+
+        <label class="output-option is-checked" data-key="report">
+          <input type="checkbox" checked />
+          <span class="output-option__check">
+            <svg class="output-option__check-icon" width="10" height="10" viewBox="0 0 12 12" fill="none">
+              <polyline points="2 6 5 9 10 3" stroke="#080C0A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <span class="output-option__label">📊 LinkedIn Presence Report</span>
+        </label>
+
+        <label class="output-option is-checked" data-key="skills">
+          <input type="checkbox" checked />
+          <span class="output-option__check">
+            <svg class="output-option__check-icon" width="10" height="10" viewBox="0 0 12 12" fill="none">
+              <polyline points="2 6 5 9 10 3" stroke="#080C0A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <span class="output-option__label">🛠 Skills & Technologies</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Usage counter (للـ Free users) -->
+    <div class="usage-bar" id="usage-bar" style="display:none;">
+      <span class="usage-bar__text">
+        Free plan: <strong id="usage-remaining">3</strong> analyses remaining
+      </span>
+      <a href="pricing.html" class="usage-bar__upgrade">Upgrade ↗</a>
+    </div>
+
+    <!-- Generate button -->
+    <div class="generate-area">
+      <button class="btn btn--primary btn--analyze" id="generate-btn" disabled>
+        ✨ Analyze & Generate
+      </button>
+      <div class="progress-wrap" id="progress-wrap" style="display:none;">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+    </div>
+
+    <!-- ── Results ── -->
+    <section class="results-section" id="results-section">
+
+      <div class="results-header">
+        <div class="results-header__title">Results</div>
+        <div class="results-header__badge" id="results-badge">Generated</div>
+      </div>
+
+      <!-- Bio -->
+      <div class="result-block" id="block-bio" style="display:none;">
+        <div class="result-block__header">
+          <div class="result-block__title">📝 Professional Bio</div>
+          <div class="result-block__actions">
+            <button class="btn btn--ghost btn--sm" onclick="toggleEdit(this, 'content-bio')">Edit</button>
+            <button class="btn btn--ghost btn--sm" onclick="copyContent('content-bio', this)">Copy</button>
+          </div>
+        </div>
+        <div class="result-content" id="content-bio"></div>
+      </div>
+
+      <!-- Project Description -->
+      <div class="result-block" id="block-project" style="display:none;">
+        <hr class="result-divider" />
+        <div class="result-block__header">
+          <div class="result-block__title">💼 Project Description</div>
+          <div class="result-block__actions">
+            <button class="btn btn--ghost btn--sm" onclick="toggleEdit(this, 'content-project')">Edit</button>
+            <button class="btn btn--ghost btn--sm" onclick="copyContent('content-project', this)">Copy</button>
+          </div>
+        </div>
+        <div class="result-content" id="content-project"></div>
+      </div>
+
+      <!-- LinkedIn Posts -->
+      <div class="result-block" id="block-linkedin-posts" style="display:none;">
+        <hr class="result-divider" />
+        <div class="result-block__header">
+          <div class="result-block__title">🔗 LinkedIn Posts</div>
+          <div class="result-block__actions">
+            <button class="btn btn--ghost btn--sm" id="copy-all-posts-btn" onclick="copyAllPosts()">Copy All</button>
+          </div>
+        </div>
+        <div class="linkedin-posts" id="linkedin-posts-container"></div>
+      </div>
+
+      <!-- LinkedIn Presence Report -->
+      <div class="result-block" id="block-report" style="display:none;">
+        <hr class="result-divider" />
+        <div class="result-block__header">
+          <div class="result-block__title">📊 LinkedIn Presence Report</div>
+          <div class="result-block__actions">
+            <button class="btn btn--ghost btn--sm" onclick="toggleEdit(this, 'content-report')">Edit</button>
+            <button class="btn btn--ghost btn--sm" onclick="copyContent('content-report', this)">Copy</button>
+          </div>
+        </div>
+        <div class="result-content" id="content-report"></div>
+      </div>
+
+      <!-- Skills -->
+      <div class="result-block" id="block-skills" style="display:none;">
+        <hr class="result-divider" />
+        <div class="result-block__header">
+          <div class="result-block__title">🛠 Skills & Technologies</div>
+          <div class="result-block__actions">
+            <button class="btn btn--ghost btn--sm" id="copy-skills-btn" onclick="copySkills()">Copy</button>
+          </div>
+        </div>
+        <div class="result-content" id="content-skills-wrap">
+          <div class="skills-list" id="skills-list"></div>
+        </div>
+      </div>
+
+      <!-- Reset -->
+      <div class="reset-area">
+        <button class="btn btn--ghost" onclick="resetAnalyzer()">
+          🔄 Analyze Another README
+        </button>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ── Paywall Modal ── -->
+  <div class="modal-overlay hidden" id="paywall-modal">
+    <div class="modal-box">
+      <div class="modal-box__icon">🔒</div>
+      <div class="modal-box__title">You've used all 3 free analyses</div>
+      <div class="modal-box__body">
+        Upgrade to Pro for unlimited README analyses, plus all Pro themes and future features.
+      </div>
+      <div class="modal-box__actions">
+        <a href="https://t.me/GPORT_Payment_BOT" target="_blank" rel="noopener"
+           class="btn btn--primary">Upgrade via Telegram ⚡</a>
+        <button class="btn btn--ghost" onclick="closePaywall()">Maybe later</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Loading Overlay ── -->
+  <div class="spinner-overlay" id="spinner-overlay">
+    <div class="spinner"></div>
+    <div class="spinner-label" id="spinner-label">Analyzing README…</div>
+  </div>
+
+  <!-- ── Toast container ── -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- ── Scripts ── -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/readme-analyzer.js"></script>
+
+</body>
+</html>

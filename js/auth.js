@@ -58,6 +58,31 @@
   }
 
   /**
+   * تسجيل دخول بـ Google OAuth
+   * @param {string} [redirectTo] - URL بعد الـ login (default: dashboard.html)
+   */
+  async function signInWithGoogle(redirectTo) {
+    const client = getClient();
+    if (!client) return { error: 'Supabase client غير مهيأ' };
+
+    const destination = redirectTo || _buildDashboardURL();
+
+    const { error } = await client.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: destination,
+      },
+    });
+
+    if (error) {
+      console.error('[Auth] signInWithGoogle error:', error.message);
+      return { error: error.message };
+    }
+
+    return { error: null };
+  }
+
+  /**
    * تسجيل خروج
    */
   async function signOut() {
@@ -103,10 +128,26 @@
     if (!client) return () => {};
 
     const { data: { subscription } } = client.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         const user = session ? _buildUserObject(session.user) : null;
         _currentUser = user;
         _notifyListeners(user);
+
+        // ── Early Adopter check — only on first sign-in of a brand-new account ──
+        // Supabase fires SIGNED_IN on every login, but also fires it with
+        // a separate "USER_UPDATED" event after OAuth. We detect a truly new
+        // user by checking if their created_at is within the last 30 seconds.
+        if (event === 'SIGNED_IN' && session?.user) {
+          const rawUser = session.user;
+          const createdAt = new Date(rawUser.created_at).getTime();
+          const isNewUser = (Date.now() - createdAt) < 30_000; // 30-second window
+          if (isNewUser) {
+            // تأكد إن صف public.users موجود (GitHub أو Google) قبل أي
+            // خطوة تانية بتفترض وجوده (زي _maybeGrantEarlyAdopter)
+            await _ensureUserRow(rawUser);
+            await _maybeGrantEarlyAdopter(rawUser.id);
+          }
+        }
       }
     );
 
@@ -168,6 +209,117 @@
   }
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
+
+  /**
+   * يضمن وجود صف المستخدم في public.users بعد أول SIGNED_IN (GitHub أو Google)
+   * — upsert بدل insert: لو فيه صف موجود بالفعل (مثلاً من DB trigger قديم)
+   * بيكمّل عليه auth_provider/avatar_url/github_username الصحيحين بدل ما يفشل
+   * بسبب الـ UNIQUE/PK constraint.
+   *
+   * ملاحظة: لا نحط referral_code هنا — موجود RPC منفصلة
+   * (generate_user_referral_code) بتتولاه lazy عند فتح الـ Referral section.
+   *
+   * @param {object} rawUser - session.user من Supabase
+   */
+  async function _ensureUserRow(rawUser) {
+    const client = getClient();
+    if (!client) return;
+
+    try {
+      const provider = rawUser.app_metadata?.provider || 'github';
+      const meta = rawUser.user_metadata || {};
+
+      // Google users ملهومش GitHub username من الـ OAuth metadata
+      const githubUsername = provider === 'github'
+        ? (meta.user_name || meta.preferred_username || null)
+        : null;
+
+      const avatarUrl = meta.avatar_url || null;
+
+      const { error } = await client
+        .from('users')
+        .upsert({
+          id:              rawUser.id,
+          email:           rawUser.email,
+          github_username: githubUsername,
+          full_name:       meta.full_name || meta.name || null,
+          auth_provider:   provider,
+          avatar_url:      avatarUrl,
+        }, { onConflict: 'id' });
+
+      if (error) {
+        console.error('[Auth] _ensureUserRow error:', error.message);
+      }
+    } catch (err) {
+      console.error('[Auth] _ensureUserRow exception:', err);
+    }
+  }
+
+  /**
+   * منح Early Adopter Pro لأول 50 مستخدم جديد — يُستدعى مرة واحدة فقط عند أول تسجيل
+   * @param {string} userId
+   */
+  async function _maybeGrantEarlyAdopter(userId) {
+    const client = getClient();
+    if (!client) return;
+
+    try {
+      // 1. اقرأ العداد الحالي
+      const { data: counter, error: cErr } = await client
+        .from('early_adopter_counter')
+        .select('count, max_count')
+        .eq('id', 1)
+        .single();
+
+      if (cErr || !counter) {
+        console.warn('[Auth] Could not read early_adopter_counter:', cErr?.message);
+        return;
+      }
+
+      // 2. تحقق من المقاعد المتاحة
+      if (counter.count >= counter.max_count) return; // المقاعد انتهت
+
+      // 3. تحقق إن المستخدم مش Early Adopter أصلاً (من جولة سابقة)
+      const { data: existingUser } = await client
+        .from('users')
+        .select('is_early_adopter')
+        .eq('id', userId)
+        .single();
+
+      if (existingUser?.is_early_adopter) return; // بالفعل Early Adopter
+
+      // 4. امنحه Pro لمدة 30 يوم
+      const { error: uErr } = await client
+        .from('users')
+        .update({
+          is_pro:                    true,
+          is_early_adopter:          true,
+          pro_plan:                  'early_adopter',
+          early_adopter_expires_at:  new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        })
+        .eq('id', userId);
+
+      if (uErr) {
+        console.error('[Auth] Failed to grant early adopter Pro:', uErr.message);
+        return;
+      }
+
+      // 5. زوّد العداد
+      const { error: cUErr } = await client
+        .from('early_adopter_counter')
+        .update({ count: counter.count + 1 })
+        .eq('id', 1);
+
+      if (cUErr) {
+        console.warn('[Auth] Failed to increment early_adopter_counter:', cUErr.message);
+      }
+
+      console.log('[Auth] 🎉 Early Adopter Pro granted to new user:', userId);
+
+    } catch (err) {
+      console.error('[Auth] _maybeGrantEarlyAdopter error:', err);
+    }
+  }
 
   function _buildUserObject(supabaseUser) {
     const meta = supabaseUser.user_metadata || {};
@@ -238,6 +390,21 @@
 
     const user = await getUser();
     if (!user) return { user: null, portfolios: [] };
+
+    // جيب بيانات المستخدم الإضافية من الـ DB (is_early_adopter، early_adopter_expires_at)
+    const { data: dbUser } = await client
+      .from('users')
+      .select('is_early_adopter, early_adopter_expires_at, is_pro, pro_expires_at')
+      .eq('id', user.id)
+      .single();
+
+    // ادمج بيانات Early Adopter على الـ user object
+    if (dbUser) {
+      user.isEarlyAdopter        = dbUser.is_early_adopter        || false;
+      user.earlyAdopterExpiresAt = dbUser.early_adopter_expires_at || null;
+      user.isPro                 = dbUser.is_pro                   || false;
+      user.proExpiresAt          = dbUser.pro_expires_at           || null;
+    }
 
     const { data: portfolios, error } = await client
       .from('portfolios')
@@ -322,6 +489,7 @@
   // ─── Public API ────────────────────────────────────────────────────────────
   window.Auth = {
     signIn,
+    signInWithGoogle,
     signOut,
     getUser,
     onAuthStateChange,
