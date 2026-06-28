@@ -384,10 +384,19 @@
           if (sb) {
             const { data: portfolio } = await sb
               .from('portfolios')
-              .select(`id, bio, skills, theme, slug, user_id, linkedin_url, gmail_address, custom_sections,
+              .select(`id, bio, skills, theme, slug, user_id, linkedin_url, gmail_address, custom_sections, is_published,
                 projects ( github_repo_name, ai_description, stars, language, topics, sort_order, repo_url, is_featured, image_url, is_custom, external_url )`)
               .eq('id', portfolioId)
               .single();
+
+            // Fix 4 — IDOR: تأكد إن صاحب الجلسة الحالية هو فعلاً صاحب هذا الـ portfolio
+            const currentUser = await sb.auth.getUser();
+            const currentUserId = currentUser?.data?.user?.id;
+
+            if (!currentUserId || portfolio?.user_id !== currentUserId) {
+              window.location.href = '/index.html';
+              return;
+            }
 
             const { data: userData } = await sb
               .from('users')
@@ -432,6 +441,7 @@
                 linkedinUrl:    portfolio.linkedin_url || '',
                 gmailAddress:   portfolio.gmail_address || '',
                 custom_sections: portfolio.custom_sections || [],
+                isPublished:    portfolio.is_published === true,
               };
 
               // حفظ في sessionStorage عشان portfolio.js يقدر يقراه

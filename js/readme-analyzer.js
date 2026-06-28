@@ -9,6 +9,15 @@
 ;(function () {
   'use strict';
 
+  /* ─── Sanitize fallback (in case app.js hasn't loaded) ─────────────── */
+  const _sanitize = window.sanitize || function (str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  };
+
   /* ─── State ────────────────────────────────────────────────────────── */
   let readmeContent     = null;   // نص الـ README المرفوع
   let currentUserId     = null;
@@ -151,7 +160,12 @@
 
     const reader = new FileReader();
     reader.onload = e => {
-      readmeContent = e.target.result;
+      const content = e.target.result;
+      if (!content || content.trim().length < 10) {
+        window.toast('The file appears to be empty or too short to analyze.', 'error');
+        return;
+      }
+      readmeContent = content;
       _showFilePill(file.name);
     };
     reader.onerror = () => window.toast('Could not read file', 'error');
@@ -171,8 +185,7 @@
   function _initOutputCheckboxes() {
     document.querySelectorAll('.output-option').forEach(label => {
       const cb = label.querySelector('input[type="checkbox"]');
-      label.addEventListener('click', () => {
-        cb.checked = !cb.checked;
+      cb.addEventListener('change', () => {
         label.classList.toggle('is-checked', cb.checked);
         _updateGenerateBtn();
       });
@@ -252,20 +265,20 @@
       _animateProgress(100, 400);
       await _sleep(500);
 
-      // ── Increment usage counter for Free users
+      // ── Log analysis for all users (analytics)
+      await sb.from('readme_analyses').insert({
+        user_id:           currentUserId,
+        outputs_requested: selectedOutputs,
+        tokens_used:       data.tokensUsed || null,
+      });
+
+      // ── Increment usage counter for Free users only
       if (!isCurrentlyPro) {
         const newCount = usageData.used + 1;
         await sb
           .from('users')
           .update({ readme_analyses_used: newCount })
           .eq('id', currentUserId);
-
-        // Log to readme_analyses table
-        await sb.from('readme_analyses').insert({
-          user_id:           currentUserId,
-          outputs_requested: selectedOutputs,
-          tokens_used:       data.tokensUsed || null,
-        });
 
         // Update local state
         usageData.used      = newCount;
@@ -341,15 +354,48 @@
 
         const postEl = document.createElement('div');
         postEl.className = 'linkedin-post';
-        postEl.innerHTML = `
-          <div class="linkedin-post__header">
-            <span class="linkedin-post__num">Post ${i + 1}</span>
-            <button class="btn btn--ghost btn--sm"
-                    onclick="copyPostByIndex(${i}, this)">Copy</button>
-          </div>
-          <div class="linkedin-post__body" id="post-body-${i}">${window.sanitize(postText)}</div>
-          ${hashtags ? `<div class="linkedin-post__hashtags">${window.sanitize(hashtags)}</div>` : ''}
-        `;
+
+        // ── Header (Post N label + Copy button)
+        const header = document.createElement('div');
+        header.className = 'linkedin-post__header';
+
+        const numSpan = document.createElement('span');
+        numSpan.className   = 'linkedin-post__num';
+        numSpan.textContent = `Post ${i + 1}`;
+
+        const copyBtn = document.createElement('button');
+        copyBtn.className   = 'btn btn--ghost btn--sm';
+        copyBtn.textContent = 'Copy';
+        // Fix 6: read from DOM at click-time, not from stale _postsRaw
+        copyBtn.addEventListener('click', () => {
+          const bodyEl = postEl.querySelector('.linkedin-post__body');
+          const hashEl = postEl.querySelector('.linkedin-post__hashtags');
+          const postContent = bodyEl ? (bodyEl.innerText || bodyEl.textContent || '') : '';
+          const hashContent = hashEl ? (hashEl.innerText || hashEl.textContent || '') : '';
+          const text = hashContent ? `${postContent}\n\n${hashContent}` : postContent;
+          _copyToClipboard(text, copyBtn);
+        });
+
+        header.appendChild(numSpan);
+        header.appendChild(copyBtn);
+
+        // ── Body (Fix 2: textContent, not innerHTML)
+        const bodyDiv = document.createElement('div');
+        bodyDiv.className = 'linkedin-post__body';
+        bodyDiv.id        = `post-body-${i}`;
+        bodyDiv.textContent = postText;
+
+        postEl.appendChild(header);
+        postEl.appendChild(bodyDiv);
+
+        // ── Hashtags
+        if (hashtags) {
+          const hashDiv = document.createElement('div');
+          hashDiv.className   = 'linkedin-post__hashtags';
+          hashDiv.textContent = hashtags;
+          postEl.appendChild(hashDiv);
+        }
+
         postsWrap.appendChild(postEl);
       });
 

@@ -89,6 +89,12 @@
     const client = getClient();
     if (!client) return;
 
+    const LOCAL_STORAGE_KEYS_TO_CLEAR = [
+      'pg_builder_draft_v1',  // Portfolio Builder
+      'pg_cv_data',           // CV Builder
+    ];
+    LOCAL_STORAGE_KEYS_TO_CLEAR.forEach(key => localStorage.removeItem(key));
+
     const { error } = await client.auth.signOut();
     if (error) console.error('[Auth] signOut error:', error.message);
 
@@ -145,7 +151,7 @@
 
           // Early Adopter grant — only on truly new accounts (created within last 30s)
           const createdAt = new Date(rawUser.created_at).getTime();
-          const isNewUser = (Date.now() - createdAt) < 30_000; // 30-second window
+          const isNewUser = (Date.now() - createdAt) < 300_000; // 5-minute window
           if (isNewUser) {
             await _maybeGrantEarlyAdopter(rawUser.id);
           }
@@ -346,8 +352,9 @@
       id:             supabaseUser.id,
       email:          supabaseUser.email,
       name:           meta.full_name || meta.name || meta.user_name || '',
-      githubUsername: meta.user_name  || meta.preferred_username || '',
-      avatarUrl:      meta.avatar_url || `https://avatars.githubusercontent.com/${meta.user_name}`,
+      githubUsername: meta.user_name  || meta.preferred_username || null,
+      avatarUrl:      meta.avatar_url ||
+        (meta.user_name ? `https://avatars.githubusercontent.com/${meta.user_name}` : null),
       jobTitle:       meta.job_title  || '', // لو حطّ المستخدم قبل كده في الـ DB
     };
   }
@@ -403,6 +410,24 @@
    * يُستخدم في dashboard.html
    * بيجلب كل portfolios المستخدم من Supabase
    */
+  // ─── Retry helper لـ public.users query (تحمي من 406 عند أول login) ──────
+  async function _fetchUserRowWithRetry(client, userId, maxRetries = 3, delayMs = 1000) {
+    for (let i = 0; i < maxRetries; i++) {
+      const { data, error } = await client
+        .from('users')
+        .select('is_early_adopter, early_adopter_expires_at, is_pro, pro_expires_at')
+        .eq('id', userId)
+        .single();
+      if (data) return { data, error: null };
+      if (error?.code === 'PGRST116' || error?.code === '406') {
+        if (i < maxRetries - 1) await new Promise(r => setTimeout(r, delayMs));
+        continue;
+      }
+      return { data: null, error };
+    }
+    return { data: null, error: new Error('User row not found after retries') };
+  }
+
   async function getDashboardData() {
     const client = getClient();
     if (!client) return { user: null, portfolios: [] };
@@ -411,11 +436,7 @@
     if (!user) return { user: null, portfolios: [] };
 
     // جيب بيانات المستخدم الإضافية من الـ DB (is_early_adopter، early_adopter_expires_at)
-    const { data: dbUser } = await client
-      .from('users')
-      .select('is_early_adopter, early_adopter_expires_at, is_pro, pro_expires_at')
-      .eq('id', user.id)
-      .single();
+    const { data: dbUser } = await _fetchUserRowWithRetry(client, user.id);
 
     // ادمج بيانات Early Adopter على الـ user object
     if (dbUser) {

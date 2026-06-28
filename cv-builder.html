@@ -916,10 +916,15 @@
 // STATE
 // ════════════════════════════════════════════════════
 
-const STORAGE_KEY = 'pg_cv_data';
+const STORAGE_KEY = 'pg_cv_data'; // base key — لا تحذفه
+let _storageKey   = STORAGE_KEY;  // Fix 1: يُحدَّث بـ user-specific key بعد auth
+// Fix 2 — NOTE: لا يوجد signOut handler في هذا الملف.
+//   مسح localStorage يتم في auth.js عند الـ logout.
+//   يجب تحديث auth.js ليمسح `pg_cv_data_${userId}` بدلاً من (أو بالإضافة إلى) `pg_cv_data`.
 const TOTAL_STEPS = 8;
 
 let _step = 0;
+let _isGithubUser = false; // Fix 3: يُضبط في _initAuthPrefill لإعادة تطبيق GitHub lock عند العودة للـ step 1
 let _cv = {
   language: 'english',
   personal: { fullName:'', jobTitle:'', email:'', phone:'', city:'', country:'', linkedIn:'', github:'', portfolio:'', summary:'' },
@@ -975,9 +980,9 @@ const SKILL_LEVELS_AR = ['مبتدئ','متوسط','متقدم','خبير'];
 // ════════════════════════════════════════════════════
 
 function init() {
-  // Load saved data
+  // Load saved data — Fix 1: سيُعاد التحميل بالـ user-specific key بعد auth في _initAuthPrefill
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = localStorage.getItem(_storageKey);
     if (saved) _cv = JSON.parse(saved);
   } catch {}
 
@@ -1018,6 +1023,22 @@ async function _initAuthPrefill() {
 
     const { data: { session } } = await sb.auth.getSession();
     if (!session?.user?.id) return; // Bug 4B: guard is user.id, not github_username
+
+    // Fix 1: بمجرد معرفة user.id، نحوّل _storageKey إلى user-specific key
+    // ونُعيد تحميل البيانات الصحيحة لهذا المستخدم (تجاهل ما حُمِّل في init بالـ base key)
+    const userSpecificKey = `${STORAGE_KEY}_${session.user.id}`;
+    if (userSpecificKey !== _storageKey) {
+      _storageKey = userSpecificKey;
+      try {
+        const saved = localStorage.getItem(_storageKey);
+        if (saved) {
+          _cv = JSON.parse(saved);
+          _buildStepIndicator();
+          _renderCurrentStep();
+          _updateCompletion();
+        }
+      } catch {}
+    }
 
     const userEmail    = session.user.email || '';
     const userMeta     = session.user.user_metadata || {};
@@ -1066,6 +1087,16 @@ async function _initAuthPrefill() {
           if (ghField) ghField.value = _cv.personal.github;
         }
         // If github_username is null/empty → skip silently, no error
+
+        // Fix 3: Lock GitHub field for GitHub users — matches email lock pattern
+        if (dbUser.auth_provider === 'github') {
+          _isGithubUser = true; // Fix 3: يُحفظ في scope للـ IIFE لإعادة التطبيق في _renderStep1
+          const githubField = document.getElementById('f-github');
+          if (githubField) {
+            githubField.setAttribute('readonly', true);
+            githubField.classList.add('field--locked');
+          }
+        }
       }
     } catch (dbErr) {
       // DB fetch failure is non-fatal — user can still use the CV builder
@@ -1244,6 +1275,15 @@ function _renderStep1(isAr) {
     emailField.classList.add('field--locked');
   }
 
+  // Fix 3: Re-apply GitHub lock for GitHub users — mirrors email lock pattern
+  if (_isGithubUser) {
+    const githubField = $('f-github');
+    if (githubField) {
+      githubField.setAttribute('readonly', true);
+      githubField.classList.add('field--locked');
+    }
+  }
+
   if (isAr) {
     document.getElementById('s1-title').textContent  = 'البيانات الشخصية';
     document.getElementById('l-fullname').textContent = 'الاسم الكامل *';
@@ -1277,6 +1317,23 @@ function _updateSummaryCount() {
 // READ FROM DOM
 // ════════════════════════════════════════════════════
 
+// Fix 4: Validate URL protocol — rejects bare domains lacking http/https
+function sanitizeUrl(url) {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    return ['http:', 'https:'].includes(parsed.protocol) ? url : null;
+  } catch {
+    // لو URL بدون protocol (مثل linkedin.com/in/user)، نضيف https:// ونعيد المحاولة
+    try {
+      const parsed = new URL('https://' + url);
+      return parsed.href;
+    } catch {
+      return null;
+    }
+  }
+}
+
 function _readCurrentStep() {
   const $ = id => document.getElementById(id);
   if (_step === 1) {
@@ -1291,9 +1348,10 @@ function _readCurrentStep() {
     _cv.personal.phone     = $('f-phone')?.value?.trim()    || '';
     _cv.personal.city      = $('f-city')?.value?.trim()     || '';
     _cv.personal.country   = $('f-country')?.value?.trim()  || '';
-    _cv.personal.linkedIn  = $('f-linkedin')?.value?.trim() || '';
-    _cv.personal.github    = $('f-github')?.value?.trim()   || '';
-    _cv.personal.portfolio = $('f-portfolio')?.value?.trim()|| '';
+    // Fix 4: Sanitize URL fields — adds https:// if protocol missing, rejects invalid URLs
+    _cv.personal.linkedIn  = sanitizeUrl($('f-linkedin')?.value?.trim())  || '';
+    _cv.personal.github    = $('f-github')?.value?.trim()   || ''; // github: username أو URL — يبقى كما هو
+    _cv.personal.portfolio = sanitizeUrl($('f-portfolio')?.value?.trim()) || '';
   }
   if (_step === 2) {
     _cv.personal.summary = $('f-summary')?.value?.trim() || '';
@@ -1626,7 +1684,7 @@ function _renderProjectsList() {
           <label class="cv-label">${isAr?'التقنيات المستخدمة':'Technologies'}</label>
           <div class="cv-chips" id="tech-chips-${proj.id}">
             ${(proj.technologies||[]).map(t => `
-              <span class="cv-chip">${_esc(t)}<button class="cv-chip-remove" onclick="CVBuilder.removeTech(${proj.id},'${_esc(t)}')">×</button></span>
+              <span class="cv-chip">${_esc(t)}<button class="cv-chip-remove cv-remove-tech" data-proj-id="${proj.id}" data-tech="${_esc(t).replace(/'/g, '&#39;')}" aria-label="Remove ${_esc(t)}">×</button></span>
             `).join('')}
           </div>
           <div style="display:flex;gap:var(--sp-2);">
@@ -1989,7 +2047,7 @@ function _renderPreview() {
 function save() {
   _readCurrentStep();
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(_cv));
+    localStorage.setItem(_storageKey, JSON.stringify(_cv)); // Fix 1: user-specific key
   } catch (e) {
     // localStorage ممكن يكون full أو disabled
     console.warn('[CV Builder] Could not save to localStorage:', e.message);
@@ -2289,10 +2347,18 @@ function _buildPdfWithJsPDF(cvData, arabicFontAvailable) {
   if (skills.length) {
     y = _checkPage(doc, y, btm, pageH);
     y = _sectionTitle(doc, isAr ? 'المهارات' : 'Skills', y, lx, rx, textAlign, setFont);
+    // Fix 6: level labels for PDF — 0-based to match select values (0=Beginner … 3=Expert)
+    const LEVEL_LABELS    = { 0: 'Beginner', 1: 'Intermediate', 2: 'Advanced', 3: 'Expert' };
+    const LEVEL_LABELS_AR = { 0: 'مبتدئ',    1: 'متوسط',        2: 'متقدم',    3: 'خبير'  };
+    const levelMap = isAr ? LEVEL_LABELS_AR : LEVEL_LABELS;
     const grouped = {};
     skills.forEach(s => {
       const cat = s.category || (isAr ? 'عام' : 'General');
-      (grouped[cat] = grouped[cat] || []).push(s.name);
+      // Fix 6: attach level label if level > 0 (Intermediate+), hide Beginner to reduce noise
+      const label = (s.level !== undefined && s.level > 0 && levelMap[s.level])
+        ? `${s.name} (${levelMap[s.level]})`
+        : s.name;
+      (grouped[cat] = grouped[cat] || []).push(label);
     });
     Object.entries(grouped).forEach(([cat, names]) => {
       y = _checkPage(doc, y, btm, pageH);
@@ -2361,6 +2427,9 @@ async function downloadPdf() {
   btn.disabled = true;
   btn.textContent = '⏳ Generating...';
 
+  // Fix 8: hoist isAr to function scope so finally can use it for button label
+  const isAr = _cv.language === 'arabic';
+
   try {
     // نحفظ البيانات أولاً قبل تحميل jsPDF
     save();
@@ -2372,19 +2441,22 @@ async function downloadPdf() {
       throw new Error('jsPDF library failed to load. Check your internet connection.');
     }
 
-    const isAr = _cv.language === 'arabic';
-
     // Bug 4D: Load Arabic font from CDN if needed — non-blocking (falls back gracefully)
     let arabicFontAvailable = false;
     if (isAr) {
       arabicFontAvailable = await _loadArabicFont();
     }
 
-    const name = (_cv.personal.fullName || 'CV')
-      .toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') || 'cv';
+    // Fix 7: Arabic names produce empty string after latin-only sanitization
+    // → use short base-36 timestamp as unique fallback instead of generic 'cv'
+    const safeName = (_cv.personal.fullName || '')
+      .toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const filename = safeName
+      ? `${safeName}-cv.pdf`
+      : `cv-${Date.now().toString(36)}.pdf`;
 
     const doc = _buildPdfWithJsPDF(_cv, arabicFontAvailable);
-    doc.save(`${name}-cv.pdf`);
+    doc.save(filename);
 
     window._cvToast('CV downloaded! ✓', 'success');
 
@@ -2393,7 +2465,8 @@ async function downloadPdf() {
     window._cvToast('Failed to generate PDF — ' + (err.message || err), 'error');
   } finally {
     btn.disabled = false;
-    btn.textContent = '⬇ Download PDF';
+    // Fix 8: restore button label in the active language (not always English)
+    btn.textContent = isAr ? '⬇ تحميل PDF' : '⬇ Download PDF';
   }
 }
 
@@ -2453,6 +2526,15 @@ window.CVBuilder = {
 };
 
 window.toggleCard = toggleCard;
+
+// Fix 5: Event delegation for tech chip removal — avoids single-quote XSS in inline onclick
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('.cv-remove-tech');
+  if (!btn) return;
+  const projId = btn.dataset.projId;
+  const tech   = btn.dataset.tech;
+  if (projId && tech !== undefined) CVBuilder.removeTech(projId, tech);
+});
 
 // Summary counter
 document.getElementById('f-summary')?.addEventListener('input', _updateSummaryCount);

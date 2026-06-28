@@ -17,10 +17,19 @@
 //   supabase functions deploy improve-text
 // ─────────────────────────────────────────────────────────────────────────
 
-const CORS_HEADERS: Record<string, string> = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// Fix 3: replaced CORS_HEADERS wildcard '*' with whitelist — same pattern as other functions
+const ALLOWED_ORIGINS = ["https://portfolio-generator-taupe.vercel.app"];
+
+function getCorsHeaders(origin: string | null): Record<string, string> {
+  const allowedOrigin =
+    origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Vary": "Origin",
+  };
+}
 
 // قابل للتغيير من غير إعادة ديبلوي (Deno.env.get) — افتراضيًا موديل قوي
 // لإعادة كتابة نص بشكل جيد. غيّره بـ "supabase secrets set GROQ_MODEL=..."
@@ -40,10 +49,10 @@ const SYSTEM_PROMPTS: Record<string, string> = {
     "no numbering, no explanation, no preamble.",
 };
 
-function json(body: unknown, status = 200): Response {
+function json(body: unknown, status = 200, corsHeaders: Record<string, string>): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
 
@@ -81,8 +90,11 @@ function cleanSkillsList(raw: string): string {
 }
 
 Deno.serve(async (req: Request) => {
+  // Fix 3: corsHeaders now computed per-request using the whitelist helper
+  const corsHeaders = getCorsHeaders(req.headers.get("origin"));
+
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: CORS_HEADERS });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   if (!GROQ_API_KEY) {
@@ -90,6 +102,7 @@ Deno.serve(async (req: Request) => {
     return json(
       { success: false, error: "Server configuration issue.", code: "AUTH_ERROR" },
       500,
+      corsHeaders,
     );
   }
 
@@ -97,7 +110,7 @@ Deno.serve(async (req: Request) => {
   try {
     payload = await req.json();
   } catch {
-    return json({ success: false, error: "Invalid JSON body.", code: "PARSE_ERROR" }, 400);
+    return json({ success: false, error: "Invalid JSON body.", code: "PARSE_ERROR" }, 400, corsHeaders);
   }
 
   const { fieldType, currentValue = "", context = {} } = payload;
@@ -106,6 +119,7 @@ Deno.serve(async (req: Request) => {
     return json(
       { success: false, error: "fieldType must be 'bio' or 'skills'.", code: "INVALID_STRUCTURE" },
       400,
+      corsHeaders,
     );
   }
 
@@ -125,29 +139,31 @@ Deno.serve(async (req: Request) => {
           { role: "user", content: buildUserPrompt(fieldType, currentValue, context) },
         ],
       }),
+      // Fix 5: added timeout — was missing entirely, requests could hang indefinitely
+      signal: AbortSignal.timeout(25_000),
     });
 
     if (response.status === 429) {
-      return json({ success: false, error: "Rate limited.", code: "RATE_LIMITED" }, 429);
+      return json({ success: false, error: "Rate limited.", code: "RATE_LIMITED" }, 429, corsHeaders);
     }
     if (!response.ok) {
       const errText = await response.text();
       console.error("[improve-text] Groq error:", response.status, errText);
-      return json({ success: false, error: "AI service error.", code: "GROQ_ERROR" }, 502);
+      return json({ success: false, error: "AI service error.", code: "GROQ_ERROR" }, 502, corsHeaders);
     }
 
     const data = await response.json();
     const raw: string | undefined = data?.choices?.[0]?.message?.content?.trim();
 
     if (!raw) {
-      return json({ success: false, error: "Empty AI response.", code: "PARSE_ERROR" }, 502);
+      return json({ success: false, error: "Empty AI response.", code: "PARSE_ERROR" }, 502, corsHeaders);
     }
 
     const suggestion = fieldType === "skills" ? cleanSkillsList(raw) : raw;
-    return json({ success: true, suggestion });
+    return json({ success: true, suggestion }, 200, corsHeaders);
 
   } catch (err) {
     console.error("[improve-text] unexpected error:", err);
-    return json({ success: false, error: "Unexpected server error.", code: "DEFAULT" }, 500);
+    return json({ success: false, error: "Unexpected server error.", code: "DEFAULT" }, 500, corsHeaders);
   }
 });

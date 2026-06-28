@@ -51,15 +51,17 @@
   let state          = _defaultState();
   let _currentUser    = null;
   let _isPro          = false;
+  // Fix 1 — key مرتبط بالـ user ID (يُضبط في init() بعد getUser())
+  let _storageKey     = STORAGE_KEY; // fallback للـ base key قبل التهيئة
 
   // ─── localStorage persistence ──────────────────────────────────
   function saveState() {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    try { localStorage.setItem(_storageKey, JSON.stringify(state)); } catch (e) { /* ignore */ }
   }
 
   function loadState() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(_storageKey);
       if (raw) state = Object.assign(_defaultState(), JSON.parse(raw));
     } catch (e) { /* ignore corrupt draft */ }
   }
@@ -79,6 +81,17 @@
     const div = document.createElement('div');
     div.textContent = str == null ? '' : String(str);
     return div.innerHTML;
+  }
+
+  // Fix 3 — protocol validation لـ URL fields (XSS prevention)
+  function sanitizeUrl(url) {
+    if (!url) return null;
+    try {
+      const parsed = new URL(url);
+      return ['http:', 'https:'].includes(parsed.protocol) ? url : null;
+    } catch {
+      return null;
+    }
   }
 
   // ─── Helpers مطابقين لمنطق portfolio.js ────────────────────────
@@ -161,6 +174,14 @@
           degree: ed.degree,
           year: ed.year,
         })),
+      });
+    }
+    // Fix 8 — احفظ twitterUrl/websiteUrl في custom_sections لعدم وجود columns لهما في portfolios
+    if (state.twitterUrl || state.websiteUrl) {
+      sections.push({
+        type: 'contact_meta',
+        twitter: state.twitterUrl || null,
+        website: state.websiteUrl || null,
       });
     }
     return sections;
@@ -419,6 +440,11 @@
     if (!counter) return;
     counter.textContent = `${len} / 500`;
     counter.classList.toggle('is-near-limit', len > 450);
+    // Fix 7 — زامن حالة زر الـ AI بعد كل ضغطة
+    const bioBtn = $('bio-ai-btn');
+    if (bioBtn && !bioBtn.textContent.includes('Thinking')) {
+      bioBtn.disabled = len < MIN_BIO_CHARS;
+    }
   }
 
   function focusField(name, message) {
@@ -433,7 +459,16 @@
      STEP 1 — Personal Info (AI improve for bio)
   ═══════════════════════════════════════════════════════════════ */
 
+  const MIN_BIO_CHARS = 30; // Fix 7 — حد أدنى لتفعيل زر الـ AI
+
   function wireStep1() {
+    // Fix 7 — ضبط الحالة الأولية للزر بناءً على البيانات المحفوظة
+    function syncBioAiBtn() {
+      const btn = $('bio-ai-btn');
+      if (btn) btn.disabled = (state.bio?.length || 0) < MIN_BIO_CHARS;
+    }
+    syncBioAiBtn();
+
     $('bio-ai-btn').addEventListener('click', async () => {
       const btn = $('bio-ai-btn');
       btn.disabled = true;
@@ -447,7 +482,8 @@
           $('bio-ai-box').classList.add('is-visible');
         }
       );
-      btn.disabled = false;
+      // Fix 7 — أعد الزر بناءً على الحد الأدنى بعد انتهاء الطلب
+      syncBioAiBtn();
       btn.textContent = 'Improve with AI 🤖';
     });
 
@@ -480,6 +516,8 @@
      STEP 2 — Skills (chips + AI suggestions)
   ═══════════════════════════════════════════════════════════════ */
 
+  const MIN_SKILLS_COUNT = 1; // Fix 7 — حد أدنى لتفعيل زر الـ AI في الـ skills
+
   function wireStep2() {
     $('skill-add-btn').addEventListener('click', addSkillFromInput);
     $('skill-input').addEventListener('keydown', (e) => {
@@ -501,7 +539,8 @@
           renderAISkillSuggestions(list);
         }
       );
-      btn.disabled = false;
+      // Fix 7 — أعد الزر بناءً على الحد الأدنى بعد انتهاء الطلب
+      btn.disabled = state.skills.length < MIN_SKILLS_COUNT;
       btn.textContent = 'Improve with AI 🤖';
     });
   }
@@ -545,6 +584,12 @@
       b.addEventListener('click', () => addSkill(s));
       sugWrap.appendChild(b);
     });
+
+    // Fix 7 — زامن حالة زر الـ AI بعد كل تغيير في الـ skills
+    const skillsBtn = $('skills-ai-btn');
+    if (skillsBtn && !skillsBtn.textContent.includes('Thinking')) {
+      skillsBtn.disabled = state.skills.length < MIN_SKILLS_COUNT;
+    }
   }
 
   function renderAISkillSuggestions(list) {
@@ -710,7 +755,7 @@
         name: name,
         github_repo_name: _slugifyProject(name),
         description: desc,
-        url: urlInput.value.trim() || null,
+        url: sanitizeUrl(urlInput.value.trim()), // Fix 3 — protocol validation
         technologies: [...techList],
         language: modal.querySelector('#apm-lang').value.trim() || null,
       });
@@ -979,6 +1024,11 @@
       const email = (state.email || '').trim();
       if (!email) return focusField('email', 'Email is required.');
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return focusField('email', 'Please enter a valid email.');
+      // Fix 4 — sanitize social/website URLs قبل الانتقال للـ Step 7
+      if (state.linkedinUrl) state.linkedinUrl = sanitizeUrl(state.linkedinUrl) ?? '';
+      if (state.websiteUrl)  state.websiteUrl  = sanitizeUrl(state.websiteUrl)  ?? '';
+      if (state.twitterUrl)  state.twitterUrl  = sanitizeUrl(state.twitterUrl)  ?? '';
+      saveState();
       return { valid: true };
     }
     if (n === 7) {
@@ -1074,7 +1124,7 @@
           slug:             slug,
           linkedin_url:     state.linkedinUrl || null,
           gmail_address:    state.email,
-          github_username:  githubUsername || '', // الكولوم default '' مش null في الـ DB
+          github_username:  githubUsername || null, // Fix 5 — null لـ Google users بدل ''
           photo_url:        state.photoUrl || null,
           location:         state.location || null,
           is_published:     true,
@@ -1100,14 +1150,19 @@
             sort_order:        i,
           }))
         );
+        // Fix 6 — rollback: احذف الـ portfolio لو الـ projects insert فشل
         if (projErr) {
-          console.error('[Builder] projects insert error:', projErr);
-          window.toast?.('Portfolio created, but some projects failed to save.', 'warn');
+          console.error('[Builder] projects insert error — rolling back portfolio:', projErr);
+          await sb.from('portfolios').delete().eq('id', portfolio.id);
+          hideLoadingOverlay();
+          nextBtn.disabled = false;
+          window.toast?.('Something went wrong saving your projects. Please try again.', 'error');
+          return;
         }
       }
 
       // 5. نظّف الدرافت ورّوح للـ edit.html
-      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(_storageKey);
       window.toast?.('Portfolio created! 🎉', 'success');
       setTimeout(() => { location.href = `edit.html?slug=${slug}`; }, 700);
 
@@ -1120,7 +1175,7 @@
       // لو حصل race condition (مثلاً double-submit) نتعامل معاه بلطف
       // بدل ما نعرض DB error خام للمستخدم
       if (err?.code === '23505') {
-        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(_storageKey);
         window.toast?.('Looks like your portfolio was already created — opening it now.', 'warn');
         setTimeout(() => { location.href = 'edit.html'; }, 900);
         return;
@@ -1135,8 +1190,6 @@
   ═══════════════════════════════════════════════════════════════ */
 
   async function init() {
-    loadState();
-
     if (!window.Auth) {
       console.error('[Builder] auth.js لم يتم تحميله');
       return;
@@ -1147,6 +1200,10 @@
       window.location.href = 'index.html';
       return;
     }
+
+    // Fix 1 — اربط الـ key بالـ user ID قبل أي قراءة/كتابة للـ localStorage
+    _storageKey = `${STORAGE_KEY}_${_currentUser.id}`;
+    loadState();
 
     const sb = window._supabaseClient;
     if (sb) {
@@ -1161,6 +1218,15 @@
     buildPanels();
     renderStepper();
     showStep(state.step || 1);
+
+    // Fix 2 — اقفل حقل الـ email للـ Google users (provider = 'google')
+    if (_currentUser.app_metadata?.provider === 'google' || _currentUser.email?.endsWith('.google.com')) {
+      const emailField = $('f-email');
+      if (emailField) {
+        emailField.setAttribute('readonly', 'true');
+        emailField.classList.add('field--locked');
+      }
+    }
 
     $('back-btn').addEventListener('click', () => goToStep(state.step - 1));
     $('next-btn').addEventListener('click', handleNextClick);

@@ -383,6 +383,20 @@
     return url;
   }
 
+  /* ── Fix 6: URL sanitization (XSS via javascript:) ───────────────
+     يضمن إن أي رابط يُستخدم في href هو http/https فعلاً، ويرفض
+     أي بروتوكول آخر (javascript:, data:, vbscript:, إلخ).
+  ─────────────────────────────────────────────────────────────── */
+  function sanitizeUrl(url) {
+    if (!url) return null;
+    try {
+      const parsed = new URL(url);
+      return ['http:', 'https:'].includes(parsed.protocol) ? url : null;
+    } catch {
+      return null;
+    }
+  }
+
     function _renderProjects(projects) {
     const grid = $('[data-projects-grid]');
     if (!grid) return;
@@ -419,7 +433,7 @@
           <button class="icon-btn move-up-btn" data-index="${index}" title="Move up" aria-label="Move project up" ${index === 0 ? 'disabled' : ''}>↑</button>
           <button class="icon-btn move-down-btn" data-index="${index}" title="Move down" aria-label="Move project down">↓</button>
           ${extUrl
-            ? `<a href="${extUrl}" target="_blank" rel="noopener" class="icon-btn ext-link" aria-label="${proj.is_custom ? 'Open live demo' : 'Open on GitHub'}" title="${proj.is_custom ? 'Live Demo' : 'GitHub'}">↗</a>`
+            ? `<a href="${sanitizeUrl(extUrl) || '#'}" target="_blank" rel="noopener" class="icon-btn ext-link" aria-label="${proj.is_custom ? 'Open live demo' : 'Open on GitHub'}" title="${proj.is_custom ? 'Live Demo' : 'GitHub'}">↗</a>`
             : ''}
           <button class="icon-btn delete-project-btn" data-index="${index}" title="Remove project" aria-label="Remove project" style="color:rgba(255,80,80,0.7);">×</button>
         </div>
@@ -1308,6 +1322,7 @@
           Copy Link
         </button>
         <button id="toolbar-save-btn" class="btn btn--ghost btn--sm" aria-label="Save draft">Save Draft</button>
+        ${_isPublished ? `<button id="toolbar-unpublish-btn" class="btn btn--ghost btn--sm" aria-label="Unpublish portfolio">Unpublish</button>` : ''}
         <button id="toolbar-publish-btn" class="btn btn--primary btn--sm" aria-label="Publish portfolio">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>
           Publish
@@ -1322,6 +1337,7 @@
     toolbar.querySelector('#toolbar-theme-btn').addEventListener('click', openThemePanel);
     toolbar.querySelector('#toolbar-save-btn').addEventListener('click', saveDraft);
     toolbar.querySelector('#toolbar-publish-btn').addEventListener('click', publish);
+    toolbar.querySelector('#toolbar-unpublish-btn')?.addEventListener('click', unpublishPortfolio);
     toolbar.querySelector('#toolbar-copylink-btn').addEventListener('click', async () => {
       const draft = window.AI?.getDraft?.() || _draft;
       const slug  = draft?.githubUsername || draft?.githubUser?.login || '';
@@ -1348,14 +1364,41 @@
   ═══════════════════════════════════════════════════════════════ */
 
   function saveDraft() {
-    const PRO_THEMES = new Set(['glass3d', 'cyberpunk', 'space', 'editorial', 'noir', 'blueprint', 'terminal', 'liquid']);
+    const PRO_THEMES = new Set(PRO_THEME_IDS); // Fix 5: استخدام القائمة الموحّدة
     if (!_isPro && PRO_THEMES.has(_draft?.theme)) {
       _showProPaywall('save');
       return;
     }
     _showSaveIndicator('saving');
     window.AI?.saveDraft?.(_draft);
+    // Fix 1: حفظ في DB بعد sessionStorage (fire-and-forget — لا يغيّر الـ UI/toast الحالي)
+    saveDraftToDB(_draft?.portfolioId, _draft);
     setTimeout(() => _showSaveIndicator('draft'), 500);
+  }
+
+  /* ── Fix 1: Save Draft to DB ──────────────────────────────────────
+     يحفظ bio + skills في الـ DB بعد نجاح حفظ sessionStorage.
+     لا يُظهر أي error للمستخدم لو فشل — الـ sessionStorage save هو
+     ما يعتمد عليه الـ UI الحالي (toast/indicator) بدون تغيير.
+  ─────────────────────────────────────────────────────────────── */
+  async function saveDraftToDB(portfolioId, draftData) {
+    if (!portfolioId) return; // لا يوجد صف بعد (draft لم يُنشر/يُحمَّل من DB)
+    const sb = window._supabaseClient;
+    if (!sb) return;
+
+    const { error } = await sb
+      .from('portfolios')
+      .update({
+        bio: draftData.bio || null,
+        skills: draftData.skills || [],
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', portfolioId);
+
+    if (error) {
+      console.error('[saveDraft] DB save failed:', error.message);
+      // لا تُظهر error للمستخدم — الـ sessionStorage save نجح
+    }
   }
 
   async function publish() {
@@ -1366,7 +1409,7 @@
     if (btn) { btn.disabled = true; btn.textContent = 'Publishing...'; }
     _showSaveIndicator('saving');
 
-    const PRO_THEMES_SET = new Set(['glass3d', 'cyberpunk', 'space', 'editorial', 'noir', 'blueprint', 'terminal', 'liquid']);
+    const PRO_THEMES_SET = new Set(PRO_THEME_IDS); // Fix 5: استخدام القائمة الموحّدة
     if (!_isPro && PRO_THEMES_SET.has(_draft?.theme)) {
       _showProPaywall('publish');
       if (btn) { btn.disabled = false; btn.textContent = 'Publish'; }
@@ -1454,7 +1497,18 @@
               .eq('portfolio_id', portData.id)
               .or('is_custom.is.null,is_custom.eq.false');
 
-            await sb.from('projects').insert(projectsPayload);
+            // Fix 3: فحص الـ error بعد insert — أوقف التنفيذ لو فشل بدل الاستمرار بصمت
+            const { error: insertError } = await sb
+              .from('projects')
+              .insert(projectsPayload);
+
+            if (insertError) {
+              console.error('[save] Projects insert failed:', insertError.message);
+              window.toast?.('Projects could not be saved. Please try again.', 'error');
+              _showSaveIndicator('error');
+              if (btn) { btn.disabled = false; btn.textContent = 'Publish'; }
+              return; // أوقف التنفيذ — لا تُكمل (finally سيظل يصفّر _isSaving)
+            }
           }
 
         } else {
@@ -1489,6 +1543,31 @@
     } finally {
       _isSaving = false;
     }
+  }
+
+  /* ── Fix 2: Unpublish ─────────────────────────────────────────────
+     يضبط is_published = false على نفس صف الـ portfolio الحالي.
+     يُستدعى فقط من زر Unpublish (يظهر فقط لو _isPublished === true).
+  ─────────────────────────────────────────────────────────────── */
+  async function unpublishPortfolio() {
+    const portfolioId = _draft?.portfolioId;
+    if (!portfolioId) return;
+    const sb = window._supabaseClient;
+    if (!sb) return;
+
+    const { error } = await sb
+      .from('portfolios')
+      .update({ is_published: false, updated_at: new Date().toISOString() })
+      .eq('id', portfolioId);
+
+    if (error) {
+      window.toast?.('Failed to unpublish. Please try again.', 'error');
+      return;
+    }
+    window.toast?.('Portfolio unpublished.', 'success');
+    // حدّث الـ UI: أخفِ زر Unpublish وأظهر زر Publish
+    _isPublished = false;
+    _buildToolbar();
   }
 
   /* ═══════════════════════════════════════════════════════════════
@@ -1912,6 +1991,9 @@
       return;
     }
 
+    // Fix 2: حالة النشر الحالية — تتحكم في ظهور زر Unpublish في الـ toolbar
+    _isPublished = _draft.isPublished === true;
+
     // ── Theme Fallback check (Feature 2) ──────────────────────────────────
     // نجيب الـ userId من الـ session عشان نعدّي لـ checkProStatus
     try {
@@ -2000,7 +2082,7 @@
   }
 
   const FREE_THEMES = new Set(['light', 'dark', 'minimal']);
-  const PRO_THEMES  = new Set(['editorial','noir','blueprint','terminal','liquid','glass3d','cyberpunk','space']);
+  const PRO_THEMES  = new Set(PRO_THEME_IDS); // Fix 5: استخدام القائمة الموحّدة
 
   async function handleThemeScriptLifecycle(themeName) {
     if (FREE_THEMES.has(themeName)) { deactivateCurrentProTheme(); return; }

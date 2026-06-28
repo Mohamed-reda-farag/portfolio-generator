@@ -814,6 +814,20 @@
       return d.innerHTML;
     }
 
+    /* ── URL sanitizer — blocks javascript:, data:, vbscript: etc. ─
+     * (Fix 3) portfolio.js has its own copy inside its IIFE;
+     * portfolio.html is a separate IIFE and does NOT load portfolio.js.
+     ─────────────────────────────────────────────────────────────── */
+    function sanitizeUrl(url) {
+      if (!url) return null;
+      try {
+        const parsed = new URL(url);
+        return ['http:', 'https:'].includes(parsed.protocol) ? url : null;
+      } catch {
+        return null;
+      }
+    }
+
     /* ── Scroll reveal ──────────────────────────────────────────── */
     /* ── Pro reveal themes — declared early for staggerReveal & applyTheme ── */
     const PRO_REVEAL_THEMES = new Set([
@@ -849,7 +863,7 @@
     }
 
     /* ── Load GitHub avatar ────────────────────────────────────── */
-    function loadAvatar(githubUsername, fullName) {
+    function loadAvatar(githubUsername, fullName, photoUrl) {
       const wrap        = document.getElementById('hero-avatar-wrap');
       const img         = document.getElementById('hero-avatar-img');
       const placeholder = document.getElementById('hero-avatar-placeholder');
@@ -861,8 +875,13 @@
         .map(w => w[0]?.toUpperCase() || '').join('');
       if (placeholder) placeholder.textContent = initials;
 
-      if (githubUsername) {
-        const avatarUrl = `https://avatars.githubusercontent.com/${encodeURIComponent(githubUsername)}?v=4&s=360`;
+      // Fix 1: prefer custom photo_url over GitHub avatar
+      const avatarSrc = photoUrl
+        || (githubUsername
+            ? `https://avatars.githubusercontent.com/${encodeURIComponent(githubUsername)}?v=4&s=360`
+            : null);
+
+      if (avatarSrc) {
         img.onload = () => {
           img.style.display = 'block';
           if (placeholder) placeholder.style.display = 'none';
@@ -870,7 +889,7 @@
         img.onerror = () => {
           // Keep initials placeholder — no broken image
         };
-        img.src = avatarUrl;
+        img.src = avatarSrc;
       }
 
       // Animate in regardless of image load status
@@ -1066,9 +1085,9 @@
         // ── رابط الخروج ───────────────────────────────────────────
         // custom → external_url أو repo_url (لو موجود) وإلا لا رابط
         // GitHub → repo_url دايماً
-        const extUrl = proj.is_custom
+        const extUrl = sanitizeUrl(proj.is_custom
           ? (proj.external_url || proj.repo_url || null)
-          : (proj.repo_url || null);
+          : (proj.repo_url || null));
 
         // ── زرار الرابط ───────────────────────────────────────────
         // custom بدون رابط → الزرار مختفي تماماً
@@ -1111,6 +1130,21 @@
     }
 
     /* ── Render social links (Feature 1) ───────────────────────── */
+    /* ── LinkedIn domain validator (Fix 4) ──────────────────────
+     * Accepts linkedin.com URLs only — rejects arbitrary http:// links.
+     ─────────────────────────────────────────────────────────── */
+    function sanitizeLinkedInUrl(url) {
+      if (!url) return null;
+      try {
+        const parsed = new URL(url.startsWith('http') ? url : `https://${url}`);
+        if (!['http:', 'https:'].includes(parsed.protocol)) return null;
+        if (!parsed.hostname.endsWith('linkedin.com')) return null;
+        return parsed.href;
+      } catch {
+        return null;
+      }
+    }
+
     function renderLinks(githubUsername, linkedinUrl, gmailAddress) {
       const container = document.getElementById('hero-links');
       if (!container) return;
@@ -1129,8 +1163,9 @@
       }
 
       if (linkedinUrl) {
-        const url = linkedinUrl.startsWith('http') ? linkedinUrl : `https://${linkedinUrl}`;
-        links.push(`
+        const url = sanitizeLinkedInUrl(linkedinUrl);
+        if (url) {
+          links.push(`
           <a href="${esc(url)}" target="_blank" rel="noopener"
              class="hero-link" aria-label="LinkedIn profile">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -1139,6 +1174,7 @@
             </svg>
             LinkedIn
           </a>`);
+        }
       }
 
       if (gmailAddress) {
@@ -1250,6 +1286,7 @@
         githubUsername,
         linkedinUrl, gmailAddress,
         custom_sections,
+        photoUrl, location,
       } = draft;
 
       const displayName = fullName || name || githubUsername || 'Developer';
@@ -1259,14 +1296,36 @@
       document.getElementById('hero-title').textContent = jobTitle || 'Software Developer';
       document.getElementById('hero-bio').textContent   = bio || '';
 
+      // Fix 1: location display
+      const existingLocationEl = document.getElementById('hero-location');
+      if (existingLocationEl) existingLocationEl.remove();
+      if (location) {
+        const locationEl = document.createElement('p');
+        locationEl.id = 'hero-location';
+        locationEl.className = 'portfolio-location';
+        locationEl.textContent = `📍 ${location}`;
+        locationEl.style.cssText = 'font-size:var(--fs-sm);color:var(--clr-text-3);margin-bottom:var(--sp-6);opacity:0;transition:opacity 0.5s ease 0.55s;';
+        const bioEl = document.getElementById('hero-bio');
+        bioEl?.insertAdjacentElement('afterend', locationEl);
+        setTimeout(() => { locationEl.style.opacity = '1'; }, 100);
+      }
+
       // Nav
       const navLink = document.getElementById('nav-github-link');
       const navUser = document.getElementById('nav-github-username');
-      if (navLink && githubUsername) navLink.href = `https://github.com/${githubUsername}`;
+      // Fix 6: hide the GitHub nav button entirely if no username (e.g. Google sign-in users)
+      if (navLink) {
+        if (githubUsername) {
+          navLink.href = `https://github.com/${githubUsername}`;
+          navLink.style.display = '';
+        } else {
+          navLink.style.display = 'none';
+        }
+      }
       if (navUser && githubUsername) navUser.textContent = `@${githubUsername}`;
 
       // Links
-      loadAvatar(githubUsername, displayName);
+      loadAvatar(githubUsername, displayName, photoUrl);
       renderLinks(githubUsername, linkedinUrl, gmailAddress);
 
       // Stats
@@ -1343,6 +1402,7 @@
             id, bio, skills, theme, slug, is_published,
             user_id, linkedin_url, gmail_address, custom_sections,
             full_name, github_username, job_title,
+            photo_url, location,
             projects ( github_repo_name, ai_description, stars, language, topics, sort_order, repo_url, is_featured, image_url, image_urls, is_custom, external_url )
           `)
           .eq('slug', slug)
@@ -1422,10 +1482,45 @@
           linkedinUrl:     portfolio.linkedin_url  || '',
           gmailAddress:    portfolio.gmail_address || '',
           custom_sections: portfolio.custom_sections || [],
+          photoUrl:        portfolio.photo_url  || null,
+          location:        portfolio.location   || null,
+          portfolioUserId: portfolio.user_id,
+          portfolioId:     portfolio.id,
         };
       } catch (err) {
         console.error('[portfolio.html] Supabase load error:', err);
         return null;
+      }
+    }
+
+    /* ── Edit button for owner (Fix 2) ─────────────────────────── */
+    async function addEditButtonIfOwner(portfolioUserId, portfolioId, sb) {
+      try {
+        const { data: { user } } = await sb.auth.getUser();
+        if (!user || user.id !== portfolioUserId) return;
+
+        const editBtn = document.createElement('a');
+        editBtn.href = `edit.html?id=${portfolioId}`;
+        editBtn.id = 'portfolio-owner-edit-btn';
+        editBtn.textContent = '✏️ Edit Portfolio';
+        editBtn.style.cssText =
+          'position:fixed;bottom:24px;right:24px;z-index:1000;' +
+          'padding:12px 20px;background:var(--clr-accent,#00ff88);color:#000;' +
+          'border-radius:8px;text-decoration:none;font-weight:600;' +
+          'font-family:var(--font-body,monospace);font-size:var(--fs-sm,0.85rem);' +
+          'box-shadow:0 4px 12px rgba(0,0,0,0.3);' +
+          'transition:opacity 0.2s,transform 0.2s;';
+        editBtn.addEventListener('mouseenter', () => {
+          editBtn.style.opacity = '0.9';
+          editBtn.style.transform = 'translateY(-2px)';
+        });
+        editBtn.addEventListener('mouseleave', () => {
+          editBtn.style.opacity = '1';
+          editBtn.style.transform = 'translateY(0)';
+        });
+        document.body.appendChild(editBtn);
+      } catch {
+        // Unauthenticated visitor — no button shown
       }
     }
 
@@ -1465,7 +1560,14 @@
       }
 
       // ── Apply theme (identical flow to edit.html) ──────────────
-      const theme = draft.theme || 'dark';
+      // Fix 5: validate theme value before applying — unknown theme → 'dark'
+      const VALID_THEMES = [
+        'light', 'dark', 'minimal',
+        'editorial', 'noir', 'blueprint', 'terminal',
+        'liquid', 'glass3d', 'cyberpunk', 'space',
+      ];
+      const safeTheme = VALID_THEMES.includes(draft.theme) ? draft.theme : 'dark';
+      const theme = safeTheme;
       applyTheme(theme);
 
       // ── Render content BEFORE loading Pro theme JS ─────────────
@@ -1475,6 +1577,12 @@
         console.error('[portfolio.html] Render error:', err);
         showError('Something went wrong rendering the portfolio.');
         return;
+      }
+
+      // ── Edit button for owner (Fix 2) — only in public mode ────
+      if (slug && draft.portfolioUserId && draft.portfolioId) {
+        const sb = getSupabaseClient();
+        if (sb) addEditButtonIfOwner(draft.portfolioUserId, draft.portfolioId, sb);
       }
 
       // ── Load Pro theme JS AFTER render ─────────────────────────

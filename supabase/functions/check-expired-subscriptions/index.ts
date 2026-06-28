@@ -50,24 +50,24 @@ Deno.serve(async (req: Request): Promise<Response> => {
     auth: { persistSession: false },
   });
 
-  // ─── 1. جيب المستخدمين المنتهية اشتراكاتهم ──────────────────────────────
+  // ─── 1. جيب المستخدمين الـ Pro كلهم ثم فلتر في الكود ──────────────────────
+  //
+  // Fix 4: replaced the buggy OR query with correct AND logic applied in-code.
+  //
+  // المشكلة القديمة: الـ OR كان يُنزّل مستخدماً لو pro_expires_at انتهى
+  // حتى لو early_adopter_expires_at لا يزال نشطاً (أو العكس).
+  //
+  // القاعدة الصحيحة: نُنزّل المستخدم فقط لو كلا مصدري الـ Pro انتهيا أو غير موجودَين.
+  //   - null يعني "لا يوجد اشتراك من هذا النوع" → يُعامَل كـ "منتهٍ"
+  //   - قيمة مستقبلية يعني الاشتراك لا يزال نشطاً → يحمي المستخدم من الـ downgrade
 
   const now = new Date().toISOString();
+  const nowMs = Date.now();
 
-  /*
-   * الشرط: المستخدم Pro (is_pro = true) لكن:
-   *   - pro_expires_at انتهى (أو)
-   *   - early_adopter_expires_at انتهى
-   * ملاحظة: لو كلاهم null → لا ننزّله (Pro مدى الحياة يدوي)
-   */
-  const { data: expiredUsers, error: fetchErr } = await sb
+  const { data: proUsers, error: fetchErr } = await sb
     .from('users')
     .select('id, is_pro, pro_expires_at, early_adopter_expires_at')
-    .eq('is_pro', true)
-    .or(
-      `and(pro_expires_at.not.is.null,pro_expires_at.lt.${now}),` +
-      `and(early_adopter_expires_at.not.is.null,early_adopter_expires_at.lt.${now})`
-    );
+    .eq('is_pro', true);
 
   if (fetchErr) {
     console.error('[check-expired] fetch error:', fetchErr.message);
@@ -77,7 +77,22 @@ Deno.serve(async (req: Request): Promise<Response> => {
     );
   }
 
-  if (!expiredUsers || expiredUsers.length === 0) {
+  // فلتر في الكود: نزّل فقط لو كلا المصدرين منتهيَين أو null
+  const expiredUsers = (proUsers || []).filter(user => {
+    const proExpired = user.pro_expires_at
+      ? new Date(user.pro_expires_at).getTime() < nowMs
+      : true; // null = لا اشتراك مدفوع → يُعامَل كـ "منتهٍ"
+
+    const earlyExpired = user.early_adopter_expires_at
+      ? new Date(user.early_adopter_expires_at).getTime() < nowMs
+      : true; // null = لا early adopter → يُعامَل كـ "منتهٍ"
+
+    // نُنزّل فقط لو كلاهما منتهٍ أو غير موجود
+    // لو أي منهما لا يزال نشطاً → يبقى Pro
+    return proExpired && earlyExpired;
+  });
+
+  if (expiredUsers.length === 0) {
     return new Response(
       JSON.stringify({ downgraded: 0, message: 'No expired subscriptions found.' }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }

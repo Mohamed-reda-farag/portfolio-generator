@@ -642,11 +642,11 @@
         // 3. Create generation record
         let generationId = '';
         if (sb && token) {
-          const { data: genRow } = await sb
-            .from('ai_generations')
-            .insert({ user_id: _user.id, status: 'pending', github_data: _ghData })
-            .select('id')
-            .single();
+        const { data: genRow } = await sb
+          .from('ai_generations')
+          .insert({ user_id: _user.id, status: 'pending', github_data: _ghData, function_type: 'linkedin' })
+          .select('id')
+          .single();
           generationId = genRow?.id || '';
         }
 

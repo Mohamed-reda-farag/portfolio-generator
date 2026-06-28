@@ -417,6 +417,31 @@
       border-color: var(--clr-accent, #00FF88);
     }
 
+    /* ── README Analyses Counter ── */
+    .readme-counter {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(0,255,136,0.06);
+      border: 1px solid rgba(0,255,136,0.15);
+      border-radius: var(--radius-full, 9999px);
+      padding: 4px 12px;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--clr-text-muted, #8A9E90);
+      white-space: nowrap;
+    }
+    .readme-counter__num {
+      font-weight: 700;
+      color: #00FF88;
+    }
+    .readme-counter--warn .readme-counter__num {
+      color: var(--clr-warn, #FFB547);
+    }
+    .readme-counter--empty .readme-counter__num {
+      color: var(--clr-error, #FF4F4F);
+    }
+
     /* ── Generate New Dropdown (Bug 3) ── */
     .gen-dropdown {
       position: relative;
@@ -465,8 +490,19 @@
       <a href="portfolio-builder.html" class="btn btn--ghost btn--sm">+ New Portfolio</a>
       <img id="nav-avatar" class="nav-avatar hidden" src="" alt="avatar"
            data-nav-avatar title="Your account" />
+      <!-- Fix 5: localStorage keys cleared on logout: 'pg_cv_data', 'pg_builder_draft_v1'
+           المسح يحصل في auth.js signOut() — لو auth.js فشل، الـ fallback هنا يعمل -->
       <button id="signout-btn" class="btn btn--ghost btn--sm hidden"
-              data-nav-signout onclick="Auth.signOut()">Sign Out</button>
+              data-nav-signout onclick="
+                // Fix 5: مزامنة مع auth.js — امسح نفس الـ keys
+                ['pg_builder_draft_v1','pg_cv_data'].forEach(function(k){ localStorage.removeItem(k); });
+                if (typeof Auth !== 'undefined' && Auth.signOut) {
+                  Auth.signOut();
+                } else {
+                  // Fallback لو auth.js مش محمّل
+                  window._supabaseClient?.auth.signOut().finally(function(){ window.location.href='index.html'; });
+                }
+              ">Sign Out</button>
     </div>
   </header>
 
@@ -486,6 +522,10 @@
         <a href="linkedin.html" class="btn btn--ghost btn--sm" style="text-decoration:none;">
           💼 LinkedIn Presence
         </a>
+        <!-- README Analyses counter — يظهر فقط للـ Free users، hidden by default -->
+        <span id="readme-counter" class="readme-counter" style="display:none;" title="README Analyses remaining this month">
+          📄 README: <span class="readme-counter__num" id="readme-counter-num">3</span>/3 left
+        </span>
         <!-- Bug 3: Generate New → dropdown with GitHub + Manual options -->
         <div class="gen-dropdown" id="gen-dropdown">
           <button class="btn btn--primary btn--sm gen-dropdown__trigger"
@@ -1168,6 +1208,33 @@
       if (total > 0) $('dashboard-stats').style.display = 'flex';
     }
 
+    // ─── README Analyses Counter ──────────────────────────────
+    function renderReadmeCounter(isPro, analysesUsed) {
+      const counterEl = $('readme-counter');
+      const numEl     = $('readme-counter-num');
+      if (!counterEl || !numEl) return;
+
+      if (isPro) {
+        // Pro users: unlimited — نخفي العداد أو نعرض ∞
+        counterEl.style.display = 'none';
+        return;
+      }
+
+      const used      = analysesUsed || 0;
+      const remaining = Math.max(0, 3 - used);
+      numEl.textContent = remaining;
+
+      // لون حسب الحالة
+      counterEl.classList.remove('readme-counter--warn', 'readme-counter--empty');
+      if (remaining === 0) {
+        counterEl.classList.add('readme-counter--empty');
+      } else if (remaining === 1) {
+        counterEl.classList.add('readme-counter--warn');
+      }
+
+      counterEl.style.display = 'inline-flex';
+    }
+
     // ─── Pro Status UI ────────────────────────────────────────
     function renderProStatus(isPro) {
       if (isPro) {
@@ -1519,7 +1586,7 @@
         if (ghUsername && freshUser?.id) {
           const { error } = await sb
             .from('users')
-            .update({ github_username: ghUsername })
+            .update({ github_username: ghUsername, auth_provider: 'github' })
             .eq('id', freshUser.id);
 
           (typeof window.toast === 'function' ? window.toast : console.log)(
@@ -1554,9 +1621,13 @@
         ? 'Generate your first portfolio below.'
         : `You have ${portfolios.length} portfolio${portfolios.length !== 1 ? 's' : ''} · ${user.githubUsername || user.name || user.email}`;
 
-      // Avatar
+      // Avatar — Fix 4: fallback لو avatarUrl = null لمنع src="null"
       const avatarEl = document.querySelector('[data-nav-avatar]');
-      if (avatarEl) { avatarEl.src = user.avatarUrl; avatarEl.classList.remove('hidden'); }
+      if (avatarEl) {
+        avatarEl.src = user.avatarUrl
+          || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || user.email || 'U')}&background=162019&color=00FF88&bold=true&size=64`;
+        avatarEl.classList.remove('hidden');
+      }
       document.querySelector('[data-nav-signout]')?.classList.remove('hidden');
 
       // جيب الـ Pro status + Early Adopter data + auth_provider/github_username
@@ -1571,19 +1642,28 @@
       if (sb) {
         const { data: userData } = await sb
           .from('users')
-          .select('is_pro, is_early_adopter, early_adopter_expires_at, auth_provider, github_username')
+          .select('is_pro, is_early_adopter, early_adopter_expires_at, auth_provider, github_username, readme_analyses_used')
           .eq('id', user.id)
           .single();
 
-        isPro          = userData?.is_pro              === true;
-        isEarlyAdopter = userData?.is_early_adopter    === true;
-        eaExpiresAt    = userData?.early_adopter_expires_at || null;
-        needsProviderChoice =
-          userData?.auth_provider === 'google' || !userData?.github_username;
+        // Fix 1: لو userData = null (فشل الـ retry)، أظهر error واوقف التنفيذ
+        // بدل ما needsProviderChoice تصبح true وتُظهر نافذة ربط GitHub خطأً
+        if (!userData) {
+          const errMsg = 'Unable to load your profile. Please refresh the page.';
+          (typeof window.toast === 'function' ? window.toast : console.error)(errMsg, 'error');
+          $('greeting-sub').textContent = errMsg;
+          return;
+        }
+
+        isPro          = userData.is_pro              === true;
+        isEarlyAdopter = userData.is_early_adopter    === true;
+        eaExpiresAt    = userData.early_adopter_expires_at || null;
+        needsProviderChoice = !userData.github_username;
       }
 
       // Render
       renderProStatus(isPro);
+      renderReadmeCounter(isPro, userData.readme_analyses_used);
 
       // ── Bug 3: If Google user without GitHub, make "Generate New" go directly ──
       // to portfolio-builder.html (no dropdown needed — they can't use GitHub gen)

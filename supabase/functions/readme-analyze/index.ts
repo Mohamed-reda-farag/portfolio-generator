@@ -2,7 +2,6 @@
 // README Analyzer — Portfolio Generator
 // Receives README content → builds prompt per output type → calls Groq → returns JSON
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -200,7 +199,8 @@ async function callGroqAPI(
 
 // ─── Main handler ──────────────────────────────────────────────────────────────
 
-serve(async (req: Request) => {
+// Fix 7: migrated from `serve` (std@0.168.0) to native Deno.serve
+Deno.serve(async (req: Request) => {
   const requestOrigin = req.headers.get("origin");
   const corsHeaders   = getCorsHeaders(requestOrigin);
 

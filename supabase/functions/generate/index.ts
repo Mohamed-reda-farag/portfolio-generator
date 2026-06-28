@@ -2,7 +2,6 @@
 // Portfolio Generator — AI Generation Edge Function
 // Receives GitHub data → builds prompt → calls Groq API → returns JSON
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -230,7 +229,8 @@ async function callGroqAPI(
 
 // ─── Main Handler ──────────────────────────────────────────────────────────────
 
-serve(async (req: Request) => {
+// Fix 7: migrated from `serve` (std@0.168.0) to native Deno.serve
+Deno.serve(async (req: Request) => {
   const requestOrigin = req.headers.get("origin");
   const corsHeaders = getCorsHeaders(requestOrigin);
 
@@ -288,10 +288,12 @@ serve(async (req: Request) => {
         const userId = userPayload?.user?.id;
         if (userId) {
           const since24h = new Date(Date.now() - 86_400_000).toISOString();
+          // Fix 1: rate limit scoped to function_type='portfolio' only
           const { count } = await supabase
             .from("ai_generations")
             .select("*", { count: "exact", head: true })
             .eq("user_id", userId)
+            .eq("function_type", "portfolio")
             .gte("created_at", since24h);
 
           if ((count ?? 0) >= 5) {
