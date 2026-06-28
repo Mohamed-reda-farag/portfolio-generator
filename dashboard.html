@@ -1659,11 +1659,13 @@
         isEarlyAdopter = userData.is_early_adopter    === true;
         eaExpiresAt    = userData.early_adopter_expires_at || null;
         needsProviderChoice = !userData.github_username;
+
+        // Fix: استدعاء هنا حيث userData في الـ scope
+        renderReadmeCounter(isPro, userData.readme_analyses_used);
       }
 
       // Render
       renderProStatus(isPro);
-      renderReadmeCounter(isPro, userData.readme_analyses_used);
 
       // ── Bug 3: If Google user without GitHub, make "Generate New" go directly ──
       // to portfolio-builder.html (no dropdown needed — they can't use GitHub gen)
