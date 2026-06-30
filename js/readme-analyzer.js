@@ -21,6 +21,7 @@
   /* ─── State ────────────────────────────────────────────────────────── */
   let readmeContent     = null;   // نص الـ README المرفوع
   let currentUserId     = null;
+  let _currentUser      = null;   // كائن المستخدم الكامل (module-level لاستخدامه في resetAnalyzer وغيرها)
   let isCurrentlyPro    = false;
   let usageData         = { used: 0, remaining: 3, allowed: true };
   let _skillsRaw        = [];     // للـ "Copy" زر الـ skills
@@ -58,6 +59,7 @@
     }
 
     currentUserId = user.id;
+    _currentUser  = user;   // حفظ الكائن الكامل لاستخدامه في resetAnalyzer وautoGenerateFromGitHub
 
     // Update nav avatar (نفس نمط auth.js _updateNav)
     const avatarEl   = document.querySelector('[data-nav-avatar]');
@@ -71,6 +73,7 @@
     // Wire up events
     _initUploadZone();
     _initOutputCheckboxes();
+    _initGitHubAutoBtn(user);   // GitHub auto-generate button + modal
   });
 
   /* ─────────────────────────────────────────────────────────────────────
@@ -134,9 +137,12 @@
     // Remove button
     removeFileBtn?.addEventListener('click', () => {
       readmeContent = null;
+      window._autoReadmeContent = null;   // تنظيف auto state لو كان موجوداً
+      window._autoReadmeLabel   = null;
       fileInput.value = '';
       filePill.classList.add('hidden');
-      uploadZone.style.display = '';
+      uploadZone.style.display  = '';
+      uploadZone.style.opacity  = '1';   // إعادة opacity لو خُفِّفت عند auto load
       _updateGenerateBtn();
     });
   }
@@ -198,7 +204,7 @@
   }
 
   function _updateGenerateBtn() {
-    const hasFile    = !!readmeContent;
+    const hasFile    = !!(readmeContent || window._autoReadmeContent);
     const hasOutputs = _getSelectedOutputs().length > 0;
     generateBtn.disabled = !(hasFile && hasOutputs);
   }
@@ -207,8 +213,10 @@
      GENERATE
   ───────────────────────────────────────────────────────────────────── */
   generateBtn.addEventListener('click', async () => {
-    if (!readmeContent) {
-      window.toast('Please upload a README file first', 'warn');
+    const effectiveContent = readmeContent || window._autoReadmeContent || null;
+
+    if (!effectiveContent) {
+      window.toast('Please upload a README file or use Auto Generate from GitHub', 'warn');
       return;
     }
 
@@ -226,10 +234,10 @@
       }
     }
 
-    await _runGeneration(selectedOutputs);
+    await _runGeneration(selectedOutputs, effectiveContent);
   });
 
-  async function _runGeneration(selectedOutputs) {
+  async function _runGeneration(selectedOutputs, effectiveContent) {
     const sb = window._supabaseClient;
     if (!sb) {
       window.toast('Not connected — please refresh', 'error');
@@ -248,7 +256,7 @@
       // ── Call edge function
       const { data, error } = await sb.functions.invoke('readme-analyze', {
         body: {
-          readmeContent,
+          readmeContent:    effectiveContent,   // يدعم الرفع اليدوي والـ auto GitHub
           requestedOutputs: selectedOutputs,
           userId: currentUserId,
         },
@@ -295,7 +303,7 @@
       console.error('[ReadmeAnalyzer] Generation error:', err);
       window.toast(
         err.message?.includes('RATE_LIMITED')
-          ? 'You've reached the usage limit. Upgrade to Pro for unlimited access.'
+          ? 'You\'ve reached the usage limit. Upgrade to Pro for unlimited access.'
           : 'Generation failed — please try again',
         'error'
       );
@@ -518,17 +526,33 @@
      RESET — بدون reload
   ───────────────────────────────────────────────────────────────────── */
   window.resetAnalyzer = function () {
-    // State
+    // ── State
     readmeContent = null;
     _postsRaw     = [];
     _skillsRaw    = [];
 
-    // File
+    // ── Auto-generate state (GitHub)
+    window._autoReadmeContent = null;
+    window._autoReadmeLabel   = null;
+
+    // ── File UI
     fileInput.value = '';
     filePill.classList.add('hidden');
-    uploadZone.style.display = '';
+    uploadZone.style.display  = '';
+    uploadZone.style.opacity  = '1';   // أُعيد لو كان خُفِّف عند auto load
 
-    // Results
+    // ── GitHub hint text — أعد لقيمتها الأصلية بناءً على نوع المستخدم
+    const hint = $('github-auto-hint');
+    if (hint && _currentUser) {
+      const isGithubUser = !!_currentUser.githubUsername;
+      if (isGithubUser) {
+        hint.textContent = `Will read READMEs from @${_currentUser.githubUsername}'s top repos`;
+      } else {
+        hint.textContent = 'Requires a linked GitHub account';
+      }
+    }
+
+    // ── Results
     resultsSection.classList.remove('is-visible');
     ['block-bio','block-project','block-linkedin-posts','block-report','block-skills']
       .forEach(id => {
@@ -536,7 +560,7 @@
         if (el) el.style.display = 'none';
       });
 
-    // Clear content
+    // ── Clear content
     ['content-bio','content-project','content-report'].forEach(id => {
       const el = $(id);
       if (el) { el.textContent = ''; el.removeAttribute('contenteditable'); }
@@ -546,14 +570,14 @@
     const postsContainer = $('linkedin-posts-container');
     if (postsContainer) postsContainer.innerHTML = '';
 
-    // Progress / spinner
+    // ── Progress / spinner
     _hideProgress();
     _hideSpinner();
 
-    // Disable generate button (no file)
+    // ── Generate button (لا يُفعَّل — لا ملف ولا auto content)
     generateBtn.disabled = true;
 
-    // Scroll back to top
+    // ── Scroll back to top
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -634,6 +658,136 @@
   function _buildRelativeURL(page) {
     const base = window.location.pathname.replace(/\/[^/]*$/, '/');
     return window.location.origin + base + page;
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────
+     AUTO GENERATE FROM GITHUB REPOS
+     يُستدعى عند ضغط زر "Auto Generate from GitHub Repos" من GitHub users
+  ───────────────────────────────────────────────────────────────────── */
+  async function autoGenerateFromGitHub(githubUsername) {
+    // ── Null safety — هذا هو السبب الجذري لـ Bug 2 الأصلي
+    if (!githubUsername || typeof githubUsername !== 'string' || !githubUsername.trim()) {
+      window.toast('No GitHub username found. Please upload a README manually.', 'warn');
+      return;
+    }
+
+    const btn  = $('github-auto-btn');
+    const hint = $('github-auto-hint');
+
+    // ── Loading state
+    if (btn) {
+      btn.disabled    = true;
+      btn.textContent = 'Fetching repos…';
+    }
+
+    try {
+      // ── التحقق من وجود window.GitHub قبل الاستدعاء
+      if (!window.GitHub?.fetchGitHubData) {
+        window.toast('GitHub module not loaded. Please refresh the page.', 'error');
+        return;
+      }
+
+      // ── جلب بيانات GitHub (الـ in-memory cache يمنع طلبات مكررة)
+      const ghData = await window.GitHub.fetchGitHubData(githubUsername);
+
+      // ── استخراج أفضل repos التي لديها README
+      // البنية الصحيحة: ghData.top_repos (وليس ghData.repos)
+      const reposWithReadme = (ghData.top_repos || [])
+        .filter(r => r.readme && r.readme.trim().length > 0)
+        .slice(0, 3);
+
+      if (reposWithReadme.length === 0) {
+        window.toast('No READMEs found in your top repos. Please upload one manually.', 'warn');
+        return;
+      }
+
+      // ── دمج READMEs — كل readme نص مقطوع 600 حرف بعد stripMarkdown
+      const combinedContent = reposWithReadme
+        .map(r => `# ${r.name}\n\n${r.readme}`)
+        .join('\n\n---\n\n');
+
+      const label = `GitHub: @${githubUsername} (${reposWithReadme.length} repo${reposWithReadme.length > 1 ? 's' : ''})`;
+
+      // ── حقن المحتوى كـ "ملف مُحمَّل"
+      window._autoReadmeContent = combinedContent;
+      window._autoReadmeLabel   = label;
+
+      // ── تحديث الـ UI
+      if (fileNameEl) fileNameEl.textContent = label;
+      if (filePill)   filePill.classList.remove('hidden');
+      if (uploadZone) uploadZone.style.opacity = '0.4';   // خفِّف الـ upload zone (لا تُخفيها)
+      if (hint)       hint.textContent = `✓ Loaded ${reposWithReadme.length} README${reposWithReadme.length > 1 ? 's' : ''} — hit Analyze to generate!`;
+
+      _updateGenerateBtn();   // إعادة تقييم حالة الزر
+      window.toast(`Loaded READMEs from ${reposWithReadme.length} repos. Hit Analyze!`, 'success');
+
+    } catch (err) {
+      console.error('[ReadmeAnalyzer] autoGenerateFromGitHub error:', err);
+
+      // رسائل خطأ مناسبة لكل كود (GitHubError لها .code)
+      const msg = err?.code === 'NOT_FOUND'
+        ? 'GitHub profile not found.'
+        : err?.code === 'RATE_LIMITED'
+        ? 'GitHub API rate limit reached. Try again in a few minutes.'
+        : err?.code === 'EMPTY_PROFILE'
+        ? 'No public repos found. Upload a README manually.'
+        : 'Failed to fetch GitHub data. Please upload a README manually.';
+
+      window.toast(msg, 'error');
+
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/></svg> Auto Generate from GitHub Repos`;
+      }
+    }
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────
+     GITHUB AUTO BUTTON — wire-up في DOMContentLoaded
+     (يُضاف بعد _initOutputCheckboxes() في الـ DOMContentLoaded handler)
+  ───────────────────────────────────────────────────────────────────── */
+  function _initGitHubAutoBtn(user) {
+    const githubAutoBtn  = $('github-auto-btn');
+    const githubAutoHint = $('github-auto-hint');
+
+    if (!githubAutoBtn) return;   // الـ HTML لم يُحدَّث بعد — تجاهل آمن
+
+    const isGithubUser = !!(user && user.githubUsername);
+
+    // Hint text
+    if (githubAutoHint && user) {
+      githubAutoHint.textContent = isGithubUser
+        ? `Will read READMEs from @${user.githubUsername}'s top repos`
+        : 'Requires a linked GitHub account';
+      githubAutoHint.style.display = 'block';
+    }
+
+    // Button click
+    githubAutoBtn.addEventListener('click', async () => {
+      if (!user) {
+        window.location.href = _buildRelativeURL('index.html');
+        return;
+      }
+      if (!isGithubUser) {
+        // Google user → أظهر modal ربط GitHub
+        $('connect-github-modal')?.classList.remove('hidden');
+        return;
+      }
+      await autoGenerateFromGitHub(user.githubUsername);
+    });
+
+    // Connect GitHub button في الـ modal
+    $('connect-github-btn')?.addEventListener('click', () => {
+      window.Auth?.signIn?.();
+    });
+
+    // Backdrop click لإغلاق الـ modal
+    $('connect-github-modal')?.addEventListener('click', e => {
+      if (e.target === $('connect-github-modal')) {
+        $('connect-github-modal').classList.add('hidden');
+      }
+    });
   }
 
 })();

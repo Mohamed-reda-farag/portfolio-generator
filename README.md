@@ -23,13 +23,12 @@ Don't have a GitHub account? No problem — sign in with Google and build your p
 - **Manual Portfolio Builder** — 7-step guided builder (no GitHub required)
 - **Google Sign-In** — create an account without a GitHub profile
 - **Custom Projects** — add projects not on GitHub with manual descriptions
-- **README Analyzer** — upload any README and generate bio, project descriptions, LinkedIn posts, and more (up to 3 uses)
+- **README Analyzer** — upload any README (or auto-generate from your GitHub repos) and get bio, project descriptions, skills, LinkedIn posts, and a full LinkedIn Presence report (up to 3 uses)
 - Inline editor — edit bio, skills, and project descriptions live
 - 3 themes: Light, Dark, Minimal
 - Public portfolio URL you can share
 - CV Builder — ATS-optimised, Arabic & English, expanded skill categories
 - Referral system — earn discounts by inviting friends
-- LinkedIn Presence — GitHub Profile Score + Headline (limited)
 
 ### Early Access ⚡ *(first 50 users)*
 - Full Pro access free for 30 days — no payment required
@@ -38,8 +37,7 @@ Don't have a GitHub account? No problem — sign in with Google and build your p
 - Everything in Free
 - 8 exclusive themes: Glass 3D, Cyberpunk, Space, Blueprint, Editorial, Liquid, Noir, Terminal
 - All future Pro themes
-- **README Analyzer** — unlimited uses
-- LinkedIn Presence — full report, all posts, AR/EN toggle, benchmark
+- **README Analyzer** — unlimited uses, full LinkedIn Presence report (AR/EN toggle, benchmark, all posts unlocked)
 - Automatic theme restore on subscription renewal
 - Monthly and yearly plans available
 
@@ -70,8 +68,7 @@ portfolio-generator/
 ├── dashboard.html           # User dashboard
 ├── cv-builder.html          # ATS CV Builder (AR/EN, expanded skills)
 ├── portfolio-builder.html   # Manual step-by-step portfolio builder
-├── readme-analyzer.html     # README Analyzer tool
-├── linkedin.html            # LinkedIn Presence generator (DevPresence)
+├── readme-analyzer.html     # README Analyzer — uploads, GitHub auto-generate, LinkedIn Presence
 ├── pricing.html             # Pricing page
 ├── privacy.html             # Privacy Policy
 ├── terms.html               # Terms of Service
@@ -115,12 +112,10 @@ portfolio-generator/
     └── functions/
         ├── generate/
         │   └── index.ts               # Portfolio Edge Function (Groq API)
-        ├── linkedin-generate/
-        │   └── index.ts               # LinkedIn Presence Edge Function (Groq API)
         ├── readme-analyze/
-        │   └── index.ts               # README Analyzer Edge Function (Groq API)
+        │   └── index.ts               # README Analyzer Edge Function — incl. LinkedIn Presence (Groq API)
         ├── improve-text/
-        │   └── index.ts               # AI text improvement for Portfolio Builder
+        │   └── index.ts               # AI text improvement for Portfolio Builder (bio, skills, project_description)
         └── check-expired-subscriptions/
             └── index.ts               # Daily cron — downgrades expired Pro users
 ```
@@ -164,7 +159,7 @@ used_codes          — code, user_id, code_type, discount, used_at, user_agent
 referrals           — id, referrer_id, referred_id, created_at
 ```
 
-> `function_type` values: `'portfolio'` | `'linkedin'`
+> `function_type` values: `'portfolio'` | `'readme'` | `'linkedin'` | `'bio'` | `'projects'`
 > `auth_provider` values: `'github'` | `'google'`
 
 ---
@@ -213,7 +208,8 @@ Yearly:  14 chars total
 The first 50 users to sign up receive **full Pro access free for 30 days**.
 
 - A live counter on the landing page shows remaining spots
-- Tracked via the `early_adopter_counter` table
+- Tracked via the `early_adopter_counter` table, incremented with an optimistic lock to stay accurate under concurrent signups
+- Granted with a short delay after the user row is created, with a retry on read, to avoid a race condition where the grant could silently fail right after signup
 - At expiry, the account reverts to Free automatically (theme fallback applies)
 
 ---
@@ -245,9 +241,28 @@ For users without a GitHub account (or those who prefer full control), the 7-ste
 | 6 | Contact & Links |
 | 7 | Theme selection & publish |
 
-- AI-assisted writing on bio and skills steps via `improve-text` Edge Function
+- AI-assisted writing via the `improve-text` Edge Function on bio, skills, and project description — each "Improve with AI" button stays disabled until a minimum threshold is met (30 characters for bio, 2+ skills, 20 characters for project description), so the AI only runs on content worth improving
 - Progress saved in `localStorage` — safe to refresh mid-flow
 - Work experience and education stored in `portfolios.custom_sections` (JSONB)
+
+### Preview Before Publish
+Finishing the wizard does **not** publish the portfolio immediately. Instead:
+
+```
+Step 7 "Review & Publish →"
+        ↓
+Portfolio created as a draft (is_published: false)
+        ↓
+Redirect to edit.html in Draft Review mode
+        ↓
+User sees the real, fully-styled portfolio (same view as the inline editor)
+        ↓
+"← Keep Editing"  or  "Publish Now 🚀"
+        ↓
+Only on confirmation: is_published → true, portfolio goes live
+```
+
+This gives manual-builder users the same visual confidence GitHub-flow users get for free — nobody publishes a portfolio they haven't actually seen.
 
 ---
 
@@ -275,16 +290,21 @@ ATS-optimised CV builder with full Arabic and English support.
 
 ## README Analyzer
 
-Upload any `.md` file and select which outputs to generate:
+Upload any `.md` file — or, if you signed in with GitHub, auto-generate from your repos directly — and select which outputs to generate:
 
 | Output | Description |
 |---|---|
 | Professional Bio | 150–200 word developer bio |
 | Project Description | Portfolio-ready project summary |
+| Skills & Technologies | Extracted tech stack list |
 | LinkedIn Posts | 3 posts with hashtags |
 | LinkedIn Presence Report | Score, keywords, benchmark, tips |
-| Skills & Technologies | Extracted tech stack list |
 
+### GitHub Auto-Generate
+- **GitHub users:** an "Auto Generate from GitHub Repos" button pulls READMEs straight from your top repos — no manual upload needed
+- **Google users (no GitHub linked):** the same button prompts a "Connect GitHub" dialog, with manual upload always available as a fallback
+
+- This page is the single entry point for everything previously split across a separate LinkedIn Presence page — that page has been removed
 - **Free users:** up to 3 analyses
 - **Pro users:** unlimited
 - All content generated in a single Groq API call for coherence and speed
@@ -361,7 +381,6 @@ supabase secrets set GROQ_MODEL=llama-3.3-70b-versatile
 **6. Deploy all Edge Functions**
 ```bash
 supabase functions deploy generate
-supabase functions deploy linkedin-generate
 supabase functions deploy readme-analyze
 supabase functions deploy improve-text
 supabase functions deploy check-expired-subscriptions

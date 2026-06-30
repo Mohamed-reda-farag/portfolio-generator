@@ -149,10 +149,12 @@
           // Always ensure the row exists (upsert is idempotent — safe to call repeatedly)
           await _ensureUserRow(rawUser);
 
-          // Early Adopter grant — only on truly new accounts (created within last 30s)
+          // Early Adopter grant — only on truly new accounts (created within last 5 min)
           const createdAt = new Date(rawUser.created_at).getTime();
           const isNewUser = (Date.now() - createdAt) < 300_000; // 5-minute window
           if (isNewUser) {
+            // FIX 1: Wait 500ms for the DB write to propagate before reading the row
+            await new Promise(r => setTimeout(r, 500));
             await _maybeGrantEarlyAdopter(rawUser.id);
           }
         }
@@ -304,14 +306,35 @@
       // 2. تحقق من المقاعد المتاحة
       if (counter.count >= counter.max_count) return; // المقاعد انتهت
 
-      // 3. تحقق إن المستخدم مش Early Adopter أصلاً (من جولة سابقة)
-      const { data: existingUser } = await client
-        .from('users')
-        .select('is_early_adopter')
-        .eq('id', userId)
-        .single();
+      // 3. FIX 2+3: قراءة صف المستخدم مع retry loop (يحمي من race condition بعد upsert)
+      let existingUser = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const { data, error: rErr } = await client
+          .from('users')
+          .select('is_early_adopter')
+          .eq('id', userId)
+          .single();
 
-      if (existingUser?.is_early_adopter) return; // بالفعل Early Adopter
+        if (data) {
+          existingUser = data;
+          break;
+        }
+        // PGRST116 = no rows yet → retry; أي خطأ آخر → توقف
+        if (rErr?.code !== 'PGRST116') {
+          console.warn('[Auth] Unexpected error reading user row (attempt', attempt + 1, '):', rErr?.message);
+          break;
+        }
+        if (attempt < 2) await new Promise(r => setTimeout(r, 800));
+      }
+
+      // FIX 3: لو الصف ما اتقرأش بعد كل المحاولات → تجاهل آمن (لا grant بدون تأكيد)
+      if (!existingUser) {
+        console.warn('[Auth] Could not read user row after retries — skipping Early Adopter grant for:', userId);
+        return;
+      }
+
+      // بالفعل Early Adopter (لو منحناه في جلسة سابقة)
+      if (existingUser.is_early_adopter) return;
 
       // 4. امنحه Pro لمدة 30 يوم
       const { error: uErr } = await client
@@ -326,17 +349,18 @@
 
       if (uErr) {
         console.error('[Auth] Failed to grant early adopter Pro:', uErr.message);
-        return;
+        return; // لا تزيد العداد لو فشل الـ grant
       }
 
-      // 5. زوّد العداد
+      // 5. FIX 4: زيادة العداد بـ optimistic lock (يمنع التعارض عند تسجيل مستخدمَين في آن واحد)
       const { error: cUErr } = await client
         .from('early_adopter_counter')
         .update({ count: counter.count + 1 })
-        .eq('id', 1);
+        .eq('id', 1)
+        .eq('count', counter.count); // optimistic lock: يُنفَّذ فقط لو لم يتغير العداد
 
       if (cUErr) {
-        console.warn('[Auth] Failed to increment early_adopter_counter:', cUErr.message);
+        console.warn('[Auth] Failed to increment early_adopter_counter (possible concurrency):', cUErr.message);
       }
 
       console.log('[Auth] 🎉 Early Adopter Pro granted to new user:', userId);

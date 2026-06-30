@@ -28,6 +28,20 @@
   <style>
     body { padding-top: var(--toolbar-height, 52px); }
 
+    /* ── Draft Review Bar ── */
+    .draft-review-bar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+      background: var(--clr-accent-dim); border-bottom: 1px solid rgba(0,255,136,0.3);
+      padding: var(--sp-3) var(--sp-6);
+      display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4);
+      flex-wrap: wrap; backdrop-filter: blur(8px);
+    }
+    .draft-review-bar__text { font-size: var(--fs-sm); color: var(--clr-text); }
+    .draft-review-bar__actions { display: flex; gap: var(--sp-3); }
+    /* [NEW] body padding يتعدّل عبر class بدل تعديل القيمة الثابتة فوق،
+       عشان الصفحة العادية (بدون الشريط) تفضل سليمة */
+    body.has-draft-bar { padding-top: calc(var(--toolbar-height, 52px) + 56px); }
+
     /* ── No-draft ── */
     .no-draft-screen {
       min-height: 100vh;
@@ -350,6 +364,17 @@
     <kbd>Ctrl+S</kbd> save
   </div>
 
+  <!-- [NEW] Draft Review Bar — يظهر فقط لو review=1 في الـ URL و portfolio.is_published === false -->
+  <div class="draft-review-bar" id="draft-review-bar" style="display:none;">
+    <span class="draft-review-bar__text">
+      👀 This is a preview — your portfolio is <strong>not published yet</strong>.
+    </span>
+    <div class="draft-review-bar__actions">
+      <button class="btn btn--ghost btn--sm" id="draft-back-btn">← Keep Editing</button>
+      <button class="btn btn--primary btn--sm" id="draft-publish-btn">Publish Now 🚀</button>
+    </div>
+  </div>
+
   <!-- Toast -->
   <div class="toast-container" id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
@@ -366,6 +391,7 @@
       // 1. Check for portfolio id in URL (coming from dashboard Edit button)
       const urlParams  = new URLSearchParams(window.location.search);
       const portfolioId = urlParams.get('id');
+      const isReviewMode = urlParams.get('review') === '1'; // [NEW]
 
       let rawDraft = null;
 
@@ -558,6 +584,51 @@
 
       // 6. Init Portfolio editor with normalised draft
       window.Portfolio?.init({ draft });
+
+      // [NEW] Draft Review Bar logic — تظهر فقط لو review=1 في الـ URL
+      // و الـ portfolio لسه مش منشور (isPublished === false). لا تظهر في أي
+      // حالة تانية (مثلاً فتح edit.html?id=... من الـ dashboard بدون &review=1).
+      if (isReviewMode && draft.isPublished === false) {
+        const bar = document.getElementById('draft-review-bar');
+        if (bar) {
+          bar.style.display = 'flex';
+          document.body.classList.add('has-draft-bar');
+        }
+
+        document.getElementById('draft-back-btn')?.addEventListener('click', () => {
+          // البقاء في edit.html بدون query params — وضع تعديل عادي
+          history.replaceState(null, '', `edit.html?id=${portfolioId}`);
+          document.getElementById('draft-review-bar').style.display = 'none';
+          document.body.classList.remove('has-draft-bar');
+        });
+
+        document.getElementById('draft-publish-btn')?.addEventListener('click', async () => {
+          const btn = document.getElementById('draft-publish-btn');
+          btn.disabled = true;
+          btn.textContent = 'Publishing…';
+
+          const sbClient = window._supabaseClient;
+          const { error } = await sbClient
+            .from('portfolios')
+            .update({ is_published: true })
+            .eq('id', portfolioId);
+
+          if (error) {
+            console.error('[edit.html] Failed to publish:', error);
+            window.toast?.('Failed to publish. Please try again.', 'error');
+            btn.disabled = false;
+            btn.textContent = 'Publish Now 🚀';
+            return;
+          }
+
+          draft.isPublished = true;
+          window.toast?.('Published! 🎉 Your portfolio is now live.', 'success');
+          document.getElementById('draft-review-bar').style.display = 'none';
+          document.body.classList.remove('has-draft-bar');
+          // إزالة ?review=1 من الـ URL بدون إعادة تحميل
+          history.replaceState(null, '', `edit.html?id=${portfolioId}`);
+        });
+      }
 
       // Feature 2: Add Section button listener
       document.getElementById('add-custom-section-btn')?.addEventListener('click', () => {

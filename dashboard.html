@@ -74,8 +74,8 @@
   <script>
     window.SUPABASE_URL     = "https://zxybqbjsnriwpjehinwb.supabase.co";
     window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4eWJxYmpzbnJpd3BqZWhpbndiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMjI1NDEsImV4cCI6MjA5MDY5ODU0MX0.ED8CX81h78oga482b9pepZPsqfvX7znMqmtO0VRn3AM";
-    // ⚠️ غيّر ده برابط البوت الحقيقي بتاعك
-    window.TELEGRAM_BOT_USERNAME = '@GPORT_Payment_BOT';
+    // رابط حساب التليجرام الشخصي — مستخدم في زر "Upgrade via Telegram"
+    window.TELEGRAM_BOT_USERNAME = 'medo_faraj';
   </script>
 
   <style>
@@ -574,7 +574,7 @@
         </ul>
       </div>
       <div class="upgrade-section__actions">
-        <a href="https://t.me/GPORT_Payment_BOT" target="_blank" rel="noopener"
+        <a href="https://t.me/medo_faraj" target="_blank" rel="noopener"
            id="upgrade-telegram-btn" class="upgrade-btn">
           Upgrade via Telegram ⚡
         </a>
@@ -1702,8 +1702,8 @@
       renderStats(portfolios);
       renderGrid(portfolios, needsProviderChoice);
 
-      // تحديث رابط البوت بالـ telegram username الصح
-      const botUsername = window.TELEGRAM_BOT_USERNAME || 'GPortBot';
+      // تحديث رابط حساب التليجرام الشخصي
+      const botUsername = window.TELEGRAM_BOT_USERNAME || 'medo_faraj';
       const upgradeBtn  = $('upgrade-telegram-btn');
       if (upgradeBtn) upgradeBtn.href = `https://t.me/${botUsername}`;
 

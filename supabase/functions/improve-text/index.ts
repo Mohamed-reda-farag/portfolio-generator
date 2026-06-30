@@ -6,7 +6,7 @@
 // الـ AI المستخدم في "generate" (استنتجته من GROQ_ERROR الموجودة في ai.js).
 //
 // Contract اللي بيتوقعه js/portfolio-builder.js (دالة improveWithAI):
-//   POST body: { fieldType: 'bio' | 'skills', currentValue: string, context: object }
+//   POST body: { fieldType: 'bio' | 'skills' | 'project_description', currentValue: string, context: object }
 //   success (200): { success: true, suggestion: string }
 //   error   (4xx/5xx): { success: false, error: string, code: string }
 //
@@ -47,6 +47,13 @@ const SYSTEM_PROMPTS: Record<string, string> = {
     "on their job title and current skills. Output ONLY a comma-separated list " +
     "of 5 to 8 additional skill names NOT already in their current list — " +
     "no numbering, no explanation, no preamble.",
+  // [NEW] project_description — لزر AI الجديد في مودال "+ Add Project" (Step 3)
+  project_description:
+    "You are a concise professional copywriter who rewrites developer " +
+    "portfolio project descriptions. Output ONLY the improved description — " +
+    "1 to 3 punchy sentences, under 300 characters, highlighting what the " +
+    "project does, who it's for, and the tech stack if relevant. " +
+    "No preamble, no quotes, no markdown.",
 };
 
 function json(body: unknown, status = 200, corsHeaders: Record<string, string>): Response {
@@ -70,6 +77,18 @@ function buildUserPrompt(
       `Current bio draft: """${currentValue || "(empty — write one from scratch)"}"""`,
       "",
       "Rewrite this into a polished, confident portfolio bio.",
+    ].join("\n");
+  }
+  // [NEW] project_description — لازم branch مستقل، وإلا هيقع في fallback الـ skills تحت
+  if (fieldType === "project_description") {
+    const techs = Array.isArray(context.technologies) ? context.technologies.join(", ") : "";
+    return [
+      `Project name: ${context.projectName || "Untitled Project"}`,
+      `Main language: ${context.language || ""}`,
+      `Technologies: ${techs || "(none specified)"}`,
+      `Current description draft: """${currentValue || "(empty — write one from scratch)"}"""`,
+      "",
+      "Rewrite this into a polished, confident project description for a developer portfolio.",
     ].join("\n");
   }
   return [
@@ -115,9 +134,13 @@ Deno.serve(async (req: Request) => {
 
   const { fieldType, currentValue = "", context = {} } = payload;
 
-  if (fieldType !== "bio" && fieldType !== "skills") {
+  if (fieldType !== "bio" && fieldType !== "skills" && fieldType !== "project_description") {
     return json(
-      { success: false, error: "fieldType must be 'bio' or 'skills'.", code: "INVALID_STRUCTURE" },
+      {
+        success: false,
+        error: "fieldType must be 'bio', 'skills', or 'project_description'.",
+        code: "INVALID_STRUCTURE",
+      },
       400,
       corsHeaders,
     );
@@ -133,7 +156,11 @@ Deno.serve(async (req: Request) => {
       body: JSON.stringify({
         model: GROQ_MODEL,
         temperature: 0.7,
-        max_tokens: fieldType === "bio" ? 220 : 120,
+        max_tokens: fieldType === "bio"
+          ? 220
+          : fieldType === "project_description"
+          ? 160
+          : 120,
         messages: [
           { role: "system", content: SYSTEM_PROMPTS[fieldType] },
           { role: "user", content: buildUserPrompt(fieldType, currentValue, context) },

@@ -197,7 +197,7 @@
     $('loading-overlay')?.classList.remove('is-visible');
   }
 
-  // ─── AI Improve (Bio / Skills) ──────────────────────────────────
+  // ─── AI Improve (Bio / Skills / Project Description) ────────────
   // ⚠️ تأكيد بعد مراجعة ai.js: مفيش Edge Function جاهزة لتحسين نص.
   // الموجود بس هو "generate" (في js/ai.js → window.AI.generate) وده
   // مخصص لتوليد portfolio كامل من GitHub data — contract مختلف تمامًا
@@ -206,8 +206,10 @@
   //
   // الكود تحت ده بيستدعي function اسمها "improve-text" مش موجودة لسه —
   // لازم تُنشأ من جديد على Supabase Edge Functions بالـ contract ده:
-  //   input:  { fieldType: 'bio'|'skills', currentValue, context }
+  //   input:  { fieldType: 'bio'|'skills'|'project_description', currentValue, context }
   //   output: { suggestion: string }  (أو { text } / { result })
+  // [NEW] 'project_description' أُضيف هنا لزر AI الجديد في مودال المشاريع (Step 3) —
+  // الـ Edge Function لازم تتعامل مع الـ fieldType ده برضو، مش بس bio/skills.
   // غيّر اسم الـ function هنا (sb.functions.invoke) لو سميتها حاجة تانية.
   async function improveWithAI(fieldType, currentValue, context, onResult) {
     const sb = window._supabaseClient;
@@ -390,6 +392,11 @@
       <h2 class="step-panel__title">Theme &amp; Publish</h2>
       <p class="step-panel__sub">Pick a look for your portfolio. You can change it anytime later.</p>
 
+      <!-- [NEW] -->
+      <p style="font-size:var(--fs-xs); color:var(--clr-text-3); margin:calc(-1 * var(--sp-3)) 0 var(--sp-5);">
+        ℹ️ You'll be able to preview your full portfolio before it goes live.
+      </p>
+
       <div class="theme-section-label">Free Themes</div>
       <div class="theme-grid" id="free-theme-grid"></div>
 
@@ -444,6 +451,9 @@
     const bioBtn = $('bio-ai-btn');
     if (bioBtn && !bioBtn.textContent.includes('Thinking')) {
       bioBtn.disabled = len < MIN_BIO_CHARS;
+      bioBtn.title    = len < MIN_BIO_CHARS
+        ? `Write at least ${MIN_BIO_CHARS} characters to enable AI improvement`
+        : 'Improve your bio with AI';
     }
   }
 
@@ -465,7 +475,12 @@
     // Fix 7 — ضبط الحالة الأولية للزر بناءً على البيانات المحفوظة
     function syncBioAiBtn() {
       const btn = $('bio-ai-btn');
-      if (btn) btn.disabled = (state.bio?.length || 0) < MIN_BIO_CHARS;
+      if (!btn) return;
+      const len = state.bio?.length || 0;
+      btn.disabled = len < MIN_BIO_CHARS;
+      btn.title    = len < MIN_BIO_CHARS
+        ? `Write at least ${MIN_BIO_CHARS} characters to enable AI improvement`
+        : 'Improve your bio with AI';
     }
     syncBioAiBtn();
 
@@ -516,7 +531,7 @@
      STEP 2 — Skills (chips + AI suggestions)
   ═══════════════════════════════════════════════════════════════ */
 
-  const MIN_SKILLS_COUNT = 1; // Fix 7 — حد أدنى لتفعيل زر الـ AI في الـ skills
+  const MIN_SKILLS_COUNT = 2; // [MODIFIED] كان 1 — رُفع لـ 2 حسب الـ threshold المطلوب
 
   function wireStep2() {
     $('skill-add-btn').addEventListener('click', addSkillFromInput);
@@ -541,6 +556,9 @@
       );
       // Fix 7 — أعد الزر بناءً على الحد الأدنى بعد انتهاء الطلب
       btn.disabled = state.skills.length < MIN_SKILLS_COUNT;
+      btn.title    = state.skills.length < MIN_SKILLS_COUNT
+        ? `Add at least ${MIN_SKILLS_COUNT} skills to enable AI improvement`
+        : 'Get AI suggestions for more skills';
       btn.textContent = 'Improve with AI 🤖';
     });
   }
@@ -589,6 +607,9 @@
     const skillsBtn = $('skills-ai-btn');
     if (skillsBtn && !skillsBtn.textContent.includes('Thinking')) {
       skillsBtn.disabled = state.skills.length < MIN_SKILLS_COUNT;
+      skillsBtn.title    = state.skills.length < MIN_SKILLS_COUNT
+        ? `Add at least ${MIN_SKILLS_COUNT} skills to enable AI improvement`
+        : 'Get AI suggestions for more skills';
     }
   }
 
@@ -608,6 +629,8 @@
   /* ═══════════════════════════════════════════════════════════════
      STEP 3 — Projects (نفس نظام Custom Project Modal بتاع portfolio.js)
   ═══════════════════════════════════════════════════════════════ */
+
+  const MIN_PROJECT_DESC_CHARS = 20; // [NEW] حد أدنى لتفعيل زر AI لوصف المشروع
 
   function wireStep3() {
     $('add-project-btn').addEventListener('click', showAddProjectModal);
@@ -662,8 +685,19 @@
             <input id="apm-name" class="input" type="text" placeholder="e.g. My Awesome App" autocomplete="off" />
           </div>
           <div class="cpm-field">
-            <label class="input-label" for="apm-desc">Description <span class="req">*</span></label>
+            <div class="field-label-row">
+              <label class="input-label" for="apm-desc">Description <span class="req">*</span></label>
+              <button class="ai-improve-btn" id="apm-desc-ai-btn" type="button">Improve with AI 🤖</button>
+            </div>
             <textarea id="apm-desc" class="textarea" rows="3" placeholder="What does it do, what's the tech stack…"></textarea>
+            <div class="ai-suggestion-box" id="apm-desc-ai-box">
+              <div id="apm-desc-ai-text"></div>
+              <div class="ai-suggestion-box__actions">
+                <button class="btn btn--primary btn--sm" id="apm-desc-ai-accept" type="button">Accept</button>
+                <button class="btn btn--ghost btn--sm" id="apm-desc-ai-edit" type="button">Edit</button>
+                <button class="btn btn--ghost btn--sm" id="apm-desc-ai-reject" type="button">Reject</button>
+              </div>
+            </div>
           </div>
           <div class="cpm-field">
             <label class="input-label" for="apm-url">Live Demo / External URL</label>
@@ -696,6 +730,54 @@
     const urlInput      = modal.querySelector('#apm-url');
     const techInput     = modal.querySelector('#apm-tech-input');
     const techListEl    = modal.querySelector('#apm-tech-list');
+    const descAiBtn     = modal.querySelector('#apm-desc-ai-btn');
+    const descAiBox     = modal.querySelector('#apm-desc-ai-box');
+    const descAiText    = modal.querySelector('#apm-desc-ai-text');
+
+    // [NEW] Improve-with-AI لوصف المشروع — threshold-based enable
+    function syncDescAiBtn() {
+      if (!descAiBtn || descAiBtn.textContent.includes('Thinking')) return;
+      const len = descTextarea.value.trim().length;
+      descAiBtn.disabled = len < MIN_PROJECT_DESC_CHARS;
+      descAiBtn.title    = len < MIN_PROJECT_DESC_CHARS
+        ? `Write at least ${MIN_PROJECT_DESC_CHARS} characters to enable AI improvement`
+        : 'Improve this project description with AI';
+    }
+    syncDescAiBtn();
+    descTextarea.addEventListener('input', syncDescAiBtn);
+
+    descAiBtn?.addEventListener('click', async () => {
+      const val = descTextarea.value.trim();
+      if (val.length < MIN_PROJECT_DESC_CHARS) return; // guard إضافي
+      descAiBtn.disabled = true;
+      descAiBtn.textContent = 'Thinking…';
+      await improveWithAI(
+        'project_description',
+        val,
+        { projectName: nameInput.value.trim(), technologies: techList, language: modal.querySelector('#apm-lang').value.trim() },
+        (suggestion) => {
+          descAiText.textContent = suggestion;
+          descAiBox.classList.add('is-visible');
+        }
+      );
+      descAiBtn.textContent = 'Improve with AI 🤖';
+      syncDescAiBtn();
+    });
+
+    modal.querySelector('#apm-desc-ai-accept')?.addEventListener('click', () => {
+      descTextarea.value = descAiText.textContent;
+      descAiBox.classList.remove('is-visible');
+      syncDescAiBtn();
+    });
+    modal.querySelector('#apm-desc-ai-edit')?.addEventListener('click', () => {
+      descTextarea.value = descAiText.textContent;
+      descAiBox.classList.remove('is-visible');
+      descTextarea.focus();
+      syncDescAiBtn();
+    });
+    modal.querySelector('#apm-desc-ai-reject')?.addEventListener('click', () => {
+      descAiBox.classList.remove('is-visible');
+    });
 
     function renderTechChips() {
       techListEl.innerHTML = '';
@@ -1043,7 +1125,7 @@
       p.classList.toggle('is-active', Number(p.dataset.step) === n);
     });
     $('back-btn').style.visibility = n === 1 ? 'hidden' : 'visible';
-    $('next-btn').textContent = n === TOTAL_STEPS ? 'Generate Portfolio 🚀' : 'Next →';
+    $('next-btn').textContent = n === TOTAL_STEPS ? 'Review & Publish →' : 'Next →'; // [MODIFIED]
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
     if (n === 2) renderSkillsChips();
@@ -1127,7 +1209,7 @@
           github_username:  githubUsername || null, // Fix 5 — null لـ Google users بدل ''
           photo_url:        state.photoUrl || null,
           location:         state.location || null,
-          is_published:     true,
+          is_published:     false, // [MODIFIED] كان true — الآن ننتظر تأكيد المستخدم من شاشة Preview
           custom_sections:  _buildCustomSections(),
         })
         .select()
@@ -1162,9 +1244,11 @@
       }
 
       // 5. نظّف الدرافت ورّوح للـ edit.html
+      // [MODIFIED] كان bug: بيستخدم slug، وedit.html بتقرأ 'id' بس فعليًا.
+      // كمان أضفنا &review=1 عشان edit.html تعرض شريط "Draft Review" بدل النشر المباشر.
       localStorage.removeItem(_storageKey);
-      window.toast?.('Portfolio created! 🎉', 'success');
-      setTimeout(() => { location.href = `edit.html?slug=${slug}`; }, 700);
+      window.toast?.('Portfolio created! Review it before publishing →', 'success');
+      setTimeout(() => { location.href = `edit.html?id=${portfolio.id}&review=1`; }, 700);
 
     } catch (err) {
       console.error('[Builder] generateManualPortfolio error:', err);
