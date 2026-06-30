@@ -139,24 +139,12 @@
         _currentUser = user;
         _notifyListeners(user);
 
-        // ── Ensure public.users row exists on EVERY sign-in ──────────────────
-        // Bug 0 fix: _ensureUserRow must run for ALL providers on every SIGNED_IN
-        // event — not only for new users. Without this, users who register without
+        // ── Ensure public.users row + Early Adopter grant on EVERY sign-in ───
+        // Bug 0 fix: must run for ALL providers on every SIGNED_IN event —
+        // not only for new users. Without this, users who register without
         // triggering the DB trigger get 406 errors on all subsequent queries.
         if (event === 'SIGNED_IN' && session?.user) {
-          const rawUser = session.user;
-
-          // Always ensure the row exists (upsert is idempotent — safe to call repeatedly)
-          await _ensureUserRow(rawUser);
-
-          // Early Adopter grant — only on truly new accounts (created within last 5 min)
-          const createdAt = new Date(rawUser.created_at).getTime();
-          const isNewUser = (Date.now() - createdAt) < 300_000; // 5-minute window
-          if (isNewUser) {
-            // FIX 1: Wait 500ms for the DB write to propagate before reading the row
-            await new Promise(r => setTimeout(r, 500));
-            await _maybeGrantEarlyAdopter(rawUser.id);
-          }
+          await _ensureUserRowAndGrants(session.user);
         }
       }
     );
@@ -166,6 +154,34 @@
       _listeners = _listeners.filter(l => l !== callback);
       subscription?.unsubscribe();
     };
+  }
+
+  /**
+   * [NEW] منطق مشترك: يضمن وجود صف public.users + يمنح Early Adopter لو كان
+   * الحساب جديداً. يُستدعى من مكانين:
+   *  1) onAuthStateChange (SIGNED_IN) — الحالة الطبيعية عند تسجيل الدخول
+   *     على نفس الصفحة (مثل index.html).
+   *  2) DOMContentLoaded — ضروري لأن بعض تدفقات OAuth (خصوصاً Google من
+   *     index.html) تُعيد توجيه المستخدم مباشرة إلى صفحة أخرى (dashboard.html)
+   *     لا تستدعي onAuthStateChange إطلاقاً، فكان الصف لا يُنشأ والـ Early
+   *     Adopter لا يُمنح أبداً لهؤلاء المستخدمين تحديداً — وهي بالضبط نفس
+   *     العلة البنيوية التي كانت تسبب 406 الدائم على public.users.
+   * آمنة للاستدعاء المتكرر (upsert idempotent + فحص is_early_adopter قبل المنح).
+   *
+   * @param {object} rawUser - session.user من Supabase
+   */
+  async function _ensureUserRowAndGrants(rawUser) {
+    // Always ensure the row exists (upsert is idempotent — safe to call repeatedly)
+    await _ensureUserRow(rawUser);
+
+    // Early Adopter grant — only on truly new accounts (created within last 5 min)
+    const createdAt = new Date(rawUser.created_at).getTime();
+    const isNewUser = (Date.now() - createdAt) < 300_000; // 5-minute window
+    if (isNewUser) {
+      // FIX 1: Wait 500ms for the DB write to propagate before reading the row
+      await new Promise(r => setTimeout(r, 500));
+      await _maybeGrantEarlyAdopter(rawUser.id);
+    }
   }
 
   // ─── Auto-fill Form ────────────────────────────────────────────────────────
@@ -534,14 +550,14 @@
     if (session) {
       _currentUser = _buildUserObject(session.user);
 
-      // [FIX] ضمان وجود صف public.users في كل تحميل صفحة فيه session صالحة —
-      // وليس فقط عند onAuthStateChange('SIGNED_IN'). هذا ضروري لأن المستخدم
-      // قد يصل مباشرة لصفحة مثل dashboard.html بعد Google OAuth (redirectTo
-      // يشير مباشرة للداشبورد) دون المرور بصفحة استدعت onAuthStateChange أولاً —
-      // وبدون هذا الاستدعاء، الصف لا يُنشأ أبداً ويفشل كل استعلام .single()
-      // على users بشكل دائم (وليس مؤقتاً). _ensureUserRow هي upsert، آمنة
-      // تماماً للاستدعاء المتكرر على كل صفحة.
-      await _ensureUserRow(session.user);
+      // [FIX] ضمان وجود صف public.users + منح Early Adopter في كل تحميل صفحة
+      // فيه session صالحة — وليس فقط عند onAuthStateChange('SIGNED_IN'). هذا
+      // ضروري لأن المستخدم قد يصل مباشرة لصفحة مثل dashboard.html بعد Google
+      // OAuth (redirectTo يشير مباشرة للداشبورد) دون المرور بصفحة استدعت
+      // onAuthStateChange أولاً — وبدون هذا الاستدعاء، الصف لا يُنشأ والـ
+      // Early Adopter لا يُمنح أبداً لهؤلاء المستخدمين تحديداً.
+      // _ensureUserRowAndGrants آمنة تماماً للاستدعاء المتكرر على كل صفحة.
+      await _ensureUserRowAndGrants(session.user);
     }
 
     // الصفحة الرئيسية
