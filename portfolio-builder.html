@@ -373,6 +373,14 @@
   </div>
 
   <!-- ─── Scripts ──────────────────────────────────────────── -->
+  <!-- [FIX] كانت مفقودة بالكامل — بدونها getClient() في auth.js يفشل دائماً
+       فتُعيد Auth.getUser() قيمة null دائماً، مما يُعيد توجيه أي مستخدم
+       فوراً إلى index.html بغض النظر عن حالة تسجيل الدخول الفعلية. -->
+  <script>
+    window.SUPABASE_URL      = "https://zxybqbjsnriwpjehinwb.supabase.co";
+    window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4eWJxYmpzbnJpd3BqZWhpbndiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMjI1NDEsImV4cCI6MjA5MDY5ODU0MX0.ED8CX81h78oga482b9pepZPsqfvX7znMqmtO0VRn3AM";
+  </script>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/app.js"></script>
   <script src="js/auth.js"></script>

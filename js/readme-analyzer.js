@@ -83,14 +83,30 @@
     const sb = window._supabaseClient;
     if (!sb) return;
 
-    const { data, error } = await sb
-      .from('users')
-      .select('is_pro, readme_analyses_used')
-      .eq('id', userId)
-      .single();
+    // [MODIFIED] قراءة صف المستخدم مع retry — يحمي من race condition بعد upsert في auth.js
+    // (صف الـ user الجديد قد لا يكون upsert اكتمل بعد، خصوصاً بعد Google login + Early Adopter grant)
+    let data = null;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const { data: rowData, error: rErr } = await sb
+        .from('users')
+        .select('is_pro, readme_analyses_used')
+        .eq('id', userId)
+        .single();
 
-    if (error) {
-      console.warn('[ReadmeAnalyzer] Could not load user status:', error.message);
+      if (rowData) {
+        data = rowData;
+        break;
+      }
+      if (rErr && rErr.code !== 'PGRST116') {
+        console.warn('[ReadmeAnalyzer] Unexpected error reading user row (attempt', attempt + 1, '):', rErr.message);
+        break;
+      }
+      if (attempt < 3) await new Promise(r => setTimeout(r, 700));
+    }
+
+    if (!data) {
+      console.warn('[ReadmeAnalyzer] Could not load user status after retries — proceeding with degraded state');
+      // حافظ على سلوك الفشل الأصلي تماماً كما هو (return بدون تحديث isCurrentlyPro/usageData)
       return;
     }
 

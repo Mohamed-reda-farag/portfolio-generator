@@ -487,7 +487,9 @@
   <header class="dashboard-header">
     <a href="index.html" class="dashboard-header__logo">Portfolio Generator</a>
     <div class="dashboard-header__actions">
-      <a href="portfolio-builder.html" class="btn btn--ghost btn--sm">+ New Portfolio</a>
+      <!-- يُحدَّد وجهته ديناميكياً في init() بناءً على نوع المستخدم -->
+      <button id="header-new-portfolio-btn" class="btn btn--ghost btn--sm"
+              onclick="Dashboard.handleNewPortfolio()">+ New Portfolio</button>
       <img id="nav-avatar" class="nav-avatar hidden" src="" alt="avatar"
            data-nav-avatar title="Your account" />
       <!-- Fix 5: localStorage keys cleared on logout: 'pg_cv_data', 'pg_builder_draft_v1'
@@ -519,13 +521,14 @@
         <a href="cv-builder.html" class="btn btn--ghost btn--sm" style="text-decoration:none;">
           📄 CV Builder
         </a>
-        <a href="linkedin.html" class="btn btn--ghost btn--sm" style="text-decoration:none;">
-          💼 LinkedIn Presence
+        <a href="readme-analyzer.html" class="btn btn--ghost btn--sm" style="text-decoration:none;">
+          🔍 README Analyzer
         </a>
         <!-- README Analyses counter — يظهر فقط للـ Free users، hidden by default -->
-        <span id="readme-counter" class="readme-counter" style="display:none;" title="README Analyses remaining this month">
+        <a id="readme-counter" class="readme-counter" href="readme-analyzer.html"
+           style="display:none;text-decoration:none;" title="README Analyses remaining · Click to open analyzer">
           📄 README: <span class="readme-counter__num" id="readme-counter-num">3</span>/3 left
-        </span>
+        </a>
         <!-- Bug 3: Generate New → dropdown with GitHub + Manual options -->
         <div class="gen-dropdown" id="gen-dropdown">
           <button class="btn btn--primary btn--sm gen-dropdown__trigger"
@@ -1046,6 +1049,9 @@
   <script>
   ;(function () {
     'use strict';
+
+    // ─── Module-level state ───────────────────────────────────
+    let _needsProviderChoice = false;   // true = Google user بدون GitHub → builder flow
 
     // ─── Code Format Check (server-side validation via activate_pro) ──
     // التحقق الحقيقي بيحصل في Supabase activate_pro فقط.
@@ -1640,11 +1646,26 @@
       let needsProviderChoice = false;
 
       if (sb) {
-        const { data: userData } = await sb
-          .from('users')
-          .select('is_pro, is_early_adopter, early_adopter_expires_at, auth_provider, github_username, readme_analyses_used')
-          .eq('id', user.id)
-          .single();
+        // [MODIFIED] قراءة صف المستخدم مع retry — يحمي من race condition بعد upsert في auth.js
+        // (صف الـ user الجديد قد لا يكون upsert اكتمل بعد، خصوصاً بعد Google login + Early Adopter grant)
+        let userData = null;
+        for (let attempt = 0; attempt < 4; attempt++) {
+          const { data, error } = await sb
+            .from('users')
+            .select('is_pro, is_early_adopter, early_adopter_expires_at, auth_provider, github_username, readme_analyses_used')
+            .eq('id', user.id)
+            .single();
+
+          if (data) {
+            userData = data;
+            break;
+          }
+          if (error && error.code !== 'PGRST116') {
+            console.warn('[Dashboard] Unexpected error reading user row (attempt', attempt + 1, '):', error.message);
+            break;
+          }
+          if (attempt < 3) await new Promise(r => setTimeout(r, 700));
+        }
 
         // Fix 1: لو userData = null (فشل الـ retry)، أظهر error واوقف التنفيذ
         // بدل ما needsProviderChoice تصبح true وتُظهر نافذة ربط GitHub خطأً
@@ -1658,7 +1679,8 @@
         isPro          = userData.is_pro              === true;
         isEarlyAdopter = userData.is_early_adopter    === true;
         eaExpiresAt    = userData.early_adopter_expires_at || null;
-        needsProviderChoice = !userData.github_username;
+        needsProviderChoice  = !userData.github_username;
+        _needsProviderChoice = needsProviderChoice;   // رفع للـ module scope لـ handleNewPortfolio
 
         // Fix: استدعاء هنا حيث userData في الـ scope
         renderReadmeCounter(isPro, userData.readme_analyses_used);
@@ -1715,12 +1737,16 @@
     // Public API
     window.Dashboard = {
       confirmDelete,
-      preview:          previewPortfolio,
+      preview:              previewPortfolio,
       copyLink,
       copyReferralLink,
       showActivateModal,
       connectGithub,
       toggleGenDropdown,
+      handleNewPortfolio:   () => {
+        // _needsProviderChoice يُحدَّد في init() — Google users → builder، GitHub users → index
+        window.location.href = _needsProviderChoice ? 'portfolio-builder.html' : 'index.html';
+      },
     };
 
     document.addEventListener('DOMContentLoaded', init);

@@ -37,6 +37,7 @@ interface AnalyzeRequest {
 
 const ALLOWED_ORIGINS = [
   "https://portfolio-generator-taupe.vercel.app",
+  "http://127.0.0.1:5500",   // [MODIFIED] Live Server — تطوير محلي فقط
 ];
 
 function getCorsHeaders(requestOrigin: string | null): Record<string, string> {

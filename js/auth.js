@@ -533,6 +533,15 @@
     const { data: { session } } = await client.auth.getSession();
     if (session) {
       _currentUser = _buildUserObject(session.user);
+
+      // [FIX] ضمان وجود صف public.users في كل تحميل صفحة فيه session صالحة —
+      // وليس فقط عند onAuthStateChange('SIGNED_IN'). هذا ضروري لأن المستخدم
+      // قد يصل مباشرة لصفحة مثل dashboard.html بعد Google OAuth (redirectTo
+      // يشير مباشرة للداشبورد) دون المرور بصفحة استدعت onAuthStateChange أولاً —
+      // وبدون هذا الاستدعاء، الصف لا يُنشأ أبداً ويفشل كل استعلام .single()
+      // على users بشكل دائم (وليس مؤقتاً). _ensureUserRow هي upsert، آمنة
+      // تماماً للاستدعاء المتكرر على كل صفحة.
+      await _ensureUserRow(session.user);
     }
 
     // الصفحة الرئيسية
