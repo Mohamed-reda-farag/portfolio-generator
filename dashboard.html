@@ -1611,6 +1611,17 @@
 
     // ─── Init ─────────────────────────────────────────────────
     async function init() {
+      // [FIXED] Bug 2: الصف في public.users بيتعمله upsert بسرعة (auth.js's
+      // _ensureUserRow)، لكن منح Early Adopter نفسه (قراءة العداد + retry
+      // loop + الـ UPDATE على is_pro/is_early_adopter) بياخد وقت أطول
+      // ومكانوش أي كود هنا بينتظره. القراءة تحت (سطر ~1655) كانت بتلاقي
+      // الصف موجود فترجع فوراً من غير ما تستنى الـ grant يخلص، فتقرا
+      // is_pro=false القديمة رغم إن الـ grant هينجح بعد شوية في الخلفية —
+      // فالداشبورد يفضل يعرض دعوة الاشتراك والـ badge ما يظهرش. بننتظر هنا
+      // اكتمال الـ grant فعلياً (Auth.waitForGrants آمنة للاستدعاء المتكرر)
+      // قبل أي قراءة لاحقة لـ is_pro/is_early_adopter.
+      await Auth.waitForGrants();
+
       await _handleGithubLinkReturn();
 
       const { user, portfolios } = await Auth.getDashboardData();

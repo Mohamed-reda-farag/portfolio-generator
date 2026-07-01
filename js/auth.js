@@ -255,10 +255,23 @@
       const provider = rawUser.app_metadata?.provider || 'github';
       const meta = rawUser.user_metadata || {};
 
-      // Google users ملهومش GitHub username من الـ OAuth metadata
-      const githubUsername = provider === 'github'
-        ? (meta.user_name || meta.preferred_username || null)
-        : null;
+      // [FIXED] Bug 3: لو مستخدم Google عمل linkIdentity('github')،
+      // app_metadata.provider بيفضل يشاور لأول provider استُخدم عند
+      // التسجيل ('google') — مش بيتحدّث بعد ما تتربط identity إضافية.
+      // فالشرط القديم (provider === 'github' ? ... : null) كان بيرجّع
+      // null دايماً لهذا المستخدم، وبما إن الاستدعاء ده بيحصل تلقائياً في
+      // كل DOMContentLoaded (auto-init)، كان بيمسح github_username الصحيح
+      // اللي _handleGithubLinkReturn في dashboard.html كان حطّه، فيرجع
+      // needsProviderChoice = true تاني مع أي reload جديد بعد الربط.
+      // الحل: نفحص identities array مباشرة (بيعكس كل الـ providers
+      // المربوطة فعلياً بغض النظر عن provider الأساسي)، ونرجع للطريقة
+      // القديمة كـ fallback بس لو محصلش نلاقي github identity.
+      const ghIdentity = rawUser.identities?.find(i => i.provider === 'github');
+      const githubUsername =
+        ghIdentity?.identity_data?.user_name ||
+        ghIdentity?.identity_data?.preferred_username ||
+        ghIdentity?.identity_data?.login ||
+        (provider === 'github' ? (meta.user_name || meta.preferred_username || null) : null);
 
       const avatarUrl = meta.avatar_url || null;
 
@@ -538,6 +551,30 @@
     return { error: error?.message || null };
   }
 
+  // ─── Wait for grants (fix for dashboard race condition) ───────────────────
+
+  /**
+   * [NEW] Bug 2 fix: بتنتظر اكتمال _ensureUserRowAndGrants (upsert + Early
+   * Adopter grant) قبل ما ترجع. auth.js بينادي _ensureUserRowAndGrants تلقائياً
+   * في DOMContentLoaded الخاص بيه (fire-and-forget من وجهة نظر أي صفحة تانية)،
+   * لكن الصف بيتعمله upsert بسرعة (يظهر فوراً)، بينما المنح نفسه (قراءة
+   * العداد + retry loop + الـ UPDATE) بياخد وقت أطول (500ms initial delay +
+   * لحد 3 محاولات * 800ms). أي كود بيقرا users.is_pro بعد الصف الأول مباشرة
+   * (زي dashboard.html) هيلاقي الصف موجود فيرجع فوراً من غير ما يستنى المنح
+   * نفسه يخلص — فيقرا is_pro=false القديمة رغم إن الـ grant هينجح بعد شوية
+   * في الخلفية. الحل: نعرض دالة عامة تستدعي _ensureUserRowAndGrants (آمنة
+   * للاستدعاء المتكرر) وتُنتظر لحد ما تخلص فعلاً قبل أي قراءة لاحقة.
+   */
+  async function waitForGrants() {
+    const client = getClient();
+    if (!client) return;
+
+    const { data: { session } } = await client.auth.getSession();
+    if (session?.user) {
+      await _ensureUserRowAndGrants(session.user);
+    }
+  }
+
   // ─── Auto-init ─────────────────────────────────────────────────────────────
 
   // بيتشغل تلقائياً على أي صفحة بيتحمل فيها auth.js
@@ -585,6 +622,7 @@
     getDashboardData,
     deletePortfolio,
     togglePublish,
+    waitForGrants,
     getPostGenerationRedirect,
     setupIndexPageAuth,
   };

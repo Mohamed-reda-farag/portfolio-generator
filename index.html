@@ -1798,7 +1798,24 @@
       // اشارك الـ client مع auth.js
       if (!window._supabaseClient) window._supabaseClient = sb;
 
-      sb.from('early_adopter_counter')
+      // [FIXED] Bug 1: عداد الـ Early Access ده بيانات عامة المفروض تظهر
+      // بنفس الشكل لأي زائر، مسجّل دخول أو لأ. المشكلة إن sb هنا هو نفس
+      // الـ client المشترك مع auth.js — فور ما المستخدم يسجّل دخول، كل
+      // الطلبات اللي بتتبعت بيه بتحمل الـ JWT بتاعه، يعني الطلب يوصل
+      // لـ Postgres كـ role=authenticated مش role=anon. لو الـ RLS policy
+      // على early_adopter_counter متعمولة بس لـ anon (زي الافتراضي لما
+      // تعمل "Enable read access" من الـ Supabase dashboard)، الطلب هيرجع
+      // error لأي مستخدم مسجّل دخول، والـ catch/if(error) بيتجاهله بصمت —
+      // فالشريط يفضل مخفي (display:none الافتراضي) حتى لو المقاعد لسه
+      // متاحة. الحل: نستخدم client مستقل بدون session خالص لهذا الـ query
+      // العام تحديداً، عشان يتبعت دايماً كـ anon role زي ما هو متوقع.
+      const publicClient = window.supabase.createClient(
+        window.SUPABASE_URL,
+        window.SUPABASE_ANON_KEY,
+        { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } }
+      );
+
+      publicClient.from('early_adopter_counter')
         .select('count, max_count')
         .eq('id', 1)
         .single()
