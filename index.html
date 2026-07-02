@@ -1791,40 +1791,46 @@
         return;
       }
 
-      const sb = window._supabaseClient || window.supabase.createClient(
-        window.SUPABASE_URL,
-        window.SUPABASE_ANON_KEY
-      );
-      // اشارك الـ client مع auth.js
-      if (!window._supabaseClient) window._supabaseClient = sb;
+      // [FIXED] الكود ده كان بينشئ GoTrueClient زيادة عن اللزوم (سبب تحذير
+      // "Multiple GoTrueClient instances")، وكمان مش مستخدم أصلاً بعد ما
+      // بدّلنا لـ fetch() مباشر تحت — العداد بيانات عامة مش محتاجة أي
+      // client/session خالص، بس apikey في الـ header.
 
-      // [FIXED] Bug 1: عداد الـ Early Access ده بيانات عامة المفروض تظهر
-      // بنفس الشكل لأي زائر، مسجّل دخول أو لأ. المشكلة إن sb هنا هو نفس
-      // الـ client المشترك مع auth.js — فور ما المستخدم يسجّل دخول، كل
-      // الطلبات اللي بتتبعت بيه بتحمل الـ JWT بتاعه، يعني الطلب يوصل
-      // لـ Postgres كـ role=authenticated مش role=anon. لو الـ RLS policy
-      // على early_adopter_counter متعمولة بس لـ anon (زي الافتراضي لما
-      // تعمل "Enable read access" من الـ Supabase dashboard)، الطلب هيرجع
-      // error لأي مستخدم مسجّل دخول، والـ catch/if(error) بيتجاهله بصمت —
-      // فالشريط يفضل مخفي (display:none الافتراضي) حتى لو المقاعد لسه
-      // متاحة. الحل: نستخدم client مستقل بدون session خالص لهذا الـ query
-      // العام تحديداً، عشان يتبعت دايماً كـ anon role زي ما هو متوقع.
-      const publicClient = window.supabase.createClient(
-        window.SUPABASE_URL,
-        window.SUPABASE_ANON_KEY,
-        { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } }
-      );
-
-      publicClient.from('early_adopter_counter')
-        .select('count, max_count')
-        .eq('id', 1)
-        .single()
-        .then(({ data, error }) => {
+      // [FIXED — REVISED] بعد الفحص بالـ console، تبيّن إن استخدام
+      // supabase.createClient() تاني (كان هنا publicClient) بيعمل تحذير
+      // "Multiple GoTrueClient instances detected" لأنه بيشارك نفس مفتاح
+      // الـ localStorage مع الـ client الأساسي حتى مع persistSession:false.
+      // الأهم: تبيّن من الـ console إن الـ 406 نفسه بيحصل حتى مع client
+      // منفصل تماماً (بدون أي session) — يعني السبب مش role=anon vs
+      // role=authenticated زي ما افترضنا الأول، لأن الطلب بيفشل بغض النظر
+      // عن الـ role. السبب الحقيقي كان: مفيش SELECT policy (RLS) شغالة
+      // على early_adopter_counter، والصف id=1 مش موجود في الجدول (اتصلح
+      // من Supabase SQL Editor). هنا بنستخدم fetch() مباشر بدل أي
+      // GoTrueClient، عشان نتجنب التحذير خالص ونشوف رسالة الخطأ الحقيقية
+      // القادمة من PostgREST في الـ console بدل ما نبلعها بصمت.
+      fetch(
+        `${window.SUPABASE_URL}/rest/v1/early_adopter_counter?select=count,max_count&id=eq.1`,
+        {
+          headers: {
+            apikey: window.SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${window.SUPABASE_ANON_KEY}`,
+            Accept: 'application/vnd.pgrst.object+json', // يطلب صف واحد بس (زي .single())
+          },
+        }
+      )
+        .then(async (res) => {
           const banner  = document.getElementById('early-adopter-banner');
           const closed  = document.getElementById('early-adopter-closed');
           const spotsEl = document.getElementById('spots-remaining');
 
-          if (error || !data) return; // مجدول — مش مشكلة
+          if (!res.ok) {
+            const body = await res.text().catch(() => '');
+            console.warn('[EarlyAdopterBanner] fetch failed:', res.status, body);
+            return; // مجدول — مش مشكلة بالنسبة للمستخدم، بس مسجّلة في الـ console
+          }
+
+          const data = await res.json();
+          if (!data) return;
 
           const remaining = data.max_count - data.count;
 

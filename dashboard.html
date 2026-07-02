@@ -442,43 +442,8 @@
       color: var(--clr-error, #FF4F4F);
     }
 
-    /* ── Generate New Dropdown (Bug 3) ── */
-    .gen-dropdown {
-      position: relative;
-      display: inline-flex;
-    }
-    .gen-dropdown__trigger { cursor: pointer; }
-    .gen-dropdown__menu {
-      display: none;
-      position: absolute;
-      top: calc(100% + 6px);
-      right: 0;
-      min-width: 210px;
-      background: var(--clr-bg-3, #111A14);
-      border: 1px solid var(--clr-border, rgba(0,255,136,0.1));
-      border-radius: var(--radius-md, 8px);
-      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-      z-index: 50;
-      overflow: hidden;
-      flex-direction: column;
-    }
-    .gen-dropdown__menu.open { display: flex; }
-    .gen-dropdown__item {
-      display: flex;
-      align-items: center;
-      gap: var(--sp-2, 8px);
-      padding: 10px 16px;
-      font-family: var(--font-body, 'DM Mono', monospace);
-      font-size: var(--fs-sm, 0.80rem);
-      color: var(--clr-text, #E8F0EB);
-      text-decoration: none;
-      transition: background 150ms;
-      white-space: nowrap;
-    }
-    .gen-dropdown__item:hover {
-      background: var(--clr-accent-dim, rgba(0,255,136,0.08));
-      color: var(--clr-accent, #00FF88);
-    }
+    /* [REMOVED] .gen-dropdown CSS — الزرار ده اتشال، الكارتين الدائمين بيستخدموا .provider-choice/.choice-card الموجودة أصلاً */
+
   </style>
 </head>
 <body class="dashboard-page">
@@ -487,9 +452,7 @@
   <header class="dashboard-header">
     <a href="index.html" class="dashboard-header__logo">Portfolio Generator</a>
     <div class="dashboard-header__actions">
-      <!-- يُحدَّد وجهته ديناميكياً في init() بناءً على نوع المستخدم -->
-      <button id="header-new-portfolio-btn" class="btn btn--ghost btn--sm"
-              onclick="Dashboard.handleNewPortfolio()">+ New Portfolio</button>
+      <!-- [REMOVED] زر "+ New Portfolio" — استُبدل بالكارت الدائم فوق الـ grid (renderQuickActionCards) -->
       <img id="nav-avatar" class="nav-avatar hidden" src="" alt="avatar"
            data-nav-avatar title="Your account" />
       <!-- Fix 5: localStorage keys cleared on logout: 'pg_cv_data', 'pg_builder_draft_v1'
@@ -529,22 +492,7 @@
            style="display:none;text-decoration:none;" title="README Analyses remaining · Click to open analyzer">
           📄 README: <span class="readme-counter__num" id="readme-counter-num">3</span>/3 left
         </a>
-        <!-- Bug 3: Generate New → dropdown with GitHub + Manual options -->
-        <div class="gen-dropdown" id="gen-dropdown">
-          <button class="btn btn--primary btn--sm gen-dropdown__trigger"
-                  onclick="Dashboard.toggleGenDropdown(event)"
-                  aria-haspopup="true" aria-expanded="false" id="gen-dropdown-btn">
-            + Generate New ▾
-          </button>
-          <div class="gen-dropdown__menu" id="gen-dropdown-menu" role="menu">
-            <a class="gen-dropdown__item" href="index.html" role="menuitem">
-              🔗 Generate from GitHub
-            </a>
-            <a class="gen-dropdown__item" href="portfolio-builder.html" role="menuitem">
-              ✍️ Build Manually
-            </a>
-          </div>
-        </div>
+        <!-- [REMOVED] "+ Generate New" dropdown — استُبدل بالكارتين الدائمين فوق الـ grid -->
       </div>
     </div>
 
@@ -640,6 +588,9 @@
         </button>
       </div>
     </div>
+    <!-- ── Quick Action Cards (دائمين — بيتحدّثوا في renderQuickActionCards) ── -->
+    <div id="quick-actions-cards" style="margin-bottom:24px;"></div>
+
     <div class="portfolio-grid" id="portfolio-grid" role="list" aria-label="Your portfolios">
       <div class="skeleton-card" aria-hidden="true">
         <div class="skeleton-preview"></div>
@@ -1160,49 +1111,68 @@
     }
 
     // ─── Render Grid ──────────────────────────────────────────
-    function renderGrid(portfolios, needsProviderChoice) {
+    /**
+     * الكارتين الدائمين فوق الـ grid — بيظهروا دايماً بغض النظر عن عدد
+     * البورتفوليوهات الموجودة (دول بقوا الطريقة الوحيدة لعمل بورتفوليو جديد
+     * بعد ما شلنا زرار "+ New Portfolio" في الـ header و"+ Generate New" بجانب
+     * README Analyzer/CV Builder).
+     *
+     * الكارت الأول بيتغيّر حسب حالة GitHub:
+     *   - مفيش github_username  → "Connect GitHub" (بيربط الحساب)
+     *   - فيه github_username   → "Generate from GitHub" (بيروح لـ index.html)
+     * الكارت التاني "Build Manually" ثابت مكانه دايماً، مبيتأثرش بحالة GitHub.
+     */
+    function renderQuickActionCards(needsProviderChoice) {
+      const container = $('quick-actions-cards');
+      if (!container) return;
+
+      const githubCardHtml = needsProviderChoice
+        ? `<div class="choice-card" id="connect-github-card">
+             <span class="choice-icon">🔗</span>
+             <h3>Connect GitHub</h3>
+             <p>Auto-generate your portfolio from your repos</p>
+             <button class="btn btn--primary btn--sm" id="connect-github-btn">Connect GitHub</button>
+           </div>`
+        : `<div class="choice-card" id="generate-github-card">
+             <span class="choice-icon">🔗</span>
+             <h3>Generate from GitHub</h3>
+             <p>Auto-generate a new portfolio from your repos</p>
+             <a class="btn btn--primary btn--sm" href="index.html" style="text-decoration:none;">Generate Now</a>
+           </div>`;
+
+      container.innerHTML = `
+        <div class="provider-choice">
+          ${githubCardHtml}
+          <div class="choice-card" id="manual-builder-card">
+            <span class="choice-icon">✍️</span>
+            <h3>Build Manually</h3>
+            <p>Create a new portfolio step by step</p>
+            <button class="btn btn--secondary btn--sm"
+                    onclick="location.href='portfolio-builder.html'">
+              Start Building
+            </button>
+          </div>
+        </div>`;
+
+      // الزرار موجود بس لو الكارت هو "Connect GitHub"
+      $('connect-github-btn')?.addEventListener('click', connectGithub);
+    }
+
+    function renderGrid(portfolios) {
       const grid = $('portfolio-grid');
       grid.innerHTML = '';
       if (!portfolios || portfolios.length === 0) {
-
-        // Google users بدون GitHub username متصل — مايقدروش يستخدموا
-        // الـ auto-generate من repos، فنعرض ليهم اختيار بدل "Generate Now"
-        if (needsProviderChoice) {
-          grid.innerHTML = `
-            <div class="provider-choice">
-              <div class="choice-card" id="connect-github-card">
-                <span class="choice-icon">🔗</span>
-                <h3>Connect GitHub</h3>
-                <p>Auto-generate your portfolio from your repos</p>
-                <button class="btn btn--primary btn--sm" id="connect-github-btn">Connect GitHub</button>
-              </div>
-
-              <div class="choice-card" id="manual-builder-card">
-                <span class="choice-icon">✍️</span>
-                <h3>Build Manually</h3>
-                <p>Create your portfolio step by step</p>
-                <button class="btn btn--secondary btn--sm"
-                        onclick="location.href='portfolio-builder.html'">
-                  Start Building
-                </button>
-              </div>
-            </div>`;
-          $('connect-github-btn')?.addEventListener('click', connectGithub);
-          return;
-        }
-
         grid.innerHTML = `
           <div class="empty-state">
             <span class="empty-state__icon">⬡</span>
             <h2 class="empty-state__title">No portfolios yet</h2>
-            <p class="empty-state__sub">Generate your first portfolio from your GitHub repos in under 60 seconds.</p>
-            <a href="index.html" class="btn btn--primary btn--sm"
-               style="text-decoration:none;margin-top:0.5rem;">Generate Now →</a>
+            <p class="empty-state__sub">Use one of the options above to create your first portfolio.</p>
           </div>`;
         return;
       }
       portfolios.forEach(p => grid.appendChild(buildCard(p)));
     }
+
 
     function renderStats(portfolios) {
       const total     = portfolios.length;
@@ -1376,31 +1346,8 @@
       }
     }
 
-    // ─── Generate New Dropdown (Bug 3) ───────────────────────
-    // لو المستخدم Google بدون GitHub، بيروح مباشرة لـ portfolio-builder.html
-    // لو المستخدم GitHub، بيظهر dropdown بخيارين
-    function toggleGenDropdown(e) {
-      e.stopPropagation();
-      const menu = document.getElementById('gen-dropdown-menu');
-      const btn  = document.getElementById('gen-dropdown-btn');
-      if (!menu) return;
-
-      // لو الـ dropdown مش موجود بعد أو needsProviderChoice:
-      // في حال Google user — مش بيوصلوا لهنا (الـ dropdown مش هيتعرض)
-      const isOpen = menu.classList.contains('open');
-      menu.classList.toggle('open', !isOpen);
-      btn?.setAttribute('aria-expanded', String(!isOpen));
-    }
-
-    // إغلاق الـ dropdown لو ضغط برّاه
-    document.addEventListener('click', () => {
-      const menu = document.getElementById('gen-dropdown-menu');
-      const btn  = document.getElementById('gen-dropdown-btn');
-      if (menu?.classList.contains('open')) {
-        menu.classList.remove('open');
-        btn?.setAttribute('aria-expanded', 'false');
-      }
-    });
+    // [REMOVED] toggleGenDropdown + click-outside listener — الـ dropdown اتشال،
+    // الكارتين الدائمين (renderQuickActionCards) بيغطوا نفس الوظيفة من غير حاجة لـ dropdown.
 
     function showActivateModal() {
       $('activate-modal').classList.add('active');
@@ -1700,21 +1647,9 @@
       // Render
       renderProStatus(isPro);
 
-      // ── Bug 3: If Google user without GitHub, make "Generate New" go directly ──
-      // to portfolio-builder.html (no dropdown needed — they can't use GitHub gen)
-      if (needsProviderChoice) {
-        const genBtn = document.getElementById('gen-dropdown-btn');
-        const genDropdown = document.getElementById('gen-dropdown');
-        if (genBtn && genDropdown) {
-          // Replace the entire dropdown with a direct link
-          const link = document.createElement('a');
-          link.href = 'portfolio-builder.html';
-          link.className = 'btn btn--primary btn--sm';
-          link.style.textDecoration = 'none';
-          link.textContent = '+ New Portfolio';
-          genDropdown.replaceWith(link);
-        }
-      }
+      // الكارتين الدائمين (Connect/Generate GitHub + Build Manually) —
+      // بيظهروا دايماً بغض النظر عن عدد البورتفوليوهات الموجودة
+      renderQuickActionCards(needsProviderChoice);
 
       // ── Early Adopter Badge ───────────────────────────────────
       if (isPro && isEarlyAdopter && eaExpiresAt) {
@@ -1733,7 +1668,7 @@
         }
       }
       renderStats(portfolios);
-      renderGrid(portfolios, needsProviderChoice);
+      renderGrid(portfolios);
 
       // تحديث رابط حساب التليجرام الشخصي
       const botUsername = window.TELEGRAM_BOT_USERNAME || 'medo_faraj';
@@ -1753,11 +1688,6 @@
       copyReferralLink,
       showActivateModal,
       connectGithub,
-      toggleGenDropdown,
-      handleNewPortfolio:   () => {
-        // _needsProviderChoice يُحدَّد في init() — Google users → builder، GitHub users → index
-        window.location.href = _needsProviderChoice ? 'portfolio-builder.html' : 'index.html';
-      },
     };
 
     document.addEventListener('DOMContentLoaded', init);
