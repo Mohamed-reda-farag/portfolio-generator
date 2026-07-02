@@ -139,6 +139,20 @@
         _currentUser = user;
         _notifyListeners(user);
 
+        // [FIXED] Bug: بعد رجوع المستخدم من GitHub OAuth redirect لـ index.html،
+        // كان ممكن client.auth.getSession() في الـ DOMContentLoaded (سطر ~586)
+        // يتنفّذ ويرجع session=null قبل ما Supabase يخلص يفكّك الـ URL fragment
+        // ويعمل exchange للجلسة الفعلية (ده بيحصل async). فـ setupIndexPageAuth()
+        // كان بينادي _updateNav(null) مرة واحدة بس عند التحميل، فيظهر "Sign in
+        // with GitHub" ويختفي Dashboard/Avatar/Sign Out. لما الجلسة الحقيقية
+        // كانت تتأسس بعد كده وده الحدث ده (onAuthStateChange SIGNED_IN) كان
+        // بيتنادى فعلاً، لكن من غير ما يحدّث الـ nav خالص — فالزرارات كانت
+        // تفضل غلط لحد ما تعمل refresh يدوي. الحل: ننادي _updateNav هنا كمان
+        // مع كل تغيير فعلي في الـ auth state، مش بس مرة واحدة عند التحميل.
+        // آمن تماماً على أي صفحة تانية (dashboard.html، الخ) لأن العناصر دي
+        // مش موجودة أصلاً هناك، و_updateNav بتستخدم ?. في كل سطر فمش هتعمل أي خطأ.
+        _updateNav(user);
+
         // ── Ensure public.users row + Early Adopter grant on EVERY sign-in ───
         // Bug 0 fix: must run for ALL providers on every SIGNED_IN event —
         // not only for new users. Without this, users who register without
