@@ -1145,7 +1145,7 @@
       }
     }
 
-    function renderLinks(githubUsername, linkedinUrl, gmailAddress) {
+    function renderLinks(githubUsername, linkedinUrl, gmailAddress, twitterUrl, websiteUrl) {
       const container = document.getElementById('hero-links');
       if (!container) return;
       const links = [];
@@ -1190,6 +1190,37 @@
           </a>`);
       }
 
+      // [FIXED] Twitter/Website كانوا بيتحطوا في custom_sections (type:
+      // 'contact_meta') من portfolio-builder.js، لكن محدش كان بيقراهم أو
+      // يعرضهم — لا هنا ولا في edit.html. دلوقتي بنعرضهم بنفس نمط باقي
+      // الروابط.
+      const twUrl = sanitizeUrl(twitterUrl);
+      if (twUrl) {
+        links.push(`
+          <a href="${esc(twUrl)}" target="_blank" rel="noopener"
+             class="hero-link" aria-label="Twitter / X profile">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+            </svg>
+            Twitter
+          </a>`);
+      }
+
+      const webUrl = sanitizeUrl(websiteUrl);
+      if (webUrl) {
+        links.push(`
+          <a href="${esc(webUrl)}" target="_blank" rel="noopener"
+             class="hero-link" aria-label="Personal website">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="2" y1="12" x2="22" y2="12"/>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+            Website
+          </a>`);
+      }
+
       container.innerHTML = links.join('');
     }
 
@@ -1200,6 +1231,28 @@
       anchor.innerHTML = '';
 
       (sections || []).forEach(sec => {
+        // [FIXED] type: 'contact_meta' بيتقرا في renderLinks() دلوقتي —
+        // متعرضوش هنا تاني (وأصلاً ماكانش بيتعرض صح، كان بيتجاهل بصمت
+        // لأن مفيش sec.title/sec.content عليه).
+        if (sec?.type === 'contact_meta') return;
+
+        // [FIXED] type: 'experience' و 'education' بيجوا بـ sec.items
+        // (array of objects) مش sec.content (نص عادي) — الكود القديم كان
+        // بيعرض عنوان الـ section ("Work Experience"/"Education") وبعده
+        // مربع فاضي تماماً، لأنه كان بيدوّر على sec.content اللي مش موجود
+        // في الشكل ده خالص. البيانات كانت متخزنة صح في قاعدة البيانات،
+        // بس مش متعروضة أبداً.
+        if (sec?.type === 'experience' && Array.isArray(sec.items) && sec.items.length) {
+          anchor.appendChild(_buildExperienceSection(sec));
+          return;
+        }
+        if (sec?.type === 'education' && Array.isArray(sec.items) && sec.items.length) {
+          anchor.appendChild(_buildEducationSection(sec));
+          return;
+        }
+
+        // Section عام (زي ما كان قبل كده) — للـ sections اللي المستخدم
+        // ضافها يدوياً بعنوان/محتوى حر من edit.html
         if (!sec?.title && !sec?.content) return;
         const section = document.createElement('section');
         section.className = 'portfolio-section p-reveal-section';
@@ -1211,6 +1264,51 @@
         anchor.appendChild(section);
         setTimeout(() => section.classList.add('in-view'), 100);
       });
+    }
+
+    /* [NEW] بناء section الخبرة العملية من sec.items — كل عنصر فيه
+       company/role/from/to/description */
+    function _buildExperienceSection(sec) {
+      const section = document.createElement('section');
+      section.className = 'portfolio-section p-reveal-section';
+      section.setAttribute('aria-label', sec.title || 'Work Experience');
+      const itemsHtml = sec.items.map(item => `
+        <div class="p-timeline-item" style="margin-bottom:var(--sp-5);padding-bottom:var(--sp-5);border-bottom:1px solid var(--clr-border-dim);">
+          <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:var(--sp-2);">
+            <strong style="color:var(--clr-text);font-family:var(--font-display);">${esc(item.role || '')}${item.company ? ' · ' + esc(item.company) : ''}</strong>
+            <span style="color:var(--clr-text-3);font-size:var(--fs-sm);white-space:nowrap;">${esc(item.from || '')}${(item.from || item.to) ? ' – ' : ''}${esc(item.to === 'present' ? 'Present' : (item.to || ''))}</span>
+          </div>
+          ${item.description ? `<p style="color:var(--clr-text-2);margin-top:var(--sp-2);line-height:var(--lh-loose);">${esc(item.description).replace(/\n/g, '<br/>')}</p>` : ''}
+        </div>
+      `).join('');
+      section.innerHTML = `
+        <div class="section-label"><span>${esc(sec.title || 'Work Experience')}</span></div>
+        <div class="p-custom-section-content">${itemsHtml}</div>
+      `;
+      setTimeout(() => section.classList.add('in-view'), 100);
+      return section;
+    }
+
+    /* [NEW] بناء section التعليم من sec.items — كل عنصر فيه
+       institution/degree/year */
+    function _buildEducationSection(sec) {
+      const section = document.createElement('section');
+      section.className = 'portfolio-section p-reveal-section';
+      section.setAttribute('aria-label', sec.title || 'Education');
+      const itemsHtml = sec.items.map(item => `
+        <div class="p-timeline-item" style="margin-bottom:var(--sp-5);padding-bottom:var(--sp-5);border-bottom:1px solid var(--clr-border-dim);">
+          <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:var(--sp-2);">
+            <strong style="color:var(--clr-text);font-family:var(--font-display);">${esc(item.degree || '')}${item.institution ? ' · ' + esc(item.institution) : ''}</strong>
+            <span style="color:var(--clr-text-3);font-size:var(--fs-sm);white-space:nowrap;">${esc(item.year || '')}</span>
+          </div>
+        </div>
+      `).join('');
+      section.innerHTML = `
+        <div class="section-label"><span>${esc(sec.title || 'Education')}</span></div>
+        <div class="p-custom-section-content">${itemsHtml}</div>
+      `;
+      setTimeout(() => section.classList.add('in-view'), 100);
+      return section;
     }
 
 
@@ -1326,7 +1424,10 @@
 
       // Links
       loadAvatar(githubUsername, displayName, photoUrl);
-      renderLinks(githubUsername, linkedinUrl, gmailAddress);
+      // [FIXED] استخرج twitter/website من custom_sections (type: 'contact_meta')
+      // بدل ما يتجاهلوا خالص زي ما كان بيحصل قبل كده
+      const contactMeta = (custom_sections || []).find(s => s?.type === 'contact_meta');
+      renderLinks(githubUsername, linkedinUrl, gmailAddress, contactMeta?.twitter, contactMeta?.website);
 
       // Stats
 

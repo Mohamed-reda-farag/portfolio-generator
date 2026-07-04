@@ -205,6 +205,19 @@
     if (linkedinEl) linkedinEl.textContent = draft.linkedinUrl || '';
     const gmailEl = $('[data-edit="gmailAddress"]');
     if (gmailEl) gmailEl.textContent = draft.gmailAddress || '';
+
+    // [FIXED] Twitter/Website متخزنين جوة custom_sections (type: 'contact_meta')
+    // مش كحقول مستوى أول في الـ draft — نستخرجهم من هناك عشان نعرضهم في
+    // الحقول اللي أضفناها في edit.html، ونحطهم كمان على _draft مباشرة
+    // عشان الـ [data-edit] العام (_initEditableFields) يقدر يحدّثهم بسهولة.
+    const contactMeta = (draft.custom_sections || []).find(s => s?.type === 'contact_meta');
+    draft.twitterUrl = draft.twitterUrl || contactMeta?.twitter || '';
+    draft.websiteUrl = draft.websiteUrl || contactMeta?.website || '';
+    const twitterEl = $('[data-edit="twitterUrl"]');
+    if (twitterEl) twitterEl.textContent = draft.twitterUrl;
+    const websiteEl = $('[data-edit="websiteUrl"]');
+    if (websiteEl) websiteEl.textContent = draft.websiteUrl;
+
     // Feature 2: Custom Sections
     _renderCustomSections(draft.custom_sections || []);
   }
@@ -352,6 +365,38 @@
       || 'custom-project';
   }
 
+  /**
+   * [NEW] slug للـ portfolio نفسه (مش للمشروع) — من غير "custom-" prefix.
+   * نفس منطق _slugifyName بتاع portfolio-builder.js بالظبط، عشان أي slug
+   * يتولّد من أي مسار (GitHub أو Manual Builder) يكون متسق ومتوقع.
+   */
+  function _slugifyName(str) {
+    return String(str || 'user')
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 40)
+      || 'user';
+  }
+
+  /**
+   * [NEW] بتاخد base متسلسل بالفعل (slugified) وتتأكد إنه فريد في جدول
+   * portfolios، ولو مكرر بتضيف suffix عشوائي — نفس منطق _generateUniqueSlug
+   * بتاع portfolio-builder.js بالظبط.
+   */
+  async function _generateUniqueSlug(sb, base) {
+    let candidate = base;
+    for (let i = 0; i < 5; i++) {
+      const { data } = await sb.from('portfolios').select('id').eq('slug', candidate).maybeSingle();
+      if (!data) return candidate;
+      candidate = `${base}-${Math.random().toString(36).slice(2, 6)}`;
+    }
+    return `${base}-${Date.now().toString(36)}`;
+  }
+
   /* ═══════════════════════════════════════════════════════════════
      PROJECTS RENDERING & EDITING
   ═══════════════════════════════════════════════════════════════ */
@@ -395,6 +440,16 @@
     } catch {
       return null;
     }
+  }
+
+  /**
+   * [NEW] مطلوبة لـ _buildReadOnlyListSection (عرض experience/education) —
+   * مكانتش موجودة في الملف ده أصلاً.
+   */
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str == null ? '' : String(str);
+    return div.innerHTML;
   }
 
     function _renderProjects(projects) {
@@ -623,6 +678,259 @@
   }
 
   /* ═══════════════════════════════════════════════════════════════
+     FEATURE 3: ADD EXPERIENCE / EDUCATION (متاحة لكل المستخدمين من
+     edit.html مباشرة — قبل كده كانت متاحة فقط أثناء الـ Manual Builder
+     wizard، فمستخدمي GitHub مكانش عندهم طريقة يضيفوا الحقول دي خالص)
+  ═══════════════════════════════════════════════════════════════ */
+
+  function _ensureExpEduModalStyles() {
+    if (document.getElementById('exp-edu-modal-style')) return;
+    const style = document.createElement('style');
+    style.id = 'exp-edu-modal-style';
+    style.textContent = `
+      .eem-overlay {
+        position: fixed; inset: 0; z-index: 9998;
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(0,0,0,0.72);
+        backdrop-filter: blur(6px);
+        animation: toast-in 0.22s ease;
+      }
+      .eem-box {
+        background: var(--clr-bg-2, #0a100c);
+        border: 1px solid rgba(0,255,136,0.18);
+        border-radius: 18px;
+        width: min(460px, 94vw);
+        max-height: 92vh;
+        overflow-y: auto;
+        box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+        font-family: var(--font-body, 'DM Mono', monospace);
+      }
+      .eem-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 1.25rem 1.5rem 0;
+      }
+      .eem-title {
+        font-family: var(--font-display, 'Syne', sans-serif);
+        font-weight: 700; font-size: 1rem;
+        color: var(--clr-text, #f0f0f0);
+      }
+      .eem-close {
+        background: transparent; border: none; cursor: pointer;
+        color: var(--clr-text-3, #6b7280); font-size: 1.25rem;
+        padding: 4px; line-height: 1; border-radius: 6px;
+      }
+      .eem-close:hover { color: var(--clr-text, #f0f0f0); }
+      .eem-body { padding: 1.25rem 1.5rem 1.5rem; }
+      .eem-field { margin-bottom: 1rem; }
+      .eem-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+      .eem-label {
+        display: block; font-size: 0.7rem; font-weight: 500;
+        letter-spacing: 0.08em; text-transform: uppercase;
+        color: var(--clr-text-3, #6b7280); margin-bottom: 0.4rem;
+      }
+      .eem-label .eem-req { color: var(--clr-accent, #00FF88); margin-left: 2px; }
+      .eem-input, .eem-textarea {
+        width: 100%; box-sizing: border-box;
+        background: var(--clr-bg-3, #111814);
+        border: 1px solid var(--clr-border-dim, rgba(255,255,255,0.08));
+        border-radius: 8px;
+        padding: 0.6rem 0.85rem;
+        font-size: 0.82rem; color: var(--clr-text, #f0f0f0);
+        font-family: var(--font-body, 'DM Mono', monospace);
+        outline: none;
+      }
+      .eem-input:focus, .eem-textarea:focus { border-color: rgba(0,255,136,0.45); }
+      .eem-textarea { resize: vertical; min-height: 70px; line-height: 1.5; }
+      .eem-checkbox-row {
+        display: flex; align-items: center; gap: 8px;
+        font-size: var(--fs-sm, 0.82rem); color: var(--clr-text-2, #cbd5c9);
+        margin-bottom: 1rem;
+      }
+      .eem-footer {
+        display: flex; align-items: center; justify-content: flex-end;
+        gap: 0.65rem; padding-top: 0.5rem;
+      }
+      .eem-input--error { border-color: rgba(255,80,80,0.6) !important; }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function _showAddExperienceModal() {
+    document.getElementById('exp-edu-modal')?.remove();
+    _ensureExpEduModalStyles();
+
+    const modal = document.createElement('div');
+    modal.id = 'exp-edu-modal';
+    modal.className = 'eem-overlay';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-label', 'Add Work Experience');
+    modal.innerHTML = `
+      <div class="eem-box">
+        <div class="eem-header">
+          <span class="eem-title">💼 Add Work Experience</span>
+          <button class="eem-close" id="eem-close-btn" aria-label="Close">✕</button>
+        </div>
+        <div class="eem-body">
+          <div class="eem-grid">
+            <div class="eem-field">
+              <label class="eem-label">Company<span class="eem-req">*</span></label>
+              <input id="eem-company" class="eem-input" type="text" placeholder="Google" />
+            </div>
+            <div class="eem-field">
+              <label class="eem-label">Job Title<span class="eem-req">*</span></label>
+              <input id="eem-role" class="eem-input" type="text" placeholder="Frontend Developer" />
+            </div>
+            <div class="eem-field">
+              <label class="eem-label">Start Date</label>
+              <input id="eem-from" class="eem-input" type="month" />
+            </div>
+            <div class="eem-field">
+              <label class="eem-label">End Date</label>
+              <input id="eem-to" class="eem-input" type="month" />
+            </div>
+          </div>
+          <div class="eem-checkbox-row">
+            <input id="eem-present" type="checkbox" />
+            <label for="eem-present">I currently work here</label>
+          </div>
+          <div class="eem-field">
+            <label class="eem-label">Brief Description</label>
+            <textarea id="eem-desc" class="eem-textarea" placeholder="What did you work on?"></textarea>
+          </div>
+          <div class="eem-footer">
+            <button class="btn btn--ghost btn--sm" id="eem-cancel-btn" type="button">Cancel</button>
+            <button class="btn btn--primary btn--sm" id="eem-save-btn" type="button">Add Position</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    const close = () => modal.remove();
+    modal.addEventListener('click', e => { if (e.target === modal) close(); });
+    modal.querySelector('#eem-close-btn').addEventListener('click', close);
+    modal.querySelector('#eem-cancel-btn').addEventListener('click', close);
+
+    const presentCb = modal.querySelector('#eem-present');
+    const toInput    = modal.querySelector('#eem-to');
+    presentCb.addEventListener('change', () => {
+      toInput.disabled = presentCb.checked;
+      if (presentCb.checked) toInput.value = '';
+    });
+
+    modal.querySelector('#eem-save-btn').addEventListener('click', () => {
+      const company = modal.querySelector('#eem-company').value.trim();
+      const role    = modal.querySelector('#eem-role').value.trim();
+      const companyInput = modal.querySelector('#eem-company');
+      const roleInput     = modal.querySelector('#eem-role');
+      companyInput.classList.toggle('eem-input--error', !company);
+      roleInput.classList.toggle('eem-input--error', !role);
+      if (!company || !role) {
+        window.toast?.('Company and job title are required.', 'error');
+        return;
+      }
+
+      const before = snapshot(); pushUndo(before);
+      if (!_draft.custom_sections) _draft.custom_sections = [];
+      let section = _draft.custom_sections.find(s => s?.type === 'experience');
+      if (!section) {
+        section = { type: 'experience', title: 'Work Experience', items: [] };
+        _draft.custom_sections.push(section);
+      }
+      section.items.push({
+        company, role,
+        from: modal.querySelector('#eem-from').value || '',
+        to: presentCb.checked ? 'present' : (toInput.value || ''),
+        description: modal.querySelector('#eem-desc').value.trim(),
+      });
+
+      _renderCustomSections(_draft.custom_sections);
+      _scheduleAutosave();
+      window.toast?.('Experience added', 'success');
+      close();
+    });
+
+    setTimeout(() => modal.querySelector('#eem-company').focus(), 50);
+  }
+
+  function _showAddEducationModal() {
+    document.getElementById('exp-edu-modal')?.remove();
+    _ensureExpEduModalStyles();
+
+    const modal = document.createElement('div');
+    modal.id = 'exp-edu-modal';
+    modal.className = 'eem-overlay';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-label', 'Add Education');
+    modal.innerHTML = `
+      <div class="eem-box">
+        <div class="eem-header">
+          <span class="eem-title">🎓 Add Education</span>
+          <button class="eem-close" id="eem-close-btn" aria-label="Close">✕</button>
+        </div>
+        <div class="eem-body">
+          <div class="eem-field">
+            <label class="eem-label">Institution<span class="eem-req">*</span></label>
+            <input id="eem-institution" class="eem-input" type="text" placeholder="Cairo University" />
+          </div>
+          <div class="eem-field">
+            <label class="eem-label">Degree / Field of Study<span class="eem-req">*</span></label>
+            <input id="eem-degree" class="eem-input" type="text" placeholder="Computer Science" />
+          </div>
+          <div class="eem-field" style="max-width: 160px;">
+            <label class="eem-label">Graduation Year</label>
+            <input id="eem-year" class="eem-input" type="number" min="1950" max="2100" placeholder="2024" />
+          </div>
+          <div class="eem-footer">
+            <button class="btn btn--ghost btn--sm" id="eem-cancel-btn" type="button">Cancel</button>
+            <button class="btn btn--primary btn--sm" id="eem-save-btn" type="button">Add Education</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    const close = () => modal.remove();
+    modal.addEventListener('click', e => { if (e.target === modal) close(); });
+    modal.querySelector('#eem-close-btn').addEventListener('click', close);
+    modal.querySelector('#eem-cancel-btn').addEventListener('click', close);
+
+    modal.querySelector('#eem-save-btn').addEventListener('click', () => {
+      const institutionInput = modal.querySelector('#eem-institution');
+      const degreeInput      = modal.querySelector('#eem-degree');
+      const institution = institutionInput.value.trim();
+      const degree       = degreeInput.value.trim();
+      institutionInput.classList.toggle('eem-input--error', !institution);
+      degreeInput.classList.toggle('eem-input--error', !degree);
+      if (!institution || !degree) {
+        window.toast?.('Institution and degree are required.', 'error');
+        return;
+      }
+
+      const before = snapshot(); pushUndo(before);
+      if (!_draft.custom_sections) _draft.custom_sections = [];
+      let section = _draft.custom_sections.find(s => s?.type === 'education');
+      if (!section) {
+        section = { type: 'education', title: 'Education', items: [] };
+        _draft.custom_sections.push(section);
+      }
+      section.items.push({
+        institution, degree,
+        year: modal.querySelector('#eem-year').value.trim(),
+      });
+
+      _renderCustomSections(_draft.custom_sections);
+      _scheduleAutosave();
+      window.toast?.('Education added', 'success');
+      close();
+    });
+
+    setTimeout(() => modal.querySelector('#eem-institution').focus(), 50);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
      FEATURE 2: CUSTOM SECTIONS
   ═══════════════════════════════════════════════════════════════ */
 
@@ -632,6 +940,26 @@
     container.innerHTML = '';
 
     (sections || []).forEach((sec, i) => {
+      // [FIXED] type: 'contact_meta' بقى بيتعرض في حقول Twitter/Website
+      // المخصصة فوق (applyDraftToDom) — مش هنا كـ section عام.
+      if (sec?.type === 'contact_meta') return;
+
+      // [FIXED] type: 'experience'/'education' بيجوا بـ sec.items (array)
+      // مش sec.content — الكود القديم كان يعرض عنوان الـ section بس وبعده
+      // مربع محتوى فاضي تماماً، لأن sec.content مش موجود في الشكل ده خالص.
+      // البيانات كانت محفوظة صح في قاعدة البيانات، بس مش متعروضة أبداً في
+      // المحرّر. دلوقتي بنعرضها (read-only حالياً — تعديل كل عنصر لوحده
+      // محتاج mini-editor زي اللي في portfolio-builder.js، خارج نطاق
+      // الإصلاح ده)، مع الاحتفاظ بزرار الحذف لو عايز يشيل الـ section كله.
+      if (sec?.type === 'experience' && Array.isArray(sec.items)) {
+        container.appendChild(_buildReadOnlyListSection(i, sec, 'experience'));
+        return;
+      }
+      if (sec?.type === 'education' && Array.isArray(sec.items)) {
+        container.appendChild(_buildReadOnlyListSection(i, sec, 'education'));
+        return;
+      }
+
       const wrap = document.createElement('div');
       wrap.className = 'custom-section-block';
       wrap.setAttribute('data-section-index', i);
@@ -702,6 +1030,86 @@
       wrap.appendChild(contentEl);
       container.appendChild(wrap);
     });
+  }
+
+  /**
+   * [NEW] عرض sections النوع experience/education — بيانات مُنظّمة
+   * (items array) مش نص حر، فمعروضة كقائمة بدل contenteditable عام.
+   * كل عنصر بقى ليه زرار حذف مستقل (بالإضافة لزرار حذف الـ section كله).
+   */
+  function _buildReadOnlyListSection(index, sec, kind) {
+    const wrap = document.createElement('div');
+    wrap.className = 'custom-section-block';
+    wrap.setAttribute('data-section-index', index);
+    wrap.style.cssText = 'position: relative; padding: var(--sp-4); background: var(--clr-bg-3); border: 1px solid var(--clr-border-dim); border-radius: var(--radius-lg); margin-bottom: var(--sp-4);';
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'icon-btn';
+    delBtn.title = 'Remove section';
+    delBtn.setAttribute('aria-label', 'Remove section');
+    delBtn.innerHTML = '×';
+    delBtn.style.cssText = 'position: absolute; top: var(--sp-3); right: var(--sp-3); font-size: 1.1rem; line-height:1; opacity: 0.5;';
+    delBtn.addEventListener('click', () => _removeCustomSection(index));
+    delBtn.addEventListener('mouseenter', () => { delBtn.style.opacity = '1'; });
+    delBtn.addEventListener('mouseleave', () => { delBtn.style.opacity = '0.5'; });
+
+    const titleEl = document.createElement('div');
+    titleEl.className = 'section-label';
+    titleEl.style.cssText = 'margin-bottom: var(--sp-4);';
+    titleEl.innerHTML = `<span style="color:var(--clr-accent);font-family:var(--font-display);font-weight:700;font-size:var(--fs-sm);">${
+      escapeHtml(sec.title || (kind === 'experience' ? 'Work Experience' : 'Education'))
+    }</span><span style="flex:1;height:1px;background:var(--clr-border-dim);display:inline-block;vertical-align:middle;margin-left:var(--sp-4);"></span>`;
+
+    const listEl = document.createElement('div');
+    listEl.style.cssText = 'display:flex;flex-direction:column;gap:var(--sp-3);';
+
+    if (!sec.items.length) {
+      listEl.innerHTML = `<p style="color:var(--clr-text-3);font-size:var(--fs-sm);font-style:italic;">No entries yet.</p>`;
+    } else {
+      sec.items.forEach((item, itemIndex) => {
+        const row = document.createElement('div');
+        row.style.cssText = 'position:relative;padding:var(--sp-2) var(--sp-6) var(--sp-3) 0;border-bottom:1px solid var(--clr-border-dim);';
+
+        const itemDelBtn = document.createElement('button');
+        itemDelBtn.className = 'icon-btn';
+        itemDelBtn.title = 'Remove entry';
+        itemDelBtn.setAttribute('aria-label', 'Remove entry');
+        itemDelBtn.innerHTML = '×';
+        itemDelBtn.style.cssText = 'position:absolute;top:var(--sp-2);right:0;font-size:0.95rem;line-height:1;opacity:0.45;';
+        itemDelBtn.addEventListener('mouseenter', () => { itemDelBtn.style.opacity = '1'; });
+        itemDelBtn.addEventListener('mouseleave', () => { itemDelBtn.style.opacity = '0.45'; });
+        itemDelBtn.addEventListener('click', () => {
+          const before = snapshot(); pushUndo(before);
+          sec.items.splice(itemIndex, 1);
+          if (sec.items.length === 0) {
+            // شيل الـ section كله لو فاضي — نفس سلوك الـ builder
+            const secIdx = _draft.custom_sections.indexOf(sec);
+            if (secIdx > -1) _draft.custom_sections.splice(secIdx, 1);
+          }
+          _renderCustomSections(_draft.custom_sections);
+          _scheduleAutosave();
+        });
+
+        row.innerHTML = kind === 'experience'
+          ? `<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:var(--sp-2);">
+               <strong style="color:var(--clr-text);font-size:var(--fs-sm);">${escapeHtml(item.role || '')}${item.company ? ' · ' + escapeHtml(item.company) : ''}</strong>
+               <span style="color:var(--clr-text-3);font-size:var(--fs-xs);white-space:nowrap;">${escapeHtml(item.from || '')}${(item.from || item.to) ? ' – ' : ''}${escapeHtml(item.to === 'present' ? 'Present' : (item.to || ''))}</span>
+             </div>
+             ${item.description ? `<p style="color:var(--clr-text-2);font-size:var(--fs-sm);margin-top:var(--sp-1);">${escapeHtml(item.description)}</p>` : ''}`
+          : `<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:var(--sp-2);">
+               <strong style="color:var(--clr-text);font-size:var(--fs-sm);">${escapeHtml(item.degree || '')}${item.institution ? ' · ' + escapeHtml(item.institution) : ''}</strong>
+               <span style="color:var(--clr-text-3);font-size:var(--fs-xs);white-space:nowrap;">${escapeHtml(item.year || '')}</span>
+             </div>`;
+
+        row.appendChild(itemDelBtn);
+        listEl.appendChild(row);
+      });
+    }
+
+    wrap.appendChild(delBtn);
+    wrap.appendChild(titleEl);
+    wrap.appendChild(listEl);
+    return wrap;
   }
 
   function _addCustomSection() {
@@ -1339,9 +1747,26 @@
     toolbar.querySelector('#toolbar-publish-btn').addEventListener('click', publish);
     toolbar.querySelector('#toolbar-unpublish-btn')?.addEventListener('click', unpublishPortfolio);
     toolbar.querySelector('#toolbar-copylink-btn').addEventListener('click', async () => {
-      const draft = window.AI?.getDraft?.() || _draft;
-      const slug  = draft?.githubUsername || draft?.githubUser?.login || '';
-      const url   = slug
+      // [FIXED] كان بيبني الرابط من draft.githubUsername بس — لمستخدمي
+      // Google/Manual Builder اللي مالهمش GitHub username، كان بيرجع رابط
+      // من غير slug خالص (يعني portfolio.html من غير أي هوية، مش هيلاقي
+      // حاجة). الحل: نجيب الـ slug الحقيقي المنشور فعلاً من جدول
+      // portfolios مباشرة — هو نفسه اللي publish() بيحطه، بغض النظر عن
+      // مصدره (GitHub username أو full name).
+      let slug = '';
+      try {
+        const sb = window._supabaseClient || window.supabase;
+        const { data: authData } = await sb.auth.getUser();
+        const userId = authData?.user?.id;
+        if (userId) {
+          const { data } = await sb.from('portfolios').select('slug').eq('user_id', userId).maybeSingle();
+          slug = data?.slug || '';
+        }
+      } catch (e) {
+        console.warn('[copyLink] could not resolve slug:', e);
+      }
+
+      const url = slug
         ? `${window.location.origin}/portfolio.html?slug=${slug}`
         : window.location.origin + '/portfolio.html';
       try {
@@ -1401,6 +1826,22 @@
     }
   }
 
+  /**
+   * [NEW] بيعيد بناء entry الـ contact_meta جوة custom_sections من
+   * draft.twitterUrl/websiteUrl الحاليين (بعد أي تعديل من المستخدم في
+   * edit.html)، مع الحفاظ على باقي الـ sections (experience/education/
+   * أي section عام) زي ما هي — من غير ما نلمسها.
+   */
+  function _rebuildCustomSectionsWithContactMeta(draft) {
+    const others = (draft.custom_sections || []).filter(s => s?.type !== 'contact_meta');
+    const twitter = sanitizeUrl(draft.twitterUrl);
+    const website = sanitizeUrl(draft.websiteUrl);
+    if (twitter || website) {
+      others.push({ type: 'contact_meta', twitter: twitter || null, website: website || null });
+    }
+    return others;
+  }
+
   async function publish() {
     if (_isSaving) return;
     _isSaving = true;
@@ -1436,17 +1877,35 @@
         const userId = authData?.user?.id;
 
         if (userId) {
-          // ── Slug: يتبنى من الـ GitHub username مع validation صارم ──────────
-          const rawSlug = (draft.githubUsername || draft.githubUser?.login || '').toLowerCase();
-          if (!rawSlug) {
-            throw new Error('Cannot determine GitHub username for slug.');
+          // ── [FIXED] Slug: كان الكود بيفترض إن كل مستخدم عنده GitHub
+          // username ويرمي error يوقف النشر بالكامل لو مش موجود — ده كان
+          // بيمنع أي مستخدم Google/Manual Builder من النشر خالص، حتى لو
+          // أصلاً عنده portfolio بـ slug صحيح اتحط من portfolio-builder.js
+          // (بيتولّد من full name هناك، مش GitHub username).
+          //
+          // الحل: نجيب الـ slug الموجود فعلاً لصف الـ portfolio بتاع
+          // اليوزر ده (لو موجود) ونعيد استخدامه زي ما هو — من غير ما
+          // نعيد توليده أو نفترض مصدره. لو مفيش portfolio أصلاً (أول
+          // نشر للمستخدم ده من غير ما يمر بـ portfolio-builder.js)،
+          // نولّد slug جديد: GitHub username لو موجود، وإلا الاسم الكامل
+          // (نفس منطق portfolio-builder.js) — من غير ما نرمي error أبداً.
+          const { data: existingPortfolio } = await sb
+            .from('portfolios').select('id, slug').eq('user_id', userId).maybeSingle();
+
+          let slug = existingPortfolio?.slug || null;
+
+          if (!slug) {
+            const rawSlug = (draft.githubUsername || draft.githubUser?.login || '').toLowerCase();
+            const base = rawSlug
+              ? rawSlug
+                  .replace(/[^a-z0-9-]/g, '-')
+                  .replace(/-+/g, '-')
+                  .replace(/^-|-$/g, '')
+                  .slice(0, 39)
+              : _slugifyName(draft.fullName || draft.name || `user-${userId.slice(0, 8)}`);
+
+            slug = await _generateUniqueSlug(sb, base);
           }
-          // يسمح بـ alphanumeric وhyphens فقط — نفس قواعد GitHub usernames
-          const slug = rawSlug
-            .replace(/[^a-z0-9-]/g, '-')  // استبدل أي حرف غير مسموح
-            .replace(/-+/g, '-')           // ازل hyphens متتالية
-            .replace(/^-|-$/g, '')         // ازل hyphens في البداية والنهاية
-            .slice(0, 39);                 // GitHub max username length
 
           await sb.from('users').upsert({
             id: userId, email: authData.user.email || '',
@@ -1461,7 +1920,7 @@
             slug, is_published: true, updated_at: new Date().toISOString(),
             linkedin_url:    draft.linkedinUrl  || null,
             gmail_address:   draft.gmailAddress || null,
-            custom_sections: draft.custom_sections || [],
+            custom_sections: _rebuildCustomSectionsWithContactMeta(draft),
             // Denormalized user fields — avoids RLS-blocked users table query
             // for anonymous visitors on the public portfolio page.
             full_name:       draft.fullName  || draft.name || '',
@@ -1492,18 +1951,36 @@
 
             // ⚠️ حذف GitHub projects فقط — الـ custom projects محمية
             // WHERE is_custom = FALSE (أو IS NULL للـ rows القديمة)
-            await sb.from('projects')
+            //
+            // [FIXED] الكود القديم مكانش بيتحقق من نتيجة الـ delete خالص —
+            // لو فشل بصمت (غالبًا بسبب RLS policy ناقصة لـ DELETE على
+            // جدول projects، بنفس النمط اللي لقيناه قبل كده في
+            // early_adopter_counter)، الصفوف القديمة كانت تفضل موجودة،
+            // وبعدين الـ insert التالي بيحاول يضيف نفس الـ github_repo_name
+            // فيصطدم بـ unique constraint (409). دلوقتي بنسجّل تحذير واضح
+            // في الـ console لو الـ delete فشل، عشان يبان السبب فورًا بدل
+            // ما يتبلع بصمت.
+            const { error: deleteError } = await sb.from('projects')
               .delete()
               .eq('portfolio_id', portData.id)
               .or('is_custom.is.null,is_custom.eq.false');
 
-            // Fix 3: فحص الـ error بعد insert — أوقف التنفيذ لو فشل بدل الاستمرار بصمت
+            if (deleteError) {
+              console.warn('[save] Projects delete failed (old rows may remain):', deleteError.message);
+            }
+
+            // [FIXED] استبدلنا insert بـ upsert على نفس الـ unique constraint
+            // (portfolio_id, github_repo_name) — عشان لو الـ delete فوق فشل
+            // لأي سبب (RLS أو غيره)، النشر يكمّل وبيحدّث الصفوف الموجودة
+            // بدل ما يفشل بالكامل بـ 409. الحل الجذري لسه محتاج فحص الـ RLS
+            // policy الخاصة بـ DELETE على جدول projects في Supabase (SQL
+            // مرفق في الرد).
             const { error: insertError } = await sb
               .from('projects')
-              .insert(projectsPayload);
+              .upsert(projectsPayload, { onConflict: 'portfolio_id,github_repo_name' });
 
             if (insertError) {
-              console.error('[save] Projects insert failed:', insertError.message);
+              console.error('[save] Projects save failed:', insertError.message);
               window.toast?.('Projects could not be saved. Please try again.', 'error');
               _showSaveIndicator('error');
               if (btn) { btn.disabled = false; btn.textContent = 'Publish'; }
@@ -2114,6 +2591,9 @@
     _addCustomSection,
     // Feature: Custom Projects
     _showCustomProjectModal,
+    // Feature 3: Add Experience / Education (متاحة لكل المستخدمين)
+    _showAddExperienceModal,
+    _showAddEducationModal,
   };
 
 })();

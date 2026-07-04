@@ -310,6 +310,30 @@
                   style="flex:1; font-size:var(--fs-sm); color:var(--clr-text-2); min-width:80px; outline:none;"
                   title="Click to edit Gmail address"></span>
           </div>
+          <!-- [FIXED] كانت مجمّعة في state.twitterUrl/websiteUrl في portfolio-builder.js
+               وبتتحفظ في custom_sections (contact_meta)، لكن مفيش أي حقل تحرير
+               ليها هنا خالص — المستخدم مكانش يقدر يعدّلها بعد النشر الأول. -->
+          <div style="display:flex; align-items:center; gap:var(--sp-2); background:var(--clr-bg-3); border:1px dashed var(--clr-border-dim); border-radius:var(--radius-md); padding:var(--sp-2) var(--sp-3); min-width:220px; flex:1;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0; color:var(--clr-text-3);" aria-hidden="true">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+            </svg>
+            <span style="font-size:var(--fs-xs); color:var(--clr-text-3); letter-spacing:var(--ls-wide); text-transform:uppercase; flex-shrink:0;">Twitter</span>
+            <span data-edit="twitterUrl"
+                  aria-label="Twitter / X URL — click to edit"
+                  style="flex:1; font-size:var(--fs-sm); color:var(--clr-text-2); min-width:80px; outline:none;"
+                  title="Click to edit Twitter / X URL"></span>
+          </div>
+          <div style="display:flex; align-items:center; gap:var(--sp-2); background:var(--clr-bg-3); border:1px dashed var(--clr-border-dim); border-radius:var(--radius-md); padding:var(--sp-2) var(--sp-3); min-width:220px; flex:1;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0; color:var(--clr-text-3);" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+            <span style="font-size:var(--fs-xs); color:var(--clr-text-3); letter-spacing:var(--ls-wide); text-transform:uppercase; flex-shrink:0;">Website</span>
+            <span data-edit="websiteUrl"
+                  aria-label="Personal website URL — click to edit"
+                  style="flex:1; font-size:var(--fs-sm); color:var(--clr-text-2); min-width:80px; outline:none;"
+                  title="Click to edit personal website URL"></span>
+          </div>
         </div>
       </header>
 
@@ -340,17 +364,44 @@
       <!-- Feature 2: Custom Sections -->
       <section class="portfolio-section" aria-label="Custom sections">
         <div data-custom-sections></div>
-        <button
-          id="add-custom-section-btn"
-          class="skill-tag skill-tag--add"
-          aria-label="Add a new custom section"
-          style="margin-top: var(--sp-2); display:flex; align-items:center; gap:var(--sp-2); font-size:var(--fs-sm);"
-        >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-          Add Section
-        </button>
+        <div style="margin-top: var(--sp-2); display:flex; gap:var(--sp-3); flex-wrap:wrap;">
+          <!-- [FIXED] كانت الميزتين دول متاحتين فقط في portfolio-builder.js
+               (الـ Manual Builder wizard) — مستخدمي GitHub مكانش عندهم أي
+               طريقة يضيفوا Experience/Education من edit.html خالص. -->
+          <button
+            id="add-experience-btn-edit"
+            class="skill-tag skill-tag--add"
+            aria-label="Add work experience"
+            style="display:flex; align-items:center; gap:var(--sp-2); font-size:var(--fs-sm);"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Add Experience
+          </button>
+          <button
+            id="add-education-btn-edit"
+            class="skill-tag skill-tag--add"
+            aria-label="Add education"
+            style="display:flex; align-items:center; gap:var(--sp-2); font-size:var(--fs-sm);"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Add Education
+          </button>
+          <button
+            id="add-custom-section-btn"
+            class="skill-tag skill-tag--add"
+            aria-label="Add a new custom section"
+            style="display:flex; align-items:center; gap:var(--sp-2); font-size:var(--fs-sm);"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Add Section
+          </button>
+        </div>
       </section>
 
     </div>
@@ -638,6 +689,14 @@
       // Feature: Add Custom Project button listener
       document.getElementById('add-custom-project-btn')?.addEventListener('click', () => {
         window.Portfolio?._showCustomProjectModal?.();
+      });
+
+      // Feature 3: Add Experience / Education button listeners
+      document.getElementById('add-experience-btn-edit')?.addEventListener('click', () => {
+        window.Portfolio?._showAddExperienceModal?.();
+      });
+      document.getElementById('add-education-btn-edit')?.addEventListener('click', () => {
+        window.Portfolio?._showAddEducationModal?.();
       });
 
       // Re-trigger app.js animations if GSAP loaded after window.load
