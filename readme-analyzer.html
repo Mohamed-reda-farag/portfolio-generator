@@ -446,17 +446,17 @@
     </div>
 
     <div class="upload-zone" id="upload-zone">
-      <input type="file" id="file-input" accept=".md" />
+      <input type="file" id="file-input" accept=".md" multiple />
       <div class="upload-zone__icon">📄</div>
       <div class="upload-zone__text">Drag & drop or click to upload</div>
-      <div class="upload-zone__hint">.md files only · max 500KB</div>
+      <div class="upload-zone__hint">.md files only · max 500KB each · up to 5 files</div>
     </div>
 
     <!-- File pill (shown after upload) -->
     <div id="file-pill" class="file-pill hidden">
       <span>✓</span>
       <span id="file-name">filename.md</span>
-      <button class="file-pill__remove" id="remove-file" title="Remove file">✕</button>
+      <button class="file-pill__remove" id="remove-file" title="Remove file(s)">✕</button>
     </div>
 
     <!-- ── OR divider ── -->
@@ -495,14 +495,15 @@
           <span class="output-option__label">📝 Professional Bio</span>
         </label>
 
-        <label class="output-option is-checked" data-key="project">
+        <label class="output-option is-checked" data-key="projects">
           <input type="checkbox" checked />
           <span class="output-option__check">
             <svg class="output-option__check-icon" width="10" height="10" viewBox="0 0 12 12" fill="none">
               <polyline points="2 6 5 9 10 3" stroke="#080C0A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </span>
-          <span class="output-option__label">💼 Project Description</span>
+          <span class="output-option__label">💼 Project Descriptions</span>
+          <span class="output-option__badge">1 per project</span>
         </label>
 
         <label class="output-option is-checked" data-key="linkedin_posts">
@@ -513,7 +514,7 @@
             </svg>
           </span>
           <span class="output-option__label">🔗 LinkedIn Posts</span>
-          <span class="output-option__badge">3 posts</span>
+          <span class="output-option__badge">1 per project</span>
         </label>
 
         <label class="output-option is-checked" data-key="report">
@@ -576,17 +577,10 @@
         <div class="result-content" id="content-bio"></div>
       </div>
 
-      <!-- Project Description -->
-      <div class="result-block" id="block-project" style="display:none;">
+      <!-- Project Descriptions (one per project — populated dynamically in JS) -->
+      <div class="result-block" id="block-projects" style="display:none;">
         <hr class="result-divider" />
-        <div class="result-block__header">
-          <div class="result-block__title">💼 Project Description</div>
-          <div class="result-block__actions">
-            <button class="btn btn--ghost btn--sm" onclick="toggleEdit(this, 'content-project')">Edit</button>
-            <button class="btn btn--ghost btn--sm" onclick="copyContent('content-project', this)">Copy</button>
-          </div>
-        </div>
-        <div class="result-content" id="content-project"></div>
+        <div id="projects-container"></div>
       </div>
 
       <!-- LinkedIn Posts -->

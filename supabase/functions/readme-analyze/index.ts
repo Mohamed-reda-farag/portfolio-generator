@@ -6,8 +6,24 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+// [FIXED] إعادة تصميم — كان فيه حقل واحد readmeContent (نص مُدمج لكل الملفات/الـ
+// repos)، فمكنش فيه أي طريقة يميّز الموديل بين المشاريع، وكان أي قص للنص
+// (truncation) بيدمّر المشاريع اللي مش أول واحد. دلوقتي كل مشروع عنصر
+// مستقل بالاسم، وده اللي بيسمح بوصف مستقل + بوست مستقل لكل مشروع مع الحفاظ
+// على bio واحد شامل.
+interface ReadmeItem {
+  name:    string;   // اسم الملف أو الـ repo — بيُستخدم لتسمية الوصف/البوست الخاص به
+  content: string;
+}
+
+interface ProjectDescription {
+  name:        string;   // لازم يطابق أحد أسماء readmeItems المُرسلة
+  description: string;
+}
+
 interface LinkedInPost {
-  post: string;
+  project:  string;   // اسم المشروع اللي البوست ده عنه — لازم يطابق أحد أسماء readmeItems
+  post:     string;
   hashtags: string[];
 }
 
@@ -20,15 +36,16 @@ interface LinkedInReport {
 }
 
 interface AnalyzeOutputs {
-  bio?:            string;
-  project?:        string;
-  linkedin_posts?: LinkedInPost[];
-  report?:         LinkedInReport;
-  skills?:         string[];
+  bio?:            string;                 // بيو واحد شامل لكل المشاريع/المهارات مجتمعة
+  projects?:       ProjectDescription[];   // [FIXED] كان project: string واحد — بقى وصف مستقل لكل مشروع
+  linkedin_posts?: LinkedInPost[];         // [FIXED] بقى بوست واحد لكل مشروع (بدل 3 زوايا على مشروع واحد)
+  report?:         LinkedInReport;         // تقرير شامل واحد
+  skills?:         string[];               // قائمة مهارات مجمّعة واحدة
 }
 
 interface AnalyzeRequest {
-  readmeContent:    string;
+  readmeItems?:     ReadmeItem[];   // الشكل الجديد — مصفوفة مشاريع مسمّاة
+  readmeContent?:   string;         // [DEPRECATED] الشكل القديم — نص واحد مُدمج، نحافظ عليه لتوافق رجعي فقط
   requestedOutputs: string[];
   userId?:          string;
 }
@@ -60,38 +77,46 @@ function getCorsHeaders(requestOrigin: string | null): Record<string, string> {
 // بدون ما تمس الباقيين. كل key بيتوافق مع الـ requestedOutputs array.
 
 const OUTPUT_PROMPTS: Record<string, string> = {
-  bio: `Write a professional developer bio of 150-200 words based on this project.
-Focus on the expertise implied by the tech stack, architecture decisions, and project goals.
-Write in first person. Avoid generic filler words like "passionate", "love coding", "dedicated".
-Lead with what the developer BUILDS, not who they are. End with something specific to this project.
+  bio: `Write ONE professional developer bio of 150-200 words that synthesizes ALL the projects
+provided below — treat them as one developer's combined body of work.
+Focus on the expertise implied by the tech stack, architecture decisions, and project goals across
+all of them. Write in first person. Avoid generic filler words like "passionate", "love coding", "dedicated".
+Lead with what the developer BUILDS, not who they are.
 Return as a plain string under the key "bio".`,
 
-  project: `Write a compelling project description of 100-150 words suitable for a developer portfolio.
-Sentence 1: What problem does this project solve and who benefits — be concrete.
-Sentence 2: The technical approach — name the exact stack, architecture, or clever solutions visible in the README.
-Avoid vague language. If there are metrics, numbers, or scale indicators in the README, include them.
-Return as a plain string under the key "project".`,
+  // [FIXED] كان "project" (وصف واحد لأول مشروع بس فعليًا). بقى "projects" —
+  // وصف مستقل لكل مشروع تم توفيره، بالاسم بالضبط.
+  projects: `For EACH project listed below (there are {{PROJECT_COUNT}} projects, named exactly:
+{{PROJECT_NAMES}}), write an independent project description of 100-150 words suitable for a developer portfolio.
+Sentence 1: What problem does this specific project solve and who benefits — be concrete.
+Sentence 2: The technical approach — name the exact stack, architecture, or clever solutions visible in ITS OWN README.
+Do not blend details from one project into another's description.
+Return as a JSON array under the key "projects", where each item is exactly:
+{ "name": "<one of the exact project names above>", "description": "..." }
+The array MUST contain exactly {{PROJECT_COUNT}} items, one per project, using the exact names given.`,
 
-  linkedin_posts: `Create exactly 3 LinkedIn posts about this project.
-Each post should be 150-200 words, professional yet engaging tone, and include relevant hashtags.
-Each post should take a different angle:
-  - Post 1: The problem you solved and its impact
-  - Post 2: The technical learnings and stack choices
-  - Post 3: A lesson or insight for other developers
-Return as a JSON array under the key "linkedin_posts", where each item is:
-{ "post": "...", "hashtags": ["hashtag1", "hashtag2", ...] }`,
+  // [FIXED] كانت 3 بوستات بزوايا مختلفة على مشروع واحد مُدمج. بقت بوست واحد
+  // مستقل لكل مشروع فعلي تم توفيره.
+  linkedin_posts: `For EACH project listed below (there are {{PROJECT_COUNT}} projects, named exactly:
+{{PROJECT_NAMES}}), write ONE independent LinkedIn post about THAT project specifically.
+Each post should be 150-200 words, professional yet engaging tone, focused on the problem solved,
+the technical approach, and its impact — and include relevant hashtags.
+Return as a JSON array under the key "linkedin_posts", where each item is exactly:
+{ "project": "<one of the exact project names above>", "post": "...", "hashtags": ["hashtag1", "hashtag2", ...] }
+The array MUST contain exactly {{PROJECT_COUNT}} items, one per project, using the exact names given.`,
 
-  report: `Generate a LinkedIn Presence Report for a developer who built this project.
+  report: `Generate ONE overall LinkedIn Presence Report for a developer, based on ALL the projects
+provided below combined — this is a holistic assessment of their whole portfolio, not per project.
 Include:
   - profile_strength_score: integer 0-100
-  - key_strengths: array of 3-4 strings describing what this project demonstrates
+  - key_strengths: array of 3-4 strings describing what this body of work demonstrates
   - recommended_keywords: array of 8-12 LinkedIn keywords to optimize the profile
-  - industry_benchmark: 1-2 sentences comparing this project's scope to typical industry standards
+  - industry_benchmark: 1-2 sentences comparing this portfolio's scope to typical industry standards
   - improvement_tips: array of exactly 3 actionable tips to strengthen the LinkedIn presence
 Return as a JSON object under the key "report".`,
 
   skills: `Extract ALL technologies, frameworks, languages, tools, platforms, and libraries
-mentioned or clearly implied in this README.
+mentioned or clearly implied across ALL the projects provided below combined — one flat, de-duplicated list.
 Include programming languages, frameworks, databases, cloud services, dev tools, testing libraries, etc.
 Return as a flat JSON array of strings under the key "skills".
 Example: ["React", "Node.js", "PostgreSQL", "Docker", "Jest"]`,
@@ -101,11 +126,18 @@ Example: ["React", "Node.js", "PostgreSQL", "Docker", "Jest"]`,
 //
 // Design decision: نبني prompt واحد بدل multiple API calls عشان:
 // 1. أسرع وأرخص من حيث الـ tokens
-// 2. الـ model يشوف الـ README مرة واحدة بس ويولّد كل الـ outputs معاً
+// 2. الـ model يشوف كل المشاريع مرة واحدة بس ويولّد كل الـ outputs معاً
+//    (بيو شامل واحد + وصف/بوست مستقل لكل مشروع بالاسم)
 // 3. أسهل في الـ error handling
 
+// [FIXED] كان فيه قص ثابت على 15000 حرف لنص واحد مُدمج — لو المشروع الأول
+// كان طويل، المشاريع الباقية تختفي بالكامل من غير أي تنبيه. دلوقتي كل
+// مشروع بياخد حصة عادلة من ميزانية إجمالية قبل الدمج.
+const TOTAL_CONTENT_BUDGET = 20000; // إجمالي الحروف المسموح بيها لكل المشاريع معاً
+const MIN_PER_ITEM_BUDGET  = 2000;  // حد أدنى لكل مشروع حتى لو كان عددهم كبير
+
 function buildPrompt(
-  readmeContent: string,
+  items: ReadmeItem[],
   requestedOutputs: string[]
 ): { system: string; user: string } {
 
@@ -113,20 +145,37 @@ function buildPrompt(
 You analyze README files from software projects and generate professional, high-quality content.
 Your writing is specific, concrete, and avoids generic filler phrases.
 You extract real details from READMEs — tech stack, architecture decisions, use cases, metrics.
+When a task asks for output per-project, keep each project's content strictly separate — never blend
+details from one project into another's description or post.
 
 CRITICAL: Respond ONLY with a single valid JSON object. No markdown, no backticks, no preamble, no explanation.
 The JSON object must contain only the keys that were requested.`;
 
-  // Build instructions section per requested output
+  // ── حصة عادلة لكل مشروع (بدل قص ثابت على النص المُدمج كله)
+  const perItemBudget = Math.max(MIN_PER_ITEM_BUDGET, Math.floor(TOTAL_CONTENT_BUDGET / Math.max(1, items.length)));
+
+  const projectNames = items.map(i => i.name);
+  const projectCount = items.length;
+
+  // Build instructions section per requested output — نستبدل الـ placeholders
+  // بأسماء وعدد المشاريع الفعليين لكل طلب
   const outputInstructions = requestedOutputs
     .filter(key => OUTPUT_PROMPTS[key])
-    .map(key => `### ${key.toUpperCase()}\n${OUTPUT_PROMPTS[key]}`)
+    .map(key => {
+      const filled = OUTPUT_PROMPTS[key]
+        .replace(/\{\{PROJECT_COUNT\}\}/g, String(projectCount))
+        .replace(/\{\{PROJECT_NAMES\}\}/g, projectNames.map(n => `"${n}"`).join(', '));
+      return `### ${key.toUpperCase()}\n${filled}`;
+    })
     .join('\n\n');
 
-  const user = `Here is the README content to analyze:
----BEGIN README---
-${readmeContent.slice(0, 15000)}
----END README---
+  const projectsBlock = items
+    .map(item => `---BEGIN PROJECT: "${item.name}"---\n${item.content.slice(0, perItemBudget)}\n---END PROJECT: "${item.name}"---`)
+    .join('\n\n');
+
+  const user = `Here are ${projectCount} project README(s) to analyze:
+
+${projectsBlock}
 
 Generate the following outputs and return them as a single JSON object with ONLY these keys: ${requestedOutputs.join(', ')}
 
@@ -162,10 +211,13 @@ async function callGroqAPI(
         { role: "user",   content: prompt.user   },
       ],
       temperature:     0.7,
-      max_tokens:      4000,
+      // [FIXED] كان 4000 — ثابت وكافي لمخرجات مشروع واحد بس. دلوقتي المخرجات
+      // (وصف + بوست لكل مشروع) بتكبر مع عدد المشاريع (لحد 5)، فرفعناه.
+      max_tokens:      6000,
       response_format: { type: "json_object" },
     }),
-    signal: AbortSignal.timeout(35_000), // 35s — أطول قليلاً من generate عشان الـ output أكتر
+    // [FIXED] كان 35s — رفعناها بما إن المخرجات ممكن تكبر مع عدد المشاريع
+    signal: AbortSignal.timeout(45_000),
   });
 
   if (!response.ok) {
@@ -241,11 +293,24 @@ Deno.serve(async (req: Request) => {
   }
 
   // ── Validate inputs
-  const { readmeContent, requestedOutputs, userId } = body;
+  // [FIXED] بقت readmeItems (مصفوفة مشاريع مسمّاة) هي الشكل الأساسي.
+  // نحافظ على readmeContent (نص واحد) كـ fallback توافق رجعي فقط — لو
+  // القديم هو المُرسل، نغلّفه كعنصر واحد اسمه "README" بدل ما نكسر أي
+  // caller قديم.
+  const { readmeItems, readmeContent, requestedOutputs, userId } = body;
 
-  if (!readmeContent?.trim()) {
+  let items: ReadmeItem[];
+  if (Array.isArray(readmeItems) && readmeItems.length > 0) {
+    items = readmeItems.filter(it => it && typeof it.content === 'string' && it.content.trim());
+  } else if (readmeContent?.trim()) {
+    items = [{ name: 'README', content: readmeContent }];
+  } else {
+    items = [];
+  }
+
+  if (items.length === 0) {
     return new Response(
-      JSON.stringify({ error: "readmeContent is required and cannot be empty." }),
+      JSON.stringify({ error: "readmeItems is required and must contain at least one non-empty project." }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
@@ -302,9 +367,9 @@ Deno.serve(async (req: Request) => {
 
   // ── Build & call
   try {
-    console.log(`[readme-analyze] Processing ${filteredKeys.join(", ")} for user: ${userId || "anon"}`);
+    console.log(`[readme-analyze] Processing ${filteredKeys.join(", ")} for ${items.length} project(s), user: ${userId || "anon"}`);
 
-    const prompt = buildPrompt(readmeContent, filteredKeys);
+    const prompt = buildPrompt(items, filteredKeys);
     const { outputs, tokensUsed } = await callGroqAPI(prompt, groqApiKey);
 
     console.log(`[readme-analyze] Success — ${tokensUsed} tokens, outputs: ${Object.keys(outputs).join(", ")}`);

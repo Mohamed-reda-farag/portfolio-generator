@@ -19,13 +19,17 @@
   };
 
   /* ─── State ────────────────────────────────────────────────────────── */
-  let readmeContent     = null;   // نص الـ README المرفوع
+  // [FIXED] إعادة تصميم مشكلة 2: كان فيه نص واحد مُدمج (readmeContent) —
+  // بقى مصفوفة عناصر مسمّاة {name, content}، كل عنصر = مشروع مستقل، عشان
+  // edge function يقدر يطلع وصف/بوست مستقل لكل مشروع بدل نتيجة واحدة مدموجة.
+  let _uploadedItems    = [];     // [{ name, content }] — من الرفع اليدوي
   let currentUserId     = null;
   let _currentUser      = null;   // كائن المستخدم الكامل (module-level لاستخدامه في resetAnalyzer وغيرها)
   let isCurrentlyPro    = false;
   let usageData         = { used: 0, remaining: 3, allowed: true };
   let _skillsRaw        = [];     // للـ "Copy" زر الـ skills
   let _postsRaw         = [];     // للـ "Copy All" زر الـ posts
+  const MAX_UPLOAD_FILES = 5;     // حد أعلى معقول لعدد الملفات في الرفعة الواحدة
 
   /* ─── DOM refs ─────────────────────────────────────────────────────── */
   const $ = id => document.getElementById(id);
@@ -146,17 +150,19 @@
     uploadZone.addEventListener('drop', e => {
       e.preventDefault();
       uploadZone.classList.remove('drag-over');
-      const file = e.dataTransfer?.files[0];
-      if (file) _processFile(file);
+      // [FIXED] كان بياخد أول ملف بس (files[0]) — دلوقتي بيمرر كل الملفات
+      const files = e.dataTransfer?.files;
+      if (files && files.length) _processFiles([...files]);
     });
 
     // Remove button
     removeFileBtn?.addEventListener('click', () => {
-      readmeContent = null;
-      window._autoReadmeContent = null;   // تنظيف auto state لو كان موجوداً
-      window._autoReadmeLabel   = null;
+      _uploadedItems = [];
+      window._autoReadmeItems = null;   // تنظيف auto state لو كان موجوداً
+      window._autoReadmeLabel = null;
       fileInput.value = '';
       filePill.classList.add('hidden');
+      filePill.removeAttribute('title');
       uploadZone.style.display  = '';
       uploadZone.style.opacity  = '1';   // إعادة opacity لو خُفِّفت عند auto load
       _updateGenerateBtn();
@@ -164,38 +170,81 @@
   }
 
   function _onFileSelected(e) {
-    const file = e.target.files[0];
-    if (file) _processFile(file);
+    // [FIXED] كان بياخد أول ملف بس (files[0]) من غير ما يدعم رفع كذا ملف
+    // مرة واحدة. دلوقتي بيمرر كل الملفات المختارة لـ _processFiles.
+    const files = e.target.files;
+    if (files && files.length) _processFiles([...files]);
   }
 
-  function _processFile(file) {
-    // Validate extension
-    if (!file.name.toLowerCase().endsWith('.md')) {
-      window.toast('Please upload a .md file only', 'error');
-      return;
-    }
-    // Validate size (500KB)
-    if (file.size > 500 * 1024) {
-      window.toast('File too large — max 500KB', 'error');
-      return;
+  /**
+   * [FIXED] مشكلة 2-أ — كانت _processFile (مفرد) بتاخد ملف واحد بس.
+   * دلوقتي _processFiles (جمع) بتقبل كذا ملف: تتحقق من كل ملف على حدة
+   * (امتداد .md + حجم أقصى 500KB)، تتجاهل غير الصالح مع تنبيه، تقرأ
+   * الباقي، وتخليهم مصفوفة عناصر مستقلة {name, content} — كل ملف مشروع
+   * قائم بذاته يُبعت لـ edge function عشان يطلع وصف/بوست مستقل لكل واحد.
+   */
+  async function _processFiles(files) {
+    if (files.length > MAX_UPLOAD_FILES) {
+      window.toast(`You can upload up to ${MAX_UPLOAD_FILES} files at once — using the first ${MAX_UPLOAD_FILES}.`, 'warn');
+      files = files.slice(0, MAX_UPLOAD_FILES);
     }
 
-    const reader = new FileReader();
-    reader.onload = e => {
-      const content = e.target.result;
-      if (!content || content.trim().length < 10) {
-        window.toast('The file appears to be empty or too short to analyze.', 'error');
+    // ── تحقق من كل ملف على حدة؛ نتجاهل غير الصالح ونكمل بالباقي
+    const validFiles = [];
+    for (const file of files) {
+      if (!file.name.toLowerCase().endsWith('.md')) {
+        window.toast(`"${file.name}" skipped — only .md files are supported`, 'error');
+        continue;
+      }
+      if (file.size > 500 * 1024) {
+        window.toast(`"${file.name}" skipped — max 500KB per file`, 'error');
+        continue;
+      }
+      validFiles.push(file);
+    }
+
+    if (!validFiles.length) return;
+
+    try {
+      const readResults = await Promise.all(validFiles.map(_readFileAsText));
+
+      // نفس الحد الأدنى القديم: نتجاهل أي ملف فاضي أو أقصر من 10 حروف
+      const usable = readResults.filter(r => r.content && r.content.trim().length >= 10);
+      if (!usable.length) {
+        window.toast('The file(s) appear to be empty or too short to analyze.', 'error');
         return;
       }
-      readmeContent = content;
-      _showFilePill(file.name);
-    };
-    reader.onerror = () => window.toast('Could not read file', 'error');
-    reader.readAsText(file);
+
+      // [FIXED] كل ملف يفضل عنصر مستقل بالاسم — بدل دمجهم في نص واحد —
+      // عشان edge function يقدر يطلع وصف/بوست مستقل لكل مشروع
+      _uploadedItems = usable;
+      _showFilePill(usable.map(r => r.name));
+
+    } catch (err) {
+      console.error('[ReadmeAnalyzer] Failed to read file(s):', err);
+      window.toast('Could not read one or more files', 'error');
+    }
   }
 
-  function _showFilePill(name) {
-    fileNameEl.textContent  = name;
+  function _readFileAsText(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload  = e => resolve({ name: file.name, content: e.target.result });
+      reader.onerror = () => reject(new Error(`Failed to read ${file.name}`));
+      reader.readAsText(file);
+    });
+  }
+
+  /**
+   * [FIXED] بقت بتقبل اسم واحد أو مصفوفة أسماء — تعرض "N files: a.md, b.md, +K more"
+   * لما يكون فيه أكثر من ملف، والاسم الكامل زي ما هو لو ملف واحد.
+   */
+  function _showFilePill(names) {
+    const list = Array.isArray(names) ? names : [names];
+    fileNameEl.textContent = list.length === 1
+      ? list[0]
+      : `${list.length} files: ${list.slice(0, 3).join(', ')}${list.length > 3 ? `, +${list.length - 3} more` : ''}`;
+    filePill.title = list.join(', ');
     filePill.classList.remove('hidden');
     uploadZone.style.display = 'none';
     _updateGenerateBtn();
@@ -220,7 +269,7 @@
   }
 
   function _updateGenerateBtn() {
-    const hasFile    = !!(readmeContent || window._autoReadmeContent);
+    const hasFile    = _uploadedItems.length > 0 || !!(window._autoReadmeItems && window._autoReadmeItems.length > 0);
     const hasOutputs = _getSelectedOutputs().length > 0;
     generateBtn.disabled = !(hasFile && hasOutputs);
   }
@@ -229,9 +278,10 @@
      GENERATE
   ───────────────────────────────────────────────────────────────────── */
   generateBtn.addEventListener('click', async () => {
-    const effectiveContent = readmeContent || window._autoReadmeContent || null;
+    // [FIXED] effectiveItems بقت مصفوفة مشاريع مسمّاة بدل نص واحد مُدمج
+    const effectiveItems = _uploadedItems.length ? _uploadedItems : (window._autoReadmeItems || []);
 
-    if (!effectiveContent) {
+    if (!effectiveItems.length) {
       window.toast('Please upload a README file or use Auto Generate from GitHub', 'warn');
       return;
     }
@@ -250,10 +300,10 @@
       }
     }
 
-    await _runGeneration(selectedOutputs, effectiveContent);
+    await _runGeneration(selectedOutputs, effectiveItems);
   });
 
-  async function _runGeneration(selectedOutputs, effectiveContent) {
+  async function _runGeneration(selectedOutputs, effectiveItems) {
     const sb = window._supabaseClient;
     if (!sb) {
       window.toast('Not connected — please refresh', 'error');
@@ -270,9 +320,11 @@
       _animateProgress(70, 8000);
 
       // ── Call edge function
+      // [FIXED] readmeItems بدل readmeContent — يدعم الرفع اليدوي والـ auto
+      // GitHub بنفس الشكل، وبيسمح لـ edge function يميّز بين المشاريع
       const { data, error } = await sb.functions.invoke('readme-analyze', {
         body: {
-          readmeContent:    effectiveContent,   // يدعم الرفع اليدوي والـ auto GitHub
+          readmeItems:      effectiveItems,
           requestedOutputs: selectedOutputs,
           userId: currentUserId,
         },
@@ -351,10 +403,64 @@
       $('block-bio').style.display = '';
     }
 
-    // ── Project description
-    if (outputs.project) {
-      $('content-project').textContent = outputs.project;
-      $('block-project').style.display = '';
+    // ── Project descriptions
+    // [FIXED] كان outputs.project (وصف واحد بس، فعليًا وصف أول مشروع بس
+    // مهما كان عدد الملفات/الـ repos المُرسلة). بقى outputs.projects
+    // (مصفوفة) — بلوك مستقل لكل مشروع بالاسم.
+    if (outputs.projects && outputs.projects.length) {
+      const container = $('projects-container');
+      container.innerHTML = '';
+
+      outputs.projects.forEach((proj, i) => {
+        const name = proj?.name || `Project ${i + 1}`;
+        const desc = proj?.description || '';
+        const contentId = `content-project-${i}`;
+
+        if (i > 0) {
+          const divider = document.createElement('hr');
+          divider.className = 'result-divider';
+          container.appendChild(divider);
+        }
+
+        const block = document.createElement('div');
+        block.className = 'result-block';
+
+        const header = document.createElement('div');
+        header.className = 'result-block__header';
+
+        const title = document.createElement('div');
+        title.className = 'result-block__title';
+        title.textContent = `💼 ${name}`;
+
+        const actions = document.createElement('div');
+        actions.className = 'result-block__actions';
+
+        const editBtn = document.createElement('button');
+        editBtn.className = 'btn btn--ghost btn--sm';
+        editBtn.textContent = 'Edit';
+        editBtn.addEventListener('click', () => window.toggleEdit(editBtn, contentId));
+
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'btn btn--ghost btn--sm';
+        copyBtn.textContent = 'Copy';
+        copyBtn.addEventListener('click', () => window.copyContent(contentId, copyBtn));
+
+        actions.appendChild(editBtn);
+        actions.appendChild(copyBtn);
+        header.appendChild(title);
+        header.appendChild(actions);
+
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'result-content';
+        contentDiv.id = contentId;
+        contentDiv.textContent = desc;
+
+        block.appendChild(header);
+        block.appendChild(contentDiv);
+        container.appendChild(block);
+      });
+
+      $('block-projects').style.display = '';
     }
 
     // ── LinkedIn posts
@@ -363,7 +469,8 @@
       postsWrap.innerHTML = '';
       _postsRaw = [];
 
-      // The edge function returns an array of {post, hashtags} or plain strings
+      // The edge function returns an array of {project, post, hashtags} (new)
+      // or {post, hashtags} / plain strings (old shape — توافق رجعي)
       const posts = Array.isArray(outputs.linkedin_posts)
         ? outputs.linkedin_posts
         : [outputs.linkedin_posts];
@@ -379,13 +486,16 @@
         const postEl = document.createElement('div');
         postEl.className = 'linkedin-post';
 
-        // ── Header (Post N label + Copy button)
+        // ── Header (project name label + Copy button)
         const header = document.createElement('div');
         header.className = 'linkedin-post__header';
 
         const numSpan = document.createElement('span');
         numSpan.className   = 'linkedin-post__num';
-        numSpan.textContent = `Post ${i + 1}`;
+        // [FIXED] كان "Post N" ثابت — بقى بيعرض اسم المشروع اللي البوست
+        // عنه لو متوفر (الشكل الجديد)، وبيرجع لـ "Post N" كـ fallback
+        // للتوافق الرجعي مع الشكل القديم.
+        numSpan.textContent = (typeof item === 'object' && item.project) ? `🔗 ${item.project}` : `Post ${i + 1}`;
 
         const copyBtn = document.createElement('button');
         copyBtn.className   = 'btn btn--ghost btn--sm';
@@ -543,17 +653,18 @@
   ───────────────────────────────────────────────────────────────────── */
   window.resetAnalyzer = function () {
     // ── State
-    readmeContent = null;
+    _uploadedItems = [];
     _postsRaw     = [];
     _skillsRaw    = [];
 
     // ── Auto-generate state (GitHub)
-    window._autoReadmeContent = null;
-    window._autoReadmeLabel   = null;
+    window._autoReadmeItems = null;
+    window._autoReadmeLabel = null;
 
     // ── File UI
     fileInput.value = '';
     filePill.classList.add('hidden');
+    filePill.removeAttribute('title');
     uploadZone.style.display  = '';
     uploadZone.style.opacity  = '1';   // أُعيد لو كان خُفِّف عند auto load
 
@@ -570,17 +681,19 @@
 
     // ── Results
     resultsSection.classList.remove('is-visible');
-    ['block-bio','block-project','block-linkedin-posts','block-report','block-skills']
+    ['block-bio','block-projects','block-linkedin-posts','block-report','block-skills']
       .forEach(id => {
         const el = $(id);
         if (el) el.style.display = 'none';
       });
 
     // ── Clear content
-    ['content-bio','content-project','content-report'].forEach(id => {
+    ['content-bio','content-report'].forEach(id => {
       const el = $(id);
       if (el) { el.textContent = ''; el.removeAttribute('contenteditable'); }
     });
+    const projectsContainer = $('projects-container');
+    if (projectsContainer) projectsContainer.innerHTML = '';
     const skillsList = $('skills-list');
     if (skillsList) skillsList.innerHTML = '';
     const postsContainer = $('linkedin-posts-container');
@@ -717,20 +830,23 @@
         return;
       }
 
-      // ── دمج READMEs — كل readme نص مقطوع 600 حرف بعد stripMarkdown
-      const combinedContent = reposWithReadme
-        .map(r => `# ${r.name}\n\n${r.readme}`)
-        .join('\n\n---\n\n');
+      // [FIXED] كل repo يفضل عنصر مستقل بالاسم — بدل دمجهم في نص واحد —
+      // عشان edge function يقدر يطلع وصف/بوست مستقل لكل repo (كل واحد
+      // بالفعل مقطوع 600 حرف بعد stripMarkdown من جوه fetchGitHubData)
+      const items = reposWithReadme.map(r => ({ name: r.name, content: r.readme }));
 
       const label = `GitHub: @${githubUsername} (${reposWithReadme.length} repo${reposWithReadme.length > 1 ? 's' : ''})`;
 
       // ── حقن المحتوى كـ "ملف مُحمَّل"
-      window._autoReadmeContent = combinedContent;
-      window._autoReadmeLabel   = label;
+      window._autoReadmeItems = items;
+      window._autoReadmeLabel = label;
 
       // ── تحديث الـ UI
       if (fileNameEl) fileNameEl.textContent = label;
-      if (filePill)   filePill.classList.remove('hidden');
+      if (filePill) {
+        filePill.classList.remove('hidden');
+        filePill.title = items.map(i => i.name).join(', ');
+      }
       if (uploadZone) uploadZone.style.opacity = '0.4';   // خفِّف الـ upload zone (لا تُخفيها)
       if (hint)       hint.textContent = `✓ Loaded ${reposWithReadme.length} README${reposWithReadme.length > 1 ? 's' : ''} — hit Analyze to generate!`;
 

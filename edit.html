@@ -306,9 +306,9 @@
             </svg>
             <span style="font-size:var(--fs-xs); color:var(--clr-text-3); letter-spacing:var(--ls-wide); text-transform:uppercase; flex-shrink:0;">Gmail</span>
             <span data-edit="gmailAddress"
-                  aria-label="Gmail address — click to edit"
+                  aria-label="Gmail address — verified from your account, not editable"
                   style="flex:1; font-size:var(--fs-sm); color:var(--clr-text-2); min-width:80px; outline:none;"
-                  title="Click to edit Gmail address"></span>
+                  title="Verified from your account — not editable"></span>
           </div>
           <!-- [FIXED] كانت مجمّعة في state.twitterUrl/websiteUrl في portfolio-builder.js
                وبتتحفظ في custom_sections (contact_meta)، لكن مفيش أي حقل تحرير
@@ -581,6 +581,22 @@
         );
       }
 
+      // [FIXED] ثغرة انتحال هوية (مشكلة 3): كان بيعرض rawDraft.gmailAddress
+      // زي ما هو (نص حر من portfolios.gmail_address، ممكن يكون اتلعب فيه
+      // قبل كده) — فيبان للمستخدم إنه "قيمته المحفوظة" رغم إن publish() دلوقتي
+      // بيقفلها على إيميل الجلسة الموثّق دايماً. نجيب الإيميل الموثّق هنا كمان
+      // عشان اللي المستخدم شايفه في edit.html يطابق اللي هيُحفظ فعليًا.
+      let verifiedEmail = '';
+      try {
+        const sbForEmail = window._supabaseClient;
+        if (sbForEmail) {
+          const { data: sessionData } = await sbForEmail.auth.getUser();
+          verifiedEmail = sessionData?.user?.email || '';
+        }
+      } catch (err) {
+        console.error('[edit.html] Failed to fetch verified session email:', err);
+      }
+
       // 5. Normalise draft:
       //    portfolio.js بيدور على data-edit='name' — نعمل alias من fullName
       const draft = {
@@ -588,7 +604,10 @@
         name:     rawDraft.fullName || rawDraft.githubUser?.name || '',
         fullName: rawDraft.fullName || rawDraft.githubUser?.name || '',
         linkedinUrl:     rawDraft.linkedinUrl     || '',
-        gmailAddress:    rawDraft.gmailAddress    || '',
+        // [FIXED] gmailAddress بقى مقفول على الإيميل الموثّق من الجلسة —
+        // مش rawDraft.gmailAddress القابل للتزييف. fallback لـ rawDraft
+        // بس لو فشل جلب الجلسة لأي سبب (نادر جداً).
+        gmailAddress:    verifiedEmail || rawDraft.gmailAddress || '',
         custom_sections: rawDraft.custom_sections || [],
         // projects: normalise field names
         projects: (rawDraft.projects || []).map(p => ({

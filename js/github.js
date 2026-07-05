@@ -44,6 +44,25 @@ function cacheSet(key, data) {
   _cache.set(key, { data, ts: Date.now() });
 }
 
+/**
+ * [FIXED] مكمّل لإصلاح مشكلة 2-ب — cacheGet() بيرجع null لحالتين مختلفتين:
+ * "مفيش cache entry خالص" و"فيه entry بس قيمته null فعلاً" (زي repos من
+ * غير README). fetchRepoReadme() كانت بتفرّق بينهم غلط (`cached !== null`)
+ * فتعيد الطلب للشبكة تاني في كل مرة حتى لو النتيجة السلبية محفوظة فعلاً —
+ * ده بيزوّد عدد الطلبات لـ raw.githubusercontent.com/api.github.com من غير
+ * داعي، وهو نفس نوع الضغط اللي سبب مشكلة "العالق على نفس الريبو". الحل:
+ * فحص وجود الـ entry بشكل مستقل عن قيمته.
+ */
+function cacheHas(key) {
+  const entry = _cache.get(key);
+  if (!entry) return false;
+  if (Date.now() - entry.ts > CACHE_TTL) {
+    _cache.delete(key);
+    return false;
+  }
+  return true;
+}
+
 /* ─────────────────────────────────────────────────────────────────
    ERROR TYPES
 ───────────────────────────────────────────────────────────────── */
@@ -276,45 +295,53 @@ async function fetchRepoLanguages(fullName) {
    We only need the first ~500 chars for context
 ───────────────────────────────────────────────────────────────── */
 /**
+ * [FIXED] مشكلة 2-ب — كانت بتحاول تجيب الـ README مباشرة من
+ * raw.githubusercontent.com (3 محاولات: README.md / readme.md / README)
+ * بمكالمات متوازية (5 في نفس الوقت جوه fetchGitHubData). الدومين ده منفصل
+ * تمامًا عن api.github.com وعنده rate-limit خاص بيه غير موثّق وأشد صرامة
+ * مع طلبات متوازية غير مُصادَق عليها — وأي فشل كان بيُبلّع بصمت في
+ * catch { continue; } من غير تمييز بين "مفيش README فعلاً" و"الطلب فشل".
+ * بما إن candidates دايمًا مُرتّبة بنفس الترتيب (الأعلى نجوم أولاً)، كان
+ * أول repo في كل batch بيفضل ينجح والباقي يفشل بصمت ويترجع null —
+ * فتُستبعد من readme-analyzer.js ويظهر إنه "عالق على نفس الريبو الأول".
+ *
+ * الحل: استخدام GitHub REST API endpoint الرسمي لـ README
+ * (api.github.com/repos/{full_name}/readme) عبر ghFetch() نفسها المستخدمة
+ * في باقي الدوال — فبتشارك نفس budget الـ rate-limit المُتحكَّم فيه فعليًا
+ * (كشف 429/403 موجود جوه ghFetch)، وبتكتشف اسم/امتداد ملف الـ README
+ * الصحيح تلقائيًا من GitHub نفسه بدل التخمين.
+ *
  * @param {string} fullName e.g. "torvalds/linux"
- * @param {string} defaultBranch e.g. "main"
  * @returns {Promise<string|null>}
  */
-async function fetchRepoReadme(fullName, defaultBranch = 'main') {
+async function fetchRepoReadme(fullName) {
   const cacheKey = `readme:${fullName}`;
-  const cached = cacheGet(cacheKey);
-  if (cached !== null) return cached;
+  // [FIXED] راجع الشرح الكامل عند تعريف cacheHas() فوق
+  if (cacheHas(cacheKey)) return cacheGet(cacheKey);
 
-  // Try README.md in common case variations
-  const candidates = [
-    `https://raw.githubusercontent.com/${fullName}/${defaultBranch}/README.md`,
-    `https://raw.githubusercontent.com/${fullName}/${defaultBranch}/readme.md`,
-    `https://raw.githubusercontent.com/${fullName}/${defaultBranch}/README`,
-  ];
+  try {
+    const data = await ghFetch(`${GH_BASE}/repos/${fullName}/readme`, {}, README_TIMEOUT);
 
-  for (const url of candidates) {
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), README_TIMEOUT);
-
-      const res = await fetch(url, { signal: controller.signal });
-      clearTimeout(timer);
-
-      if (res.ok) {
-        const text = await res.text();
-        // Strip markdown syntax, keep plain text, truncate
-        const clean = stripMarkdown(text).slice(0, 600).trim();
-        cacheSet(cacheKey, clean);
-        return clean;
-      }
-    } catch {
-      // Try next candidate
-      continue;
+    if (!data || typeof data.content !== 'string') {
+      cacheSet(cacheKey, null);
+      return null;
     }
-  }
 
-  cacheSet(cacheKey, null);
-  return null;
+    // المحتوى base64 وممكن يكون متقسّم بأسطر جديدة — لازم تُشال قبل الـ decode
+    const decoded = atob(data.content.replace(/\n/g, ''));
+    // تحويل صحيح لأي حروف يونيكود (عربي/رموز) جوه الـ README
+    const bytes = Uint8Array.from(decoded, c => c.charCodeAt(0));
+    const text  = new TextDecoder('utf-8').decode(bytes);
+
+    const clean = stripMarkdown(text).slice(0, 600).trim();
+    cacheSet(cacheKey, clean || null);
+    return clean || null;
+
+  } catch {
+    // Non-critical — degrade gracefully (نفس نمط fetchRepoLanguages)
+    cacheSet(cacheKey, null);
+    return null;
+  }
 }
 
 /**
@@ -553,7 +580,7 @@ async function fetchGitHubData(username, onProgress) {
 
       // README (only for repos with descriptions — saves time)
       if (repo.description || repo.stargazers_count > 0) {
-        const readme = await fetchRepoReadme(repo.full_name, repo.default_branch);
+        const readme = await fetchRepoReadme(repo.full_name);
         readmeMap.set(repo.full_name, readme);
       } else {
         readmeMap.set(repo.full_name, null);

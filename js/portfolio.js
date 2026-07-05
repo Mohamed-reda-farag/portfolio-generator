@@ -1465,6 +1465,11 @@
     $$('[data-edit]').forEach(el => {
       const field = el.getAttribute('data-edit');
       if (field === 'projectName' || field === 'projectDesc') return;
+      // [FIXED] ثغرة انتحال هوية (مشكلة 3): gmailAddress بقى مقفول على
+      // الإيميل الموثّق من الجلسة (auth.users.email) — نفس نمط "Email
+      // locked from session" في CV Builder. مايفضلش قابل للتعديل هنا،
+      // عشان مايبقاش فيه فرق بين اللي المستخدم شايفه واللي فعليًا بيُحفظ.
+      if (field === 'gmailAddress') { el.classList.add('is-locked'); return; }
 
       el.setAttribute('contenteditable', 'true');
       el.setAttribute('spellcheck', 'false');
@@ -1902,7 +1907,14 @@
                   .replace(/-+/g, '-')
                   .replace(/^-|-$/g, '')
                   .slice(0, 39)
-              : _slugifyName(draft.fullName || draft.name || `user-${userId.slice(0, 8)}`);
+              // [FIXED] كان draft.fullName || draft.name — بما إن fullName بيفضل
+              // ثابت من التحميل الأولي وما بيتحدّثش أبداً عند تعديل حقل الاسم
+              // (data-edit="name" بيحدّث draft.name بس)، كان أي تعديل للاسم
+              // في edit.html يتم تجاهله هنا تمامًا. عكسنا الأولوية: draft.name
+              // (القيمة المُعدَّلة فعليًا) أولاً، وfullName كـ fallback فقط لو
+              // الاسم فاضي. الاتنين بيبدأوا بنفس القيمة عند التحميل، فمفيش أي
+              // تأثير على GitHub-flow أو أول نشر.
+              : _slugifyName(draft.name || draft.fullName || `user-${userId.slice(0, 8)}`);
 
             slug = await _generateUniqueSlug(sb, base);
           }
@@ -1910,7 +1922,8 @@
           await sb.from('users').upsert({
             id: userId, email: authData.user.email || '',
             github_username: draft.githubUsername || '',
-            full_name: draft.fullName || draft.name || '',
+            // [FIXED] عكس الأولوية — راجع الشرح الكامل عند تعريف slug فوق.
+            full_name: draft.name || draft.fullName || '',
             job_title: draft.jobTitle || '',
           }, { onConflict: 'id' });
 
@@ -1919,11 +1932,18 @@
             skills: draft.skills || [], theme: draft.theme || 'dark',
             slug, is_published: true, updated_at: new Date().toISOString(),
             linkedin_url:    draft.linkedinUrl  || null,
-            gmail_address:   draft.gmailAddress || null,
+            // [FIXED] ثغرة انتحال هوية (مشكلة 3): كان بيكتب draft.gmailAddress
+            // كما هو — نص حر بيتحدّث بالكامل من data-edit="gmailAddress" في
+            // edit.html من غير أي تحقق مقابل auth.users.email، فيسمح لأي
+            // مستخدم يعرض إيميل حد تاني على بورتفوليوه العام. الحل: نستخدم
+            // authData.user.email الموثّق من الجلسة مباشرة (نفس المصدر
+            // المستخدم فعلاً لـ users.email فوق) — بدل ما نثق في draft خالص.
+            gmail_address:   authData.user.email || null,
             custom_sections: _rebuildCustomSectionsWithContactMeta(draft),
             // Denormalized user fields — avoids RLS-blocked users table query
             // for anonymous visitors on the public portfolio page.
-            full_name:       draft.fullName  || draft.name || '',
+            // [FIXED] عكس أولوية name/fullName — راجع الشرح عند تعريف slug فوق.
+            full_name:       draft.name  || draft.fullName || '',
             github_username: draft.githubUsername || '',
             job_title:       draft.jobTitle  || '',
           }, { onConflict: 'user_id' });

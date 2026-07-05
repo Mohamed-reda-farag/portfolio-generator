@@ -43,7 +43,7 @@
       projects: [],
       experience: [],
       education: [],
-      email: '', linkedinUrl: '', githubUrl: '', twitterUrl: '', websiteUrl: '',
+      email: '', linkedinUrl: '', twitterUrl: '', websiteUrl: '',
       selectedTheme: 'dark', // مطابق لـ DEFAULT_FREE_THEME في portfolio.js
     };
   }
@@ -51,6 +51,11 @@
   let state          = _defaultState();
   let _currentUser    = null;
   let _isPro          = false;
+  // [FIXED] مشكلة 3 — الاسم ده كان بيتحوّل من نص حر (state.githubUrl) بدون
+  // أي تحقق. دلوقتي بيتحمّل من users.github_username (اللي مايتغيّرش إلا
+  // عن طريق OAuth حقيقي في auth.js/dashboard.html) في init()، ومش موجود
+  // في state خالص عشان مايتلخبطش مع باقي حقول الفورم القابلة للتعديل.
+  let _verifiedGithubUsername = null;
   // Fix 1 — key مرتبط بالـ user ID (يُضبط في init() بعد getUser())
   let _storageKey     = STORAGE_KEY; // fallback للـ base key قبل التهيئة
 
@@ -120,15 +125,6 @@
       .replace(/^-|-$/g, '')
       .slice(0, 40)
       || 'user';
-  }
-
-  /** يحوّل GitHub URL أو @username لاسم username نضيف بس (مش URL كامل) */
-  function _extractGithubUsername(input) {
-    if (!input) return '';
-    const trimmed = input.trim();
-    const m = trimmed.match(/github\.com\/([A-Za-z0-9-]+)/i);
-    if (m) return m[1];
-    return trimmed.replace(/^@/, '');
   }
 
   /** نفس منطق display_name في portfolio.js/portfolio.html — اسم العرض
@@ -347,6 +343,17 @@
   }
 
   function _panel6() {
+    // [FIXED] ثغرة انتحال هوية (مشكلة 3): كان فيه حقل نص حر "GitHub URL"
+    // بيتحوّل مباشرة لـ github_username عبر _extractGithubUsername() من غير
+    // أي تحقق OAuth — أي مستخدم Google كان يقدر يكتب github.com/torvalds
+    // ويظهر بورتفوليوه مرتبط بحساب حقيقي مش بتاعه. الحل: مفيش حقل نص خالص
+    // هنا تاني — بس عرض read-only لحالة الربط الموثّقة فعليًا (users.github_username
+    // اللي مايتغيّرش إلا عن طريق OAuth حقيقي في auth.js/dashboard.html)،
+    // مع لينك لصفحة الـ dashboard لو عايز يربط GitHub فعليًا.
+    const githubStatusHtml = _verifiedGithubUsername
+      ? `<p class="input-hint">✓ Connected as <strong>@${escapeHtml(_verifiedGithubUsername)}</strong> (verified via GitHub sign-in)</p>`
+      : `<p class="input-hint">Not connected. <a href="dashboard.html" target="_blank" rel="noopener">Connect GitHub from your dashboard</a> to link a verified username here.</p>`;
+
     return `
     <section class="step-panel" data-step="6">
       <h2 class="step-panel__title">Contact &amp; Links</h2>
@@ -366,9 +373,8 @@
       </div>
       <div class="field-row">
         <div class="input-group">
-          <label class="input-label" for="f-github">GitHub URL</label>
-          <input id="f-github" class="input" data-field="githubUrl" type="text" placeholder="https://github.com/you or just your-username" />
-          <span class="input-hint">Optional — add this manually, or connect GitHub from your dashboard instead.</span>
+          <span class="input-label">GitHub</span>
+          ${githubStatusHtml}
         </div>
       </div>
       <div class="field-row">
@@ -1191,7 +1197,9 @@
 
       // 2. slug فريد من full name
       const slug = await _generateUniqueSlug(sb, state.fullName);
-      const githubUsername = _extractGithubUsername(state.githubUrl);
+      // [FIXED] كان بيتحول من نص حر (state.githubUrl) بدون أي تحقق —
+      // دلوقتي بنستخدم _verifiedGithubUsername المحمّل من users.github_username
+      // في init() (المصدر الوحيد اللي بيتحدّث فقط عن طريق OAuth حقيقي).
 
       // 3. أنشئ الـ portfolio
       const { data: portfolio, error: pErr } = await sb
@@ -1205,8 +1213,15 @@
           theme:            state.selectedTheme,
           slug:             slug,
           linkedin_url:     state.linkedinUrl || null,
-          gmail_address:    state.email,
-          github_username:  githubUsername || null, // Fix 5 — null لـ Google users بدل ''
+          // [FIXED] ثغرة انتحال هوية (مشكلة 3): كان بيكتب state.email كما هو
+          // (نص حر من حقل الفورم، بلا أي تحقق مقابل auth.users.email) — نفس
+          // فئة الثغرة بتاعة gmail_address في edit.html. الحل: نقفله على
+          // إيميل الجلسة الموثّق (_currentUser.email من window.Auth.getUser())
+          // بدل ما نثق في الفورم خالص. fallback لـ state.email بس لو
+          // _currentUser.email مش موجود لأي سبب نادر.
+          gmail_address:    _currentUser.email || state.email || null,
+          // [FIXED] راجع الشرح فوق — مصدر موثّق بدل نص حر.
+          github_username:  _verifiedGithubUsername || null,
           photo_url:        state.photoUrl || null,
           location:         state.location || null,
           is_published:     false, // [MODIFIED] كان true — الآن ننتظر تأكيد المستخدم من شاشة Preview
@@ -1291,8 +1306,15 @@
 
     const sb = window._supabaseClient;
     if (sb) {
-      const { data } = await sb.from('users').select('is_pro').eq('id', _currentUser.id).single();
+      const { data } = await sb
+        .from('users')
+        .select('is_pro, github_username')
+        .eq('id', _currentUser.id)
+        .single();
       _isPro = data?.is_pro === true;
+      // [FIXED] مشكلة 3 — المصدر الوحيد الموثوق لـ github_username هو
+      // الصف ده في DB (بيتحدّث فقط عن طريق OAuth حقيقي)، مش أي نص حر.
+      _verifiedGithubUsername = data?.github_username || null;
     }
 
     // تعبية مبدئية من بيانات تسجيل الدخول لو الحقول فاضية لسه
