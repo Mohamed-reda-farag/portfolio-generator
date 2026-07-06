@@ -189,6 +189,13 @@
       line-height: 1; transition: color var(--dur-fast);
     }
     .file-pill__remove:hover { color: var(--clr-error); }
+    .file-pill__add {
+      background: none; border: 1px solid rgba(0,255,136,0.3); color: var(--clr-accent);
+      cursor: pointer; font-size: var(--fs-xs); padding: 2px var(--sp-2);
+      border-radius: var(--radius-full); line-height: 1.4; margin-left: var(--sp-1);
+      transition: background var(--dur-fast);
+    }
+    .file-pill__add:hover { background: rgba(0,255,136,0.12); }
 
     /* ── Output checkboxes ── */
     .outputs-section { margin-bottom: var(--sp-6); }
@@ -456,7 +463,8 @@
     <div id="file-pill" class="file-pill hidden">
       <span>✓</span>
       <span id="file-name">filename.md</span>
-      <button class="file-pill__remove" id="remove-file" title="Remove file(s)">✕</button>
+      <button class="file-pill__add" id="add-more-file" title="Add another file">+ Add</button>
+      <button class="file-pill__remove" id="remove-file" title="Remove all files">✕</button>
     </div>
 
     <!-- ── OR divider ── -->

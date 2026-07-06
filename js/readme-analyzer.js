@@ -34,11 +34,12 @@
   /* ─── DOM refs ─────────────────────────────────────────────────────── */
   const $ = id => document.getElementById(id);
 
-  const uploadZone    = $('upload-zone');
-  const fileInput     = $('file-input');
-  const filePill      = $('file-pill');
-  const fileNameEl    = $('file-name');
-  const removeFileBtn = $('remove-file');
+  const uploadZone     = $('upload-zone');
+  const fileInput      = $('file-input');
+  const filePill       = $('file-pill');
+  const fileNameEl     = $('file-name');
+  const removeFileBtn  = $('remove-file');
+  const addMoreFileBtn = $('add-more-file');
   const generateBtn   = $('generate-btn');
   const usageBar      = $('usage-bar');
   const usageRemEl    = $('usage-remaining');
@@ -167,6 +168,12 @@
       uploadZone.style.opacity  = '1';   // إعادة opacity لو خُفِّفت عند auto load
       _updateGenerateBtn();
     });
+
+    // [FIXED] مشكلة إضافة ملف تاني — كان مفيش أي طريقة تضيف ملف بعد اختيار
+    // أول واحد (upload-zone بتتخفي فور ظهور الـ pill)، فكان لازم كل الملفات
+    // تُختار مرة واحدة من نفس المجلد. زر "+ Add" بيفتح نفس الـ file picker
+    // تاني، و_processFiles بقت تضيف (append) للمصفوفة الموجودة بدل استبدالها.
+    addMoreFileBtn?.addEventListener('click', () => fileInput.click());
   }
 
   function _onFileSelected(e) {
@@ -174,6 +181,10 @@
     // مرة واحدة. دلوقتي بيمرر كل الملفات المختارة لـ _processFiles.
     const files = e.target.files;
     if (files && files.length) _processFiles([...files]);
+    // [FIXED] لازم نصفّر الـ input فورًا (مش بعد الـ async processing) —
+    // عشان لو المستخدم ضغط "+ Add" واختار نفس اسم الملف تاني، الـ change
+    // event يتفعّل تاني بدل ما يفضل ساكت لأن القيمة متكررة.
+    e.target.value = '';
   }
 
   /**
@@ -184,12 +195,20 @@
    * قائم بذاته يُبعت لـ edge function عشان يطلع وصف/بوست مستقل لكل واحد.
    */
   async function _processFiles(files) {
-    if (files.length > MAX_UPLOAD_FILES) {
-      window.toast(`You can upload up to ${MAX_UPLOAD_FILES} files at once — using the first ${MAX_UPLOAD_FILES}.`, 'warn');
-      files = files.slice(0, MAX_UPLOAD_FILES);
+    // [FIXED] الحد الأقصى بقى على الإجمالي (الموجود + الجديد) — مش على
+    // الدفعة الجديدة لوحدها — عشان زر "+ Add" يحسب صح مع الملفات المُضافة قبل كده
+    const remainingSlots = MAX_UPLOAD_FILES - _uploadedItems.length;
+    if (remainingSlots <= 0) {
+      window.toast(`You can upload up to ${MAX_UPLOAD_FILES} files total — remove one first to add another.`, 'warn');
+      return;
+    }
+    if (files.length > remainingSlots) {
+      window.toast(`Only ${remainingSlots} more file(s) can be added (max ${MAX_UPLOAD_FILES} total) — using the first ${remainingSlots}.`, 'warn');
+      files = files.slice(0, remainingSlots);
     }
 
     // ── تحقق من كل ملف على حدة؛ نتجاهل غير الصالح ونكمل بالباقي
+    const existingNames = new Set(_uploadedItems.map(r => r.name));
     const validFiles = [];
     for (const file of files) {
       if (!file.name.toLowerCase().endsWith('.md')) {
@@ -198,6 +217,10 @@
       }
       if (file.size > 500 * 1024) {
         window.toast(`"${file.name}" skipped — max 500KB per file`, 'error');
+        continue;
+      }
+      if (existingNames.has(file.name)) {
+        window.toast(`"${file.name}" skipped — already added`, 'warn');
         continue;
       }
       validFiles.push(file);
@@ -215,10 +238,9 @@
         return;
       }
 
-      // [FIXED] كل ملف يفضل عنصر مستقل بالاسم — بدل دمجهم في نص واحد —
-      // عشان edge function يقدر يطلع وصف/بوست مستقل لكل مشروع
-      _uploadedItems = usable;
-      _showFilePill(usable.map(r => r.name));
+      // [FIXED] append بدل replace — كل ملف يفضل عنصر مستقل بالاسم
+      _uploadedItems = [..._uploadedItems, ...usable];
+      _showFilePill(_uploadedItems.map(r => r.name));
 
     } catch (err) {
       console.error('[ReadmeAnalyzer] Failed to read file(s):', err);
@@ -819,6 +841,13 @@
       // ── جلب بيانات GitHub (الـ in-memory cache يمنع طلبات مكررة)
       const ghData = await window.GitHub.fetchGitHubData(githubUsername);
 
+      // [FIXED] لو حصل rate-limit جزئي جوه fetchGitHubData (بعد ما جاب
+      // بروفايل وقايمة repos بنجاح، بس اتوقف قبل ما يخلّص كل الـ candidates)،
+      // نوضّح للمستخدم إن النتيجة جزئية بدل ما نعرضها كأنها كاملة عادي.
+      if (ghData.rate_limited) {
+        window.toast('GitHub rate limit reached partway through — showing partial results. Try again in a few minutes for the rest.', 'warn');
+      }
+
       // ── استخراج أفضل repos التي لديها README
       // البنية الصحيحة: ghData.top_repos (وليس ghData.repos)
       const reposWithReadme = (ghData.top_repos || [])
@@ -826,7 +855,10 @@
         .slice(0, 3);
 
       if (reposWithReadme.length === 0) {
-        window.toast('No READMEs found in your top repos. Please upload one manually.', 'warn');
+        const msg = ghData.rate_limited
+          ? 'GitHub rate limit reached before any README could be read. Try again in a few minutes.'
+          : 'No READMEs found in your top repos. Please upload one manually.';
+        window.toast(msg, 'warn');
         return;
       }
 

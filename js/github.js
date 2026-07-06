@@ -11,18 +11,36 @@
  *  - Rate limit detection & handling
  *  - Full error taxonomy
  *
- * No auth token required — public data only.
- * API base: https://api.github.com
+ * [FIXED] مشكلة "العالق على نفس الريبو" — السبب الجذري كان: كل النداءات هنا
+ * كانت من غير أي مصادقة ("No auth token required — public data only")،
+ * وده بيحطها تحت حد GitHub الرسمي لغير المُصادَق عليهم: 60 نداء/ساعة للـ IP
+ * الواحد. تشغيلة واحدة من fetchGitHubData() كانت بتعمل ~42 نداء (بروفايل +
+ * قايمة repos + حتى 20 candidate × 2 نداء)، يعني ~70% من الحد كامل في
+ * تشغيلة واحدة — وأي تشغيلة تانية (retry أو مستخدم تاني على نفس الشبكة)
+ * كانت بتضرب 429/403، واللي كان بيُبلّع بصمت كـ "الريبو ده مفهوش بيانات"
+ * بدل ما يوضّح إنه rate-limit. الحل (3 أجزاء):
+ *  1. تقليل عدد الـ candidates من 20 لـ 8 — يقلل النداءات لحد ~18/تشغيلة.
+ *  2. لو حصل rate-limit فعلاً، نوقف باقي الـ batches فورًا (نوفّر الباقي من
+ *     الميزانية) ونرجّع النتيجة مع علم rate_limited=true بدل ما نكمل
+ *     نضرب الحد بصمت — وreadme-analyzer.js بيعرض تنبيه واضح للمستخدم.
+ *  3. كل النداءات دلوقتي بتعدّي عبر edge function (`github-proxy`) بيحمل
+ *     GitHub token من جانب السيرفر — فبيرفع الحد لـ 5000/ساعة (مُصادَق
+ *     عليه). ملحوظة: الحد ده بقى budget مشترك بين كل مستخدمي الموقع مش
+ *     لكل IP لوحده — كافي جدًا للاستخدام العادي، بس تحت ضغط استخدام كبير
+ *     ومتزامن ممكن يوصل له تأثير (نادر جدًا مقارنة بـ 60/ساعة القديمة).
+ *
+ * API base (عبر الـ proxy): https://api.github.com
  */
 
 /* ─────────────────────────────────────────────────────────────────
    CONSTANTS
 ───────────────────────────────────────────────────────────────── */
-const GH_BASE          = 'https://api.github.com';
-const MAX_REPOS_FETCH  = 100;   // GitHub API max per page
-const MAX_REPOS_SHOWN  = 6;     // Portfolio limit
-const README_TIMEOUT   = 5_000; // ms — skip README if slow
-const CACHE_TTL        = 5 * 60 * 1000; // 5 min in-memory cache
+const MAX_REPOS_FETCH   = 100;   // GitHub API max per page
+const MAX_REPOS_SHOWN   = 6;     // Portfolio limit
+const MAX_CANDIDATES    = 8;     // [FIXED] كان 20 — قللناه عشان نقلل النداءات لكل تشغيلة
+const README_TIMEOUT    = 5_000; // ms — skip README if slow
+const CACHE_TTL         = 5 * 60 * 1000; // 5 min in-memory cache
+const GITHUB_PROXY_FN   = 'github-proxy'; // [FIXED] اسم edge function اللي بتحمل الـ token
 
 /* ─────────────────────────────────────────────────────────────────
    IN-MEMORY CACHE
@@ -93,31 +111,35 @@ const GH_ERRORS = {
    CORE FETCH WRAPPER
 ───────────────────────────────────────────────────────────────── */
 /**
- * Wraps fetch with GitHub-specific error handling.
- * @param {string} url
- * @param {RequestInit} [options]
+ * [FIXED] كانت بتعمل fetch() مباشر لـ api.github.com بدون أي مصادقة (حد
+ * 60/ساعة للـ IP). دلوقتي بتعدّي عبر edge function (github-proxy) بيحمل
+ * GitHub token من env، فالحد بقى 5000/ساعة. الـ proxy بيرجّع دايمًا HTTP
+ * 200 مع envelope { status, headers, body } يعكس رد GitHub الحقيقي —
+ * فمنطق فحص 429/403/404 هنا فضل زي ما هو تمامًا، بس بيقرأ من الـ envelope
+ * بدل الرد المباشر.
+ *
+ * @param {string} path — مسار GitHub API بس (مثلاً "/users/torvalds")، من غير الدومين
+ * @param {RequestInit} [options] — حاليًا مش مستخدمة (كل نداءاتنا GET)، سايبينها للتوافق المستقبلي
  * @param {number} [timeoutMs]
- * @returns {Promise<any>} Parsed JSON
+ * @returns {Promise<any>} الـ body المُفكّك (parsed JSON) من رد GitHub
  */
-async function ghFetch(url, options = {}, timeoutMs = 10_000) {
+async function ghFetch(path, options = {}, timeoutMs = 10_000) {
+  const sb = window._supabaseClient;
+  if (!sb) throw GH_ERRORS.NETWORK();
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-  const headers = {
-    'Accept': 'application/vnd.github.v3+json',
-    ...options.headers,
-  };
-
-  let response;
+  let proxyResult;
   try {
-    response = await fetch(url, {
-      ...options,
-      headers,
-      signal: controller.signal,
+    const { data, error } = await sb.functions.invoke(GITHUB_PROXY_FN, {
+      body: { path },
     });
+    if (error) throw error;
+    proxyResult = data;
   } catch (err) {
     clearTimeout(timer);
-    if (err.name === 'AbortError') {
+    if (err?.name === 'AbortError' || controller.signal.aborted) {
       throw new GitHubError('Request timed out. GitHub might be slow — try again.', 'TIMEOUT');
     }
     throw GH_ERRORS.NETWORK();
@@ -125,12 +147,18 @@ async function ghFetch(url, options = {}, timeoutMs = 10_000) {
     clearTimeout(timer);
   }
 
-  // Rate limit check (before reading body)
-  if (response.status === 429 || response.status === 403) {
-    const resetTs   = response.headers.get('X-RateLimit-Reset');
-    const remaining = response.headers.get('X-RateLimit-Remaining');
+  if (!proxyResult || typeof proxyResult.status !== 'number') {
+    throw GH_ERRORS.NETWORK();
+  }
 
-    if (remaining === '0' || response.status === 429) {
+  const { status, headers = {}, body } = proxyResult;
+
+  // Rate limit check (نفس المنطق القديم بالضبط، بس من الـ envelope)
+  if (status === 429 || status === 403) {
+    const remaining = headers['x-ratelimit-remaining'];
+
+    if (remaining === '0' || status === 429) {
+      const resetTs = headers['x-ratelimit-reset'];
       const resetDate = resetTs
         ? new Date(parseInt(resetTs, 10) * 1000).toLocaleTimeString()
         : 'a few minutes';
@@ -140,19 +168,11 @@ async function ghFetch(url, options = {}, timeoutMs = 10_000) {
     throw GH_ERRORS.FORBIDDEN();
   }
 
-  if (response.status === 404) return null; // Caller decides what 404 means
-  if (response.status >= 500) throw GH_ERRORS.SERVER(response.status);
-  if (!response.ok) throw GH_ERRORS.SERVER(response.status);
+  if (status === 404) return null; // Caller decides what 404 means
+  if (status >= 500) throw GH_ERRORS.SERVER(status);
+  if (status < 200 || status >= 300) throw GH_ERRORS.SERVER(status);
 
-  // Empty body (204 No Content etc.)
-  const text = await response.text();
-  if (!text) return null;
-
-  try {
-    return JSON.parse(text);
-  } catch {
-    throw new GitHubError('Unexpected response from GitHub API.', 'PARSE_ERROR');
-  }
+  return body;
 }
 
 /* ─────────────────────────────────────────────────────────────────
@@ -182,7 +202,7 @@ async function fetchUserProfile(username) {
   const cached = cacheGet(cacheKey);
   if (cached) return cached;
 
-  const data = await ghFetch(`${GH_BASE}/users/${username}`);
+  const data = await ghFetch(`/users/${username}`);
 
   if (!data) throw GH_ERRORS.NOT_FOUND(username);
 
@@ -247,7 +267,7 @@ async function fetchUserRepos(username) {
 
   // Paginate until we have everything or hit our fetch cap
   while (true) {
-    const url = `${GH_BASE}/users/${username}/repos?type=public&sort=pushed&direction=desc&per_page=${MAX_REPOS_FETCH}&page=${page}`;
+    const url = `/users/${username}/repos?type=public&sort=pushed&direction=desc&per_page=${MAX_REPOS_FETCH}&page=${page}`;
     const batch = await ghFetch(url);
 
     if (!batch || batch.length === 0) break;
@@ -281,11 +301,17 @@ async function fetchRepoLanguages(fullName) {
   if (cached) return cached;
 
   try {
-    const data = await ghFetch(`${GH_BASE}/repos/${fullName}/languages`, {}, README_TIMEOUT);
+    const data = await ghFetch(`/repos/${fullName}/languages`, {}, README_TIMEOUT);
     const result = data || {};
     cacheSet(cacheKey, result);
     return result;
-  } catch {
+  } catch (err) {
+    // [FIXED] كنا نبلّع كل الأخطاء بصمت هنا — بما فيهم RATE_LIMITED، وده جزء
+    // من سبب "العالق على نفس الريبو": الفشل بسبب الحد كان يبان زي "مفيش
+    // بيانات" عادي. دلوقتي بنرفع RATE_LIMITED لفوق عشان fetchGitHubData
+    // يوقف باقي الـ batches ويبلّغ المستخدم بوضوح؛ أي خطأ تاني (شبكة، إلخ)
+    // لسه بيتلطف زي ما كان.
+    if (err instanceof GitHubError && err.code === 'RATE_LIMITED') throw err;
     return {}; // Non-critical — degrade gracefully
   }
 }
@@ -295,21 +321,10 @@ async function fetchRepoLanguages(fullName) {
    We only need the first ~500 chars for context
 ───────────────────────────────────────────────────────────────── */
 /**
- * [FIXED] مشكلة 2-ب — كانت بتحاول تجيب الـ README مباشرة من
- * raw.githubusercontent.com (3 محاولات: README.md / readme.md / README)
- * بمكالمات متوازية (5 في نفس الوقت جوه fetchGitHubData). الدومين ده منفصل
- * تمامًا عن api.github.com وعنده rate-limit خاص بيه غير موثّق وأشد صرامة
- * مع طلبات متوازية غير مُصادَق عليها — وأي فشل كان بيُبلّع بصمت في
- * catch { continue; } من غير تمييز بين "مفيش README فعلاً" و"الطلب فشل".
- * بما إن candidates دايمًا مُرتّبة بنفس الترتيب (الأعلى نجوم أولاً)، كان
- * أول repo في كل batch بيفضل ينجح والباقي يفشل بصمت ويترجع null —
- * فتُستبعد من readme-analyzer.js ويظهر إنه "عالق على نفس الريبو الأول".
- *
- * الحل: استخدام GitHub REST API endpoint الرسمي لـ README
- * (api.github.com/repos/{full_name}/readme) عبر ghFetch() نفسها المستخدمة
- * في باقي الدوال — فبتشارك نفس budget الـ rate-limit المُتحكَّم فيه فعليًا
- * (كشف 429/403 موجود جوه ghFetch)، وبتكتشف اسم/امتداد ملف الـ README
- * الصحيح تلقائيًا من GitHub نفسه بدل التخمين.
+ * [FIXED] راجع شرح السبب الجذري الكامل في header الملف فوق (مشكلة
+ * "العالق على نفس الريبو"). هنا تحديدًا: بنستخدم GitHub REST API endpoint
+ * الرسمي لـ README (بدل تخمين raw.githubusercontent.com سابقًا) — أدق في
+ * اكتشاف اسم/امتداد الملف الصحيح، وبيعدّي عبر ghFetch()/الـ proxy الموحّد.
  *
  * @param {string} fullName e.g. "torvalds/linux"
  * @returns {Promise<string|null>}
@@ -320,7 +335,7 @@ async function fetchRepoReadme(fullName) {
   if (cacheHas(cacheKey)) return cacheGet(cacheKey);
 
   try {
-    const data = await ghFetch(`${GH_BASE}/repos/${fullName}/readme`, {}, README_TIMEOUT);
+    const data = await ghFetch(`/repos/${fullName}/readme`, {}, README_TIMEOUT);
 
     if (!data || typeof data.content !== 'string') {
       cacheSet(cacheKey, null);
@@ -337,8 +352,10 @@ async function fetchRepoReadme(fullName) {
     cacheSet(cacheKey, clean || null);
     return clean || null;
 
-  } catch {
-    // Non-critical — degrade gracefully (نفس نمط fetchRepoLanguages)
+  } catch (err) {
+    // [FIXED] راجع نفس الشرح في fetchRepoLanguages — لازم نرفع RATE_LIMITED
+    // لفوق بدل ما نكاشه كـ "مفيش readme" ونكمّل نضرب الحد بصمت.
+    if (err instanceof GitHubError && err.code === 'RATE_LIMITED') throw err;
     cacheSet(cacheKey, null);
     return null;
   }
@@ -555,37 +572,51 @@ async function fetchGitHubData(username, onProgress) {
   // ── Step 3/4: Languages + READMEs (parallel, capped) ──
   progress(40, 'Analysing languages and READMEs…');
 
-  // We only fetch details for top 20 candidates to stay fast
-  // Sort by stars first for pre-selection
+  // [FIXED] كان 20 — قللناها لـ MAX_CANDIDATES (8) عشان نقلل عدد النداءات
+  // لكل تشغيلة. Sort by stars first for pre-selection
   const candidates = [...rawRepos]
     .filter(r => !r.private && !r.disabled)
     .sort((a, b) => (b.stargazers_count || 0) - (a.stargazers_count || 0))
-    .slice(0, 20);
+    .slice(0, MAX_CANDIDATES);
 
   // Fetch languages + READMEs in parallel batches of 5
   const BATCH_SIZE = 5;
   const readmeMap   = new Map();
   const languageMap = new Map();
+  // [FIXED] بدل ما نبلّع rate-limit بصمت ونكمّل نضرب الحد batch بعد batch،
+  // نوقف فورًا أول ما نكتشفه — بنوفّر الباقي من الميزانية، وبنعلّم النتيجة
+  // كـ "جزئية" عشان readme-analyzer.js يوضّح للمستخدم إنها مش كل الـ repos.
+  let rateLimited = false;
 
   for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
+    if (rateLimited) break;
+
     const batch = candidates.slice(i, i + BATCH_SIZE);
 
     const batchProgress = 40 + Math.round((i / candidates.length) * 25);
     progress(batchProgress, `Reading repo ${i + 1}–${Math.min(i + BATCH_SIZE, candidates.length)} of ${candidates.length}…`);
 
-    await Promise.all(batch.map(async (repo) => {
-      // Languages
-      const langs = await fetchRepoLanguages(repo.full_name);
-      languageMap.set(repo.full_name, langs);
+    try {
+      await Promise.all(batch.map(async (repo) => {
+        // Languages
+        const langs = await fetchRepoLanguages(repo.full_name);
+        languageMap.set(repo.full_name, langs);
 
-      // README (only for repos with descriptions — saves time)
-      if (repo.description || repo.stargazers_count > 0) {
-        const readme = await fetchRepoReadme(repo.full_name);
-        readmeMap.set(repo.full_name, readme);
+        // README (only for repos with descriptions — saves time)
+        if (repo.description || repo.stargazers_count > 0) {
+          const readme = await fetchRepoReadme(repo.full_name);
+          readmeMap.set(repo.full_name, readme);
+        } else {
+          readmeMap.set(repo.full_name, null);
+        }
+      }));
+    } catch (err) {
+      if (err instanceof GitHubError && err.code === 'RATE_LIMITED') {
+        rateLimited = true; // نوقف هنا بس — مش نرمي، عشان نكمل بأي نتايج جزئية موجودة
       } else {
-        readmeMap.set(repo.full_name, null);
+        throw err; // أي خطأ تاني (شبكة، سيرفر...) لسه غير متوقع، نرفعه زي ما هو
       }
-    }));
+    }
   }
 
   // ── Step 4/4: Process + sort ──────────────────────────
@@ -600,12 +631,15 @@ async function fetchGitHubData(username, onProgress) {
 
   return {
     user,
-    top_repos:   topRepos,
-    all_repos:   processedRepos,
-    languages:   aggregatedLangs,
-    total_stars: totalStars,
-    total_repos: processedRepos.length,
-    fetched_at:  new Date().toISOString(),
+    top_repos:     topRepos,
+    all_repos:     processedRepos,
+    languages:     aggregatedLangs,
+    total_stars:   totalStars,
+    total_repos:   processedRepos.length,
+    fetched_at:    new Date().toISOString(),
+    // [FIXED] علم جديد — readme-analyzer.js بيقدر يعرض تنبيه واضح للمستخدم
+    // لو النتيجة جزئية بسبب rate-limit، بدل ما تبان كأنها نتيجة كاملة عادية.
+    rate_limited:  rateLimited,
   };
 }
 
@@ -617,7 +651,7 @@ async function fetchGitHubData(username, onProgress) {
  */
 async function checkRateLimit() {
   try {
-    const data = await ghFetch(`${GH_BASE}/rate_limit`);
+    const data = await ghFetch(`/rate_limit`);
     if (!data?.rate) return null;
     return {
       limit:     data.rate.limit,
