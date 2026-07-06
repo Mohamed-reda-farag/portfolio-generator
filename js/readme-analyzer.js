@@ -208,6 +208,18 @@
     }
 
     // ── تحقق من كل ملف على حدة؛ نتجاهل غير الصالح ونكمل بالباقي
+    //
+    // [FIXED] السبب الجذري لباج "بيتخطى الملفات اللي نفس الاسم": أغلب
+    // مشاريع الـ README فعليًا اسم ملفها "README.md" حرفيًا، فكان بيتحسب
+    // "نفس الملف" ويتجاهَل ("already added") رغم إنه محتوى مختلف تمامًا
+    // من مشروع مختلف — وده كان بيسقّط كل الملفات إلا أول واحد بصمت. الأخطر:
+    // حتى لو الفلترة دي اتشالت من غير بديل، الاسم المكرر ده كان هيتبعت زي
+    // ما هو لـ edge function (readme-analyze) اللي بتستخدم item.name كمعرّف
+    // فريد لكل مشروع جوه الـ prompt نفسه (`---BEGIN PROJECT: "README.md"---`
+    // مكرر لكل ملف) — فالموديل مش هيقدر يميّز المشاريع عن بعض أصلاً حتى لو
+    // اتبعتوا. الحل: بدل رفض الملف المكرر الاسم، نديله اسم فريد تلقائيًا
+    // (راجع _uniqueItemName) — فكل مشروع يفضل عنصر مستقل بالاسم فعليًا من
+    // أول لحظة، ومفيش أي ملف بيتحذف بصمت.
     const existingNames = new Set(_uploadedItems.map(r => r.name));
     const validFiles = [];
     for (const file of files) {
@@ -219,17 +231,17 @@
         window.toast(`"${file.name}" skipped — max 500KB per file`, 'error');
         continue;
       }
-      if (existingNames.has(file.name)) {
-        window.toast(`"${file.name}" skipped — already added`, 'warn');
-        continue;
-      }
-      validFiles.push(file);
+      const uniqueName = _uniqueItemName(file, existingNames);
+      existingNames.add(uniqueName); // نحدّث فورًا عشان نتعامل صح مع أكتر من ملف بنفس الاسم في نفس الدفعة
+      validFiles.push({ file, uniqueName });
     }
 
     if (!validFiles.length) return;
 
     try {
-      const readResults = await Promise.all(validFiles.map(_readFileAsText));
+      const readResults = await Promise.all(
+        validFiles.map(({ file, uniqueName }) => _readFileAsText(file, uniqueName))
+      );
 
       // نفس الحد الأدنى القديم: نتجاهل أي ملف فاضي أو أقصر من 10 حروف
       const usable = readResults.filter(r => r.content && r.content.trim().length >= 10);
@@ -248,13 +260,44 @@
     }
   }
 
-  function _readFileAsText(file) {
+  function _readFileAsText(file, nameOverride) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload  = e => resolve({ name: file.name, content: e.target.result });
+      reader.onload  = e => resolve({ name: nameOverride || file.name, content: e.target.result });
       reader.onerror = () => reject(new Error(`Failed to read ${file.name}`));
       reader.readAsText(file);
     });
+  }
+
+  /**
+   * [FIXED] راجع الشرح الكامل عند نداءها في _processFiles فوق. بتديله اسم
+   * فريد لأي ملف اسمه متكرر (زي "README.md" جاي من أكتر من مشروع) بدل ما
+   * نرفضه — بنستخدم اسم الفولدر لو الملف جاي من رفع فولدر كامل
+   * (webkitRelativePath متاح ساعتها)، وإلا رقم تسلسلي بسيط.
+   *
+   * @param {File} file
+   * @param {Set<string>} existingNames — الأسماء المحجوزة بالفعل (بيتحدّث بره الدالة دي)
+   * @returns {string}
+   */
+  function _uniqueItemName(file, existingNames) {
+    const original = file.name;
+    const relPath  = file.webkitRelativePath || '';
+    const folder   = relPath.includes('/') ? relPath.split('/').slice(-2, -1)[0] : '';
+
+    let candidate = folder ? `${folder}/${original}` : original;
+    if (!existingNames.has(candidate)) return candidate;
+
+    const dot  = original.lastIndexOf('.');
+    const base = dot > 0 ? original.slice(0, dot) : original;
+    const ext  = dot > 0 ? original.slice(dot)     : '';
+
+    let n = 2;
+    candidate = folder ? `${folder}/${base} (${n})${ext}` : `${base} (${n})${ext}`;
+    while (existingNames.has(candidate)) {
+      n++;
+      candidate = folder ? `${folder}/${base} (${n})${ext}` : `${base} (${n})${ext}`;
+    }
+    return candidate;
   }
 
   /**

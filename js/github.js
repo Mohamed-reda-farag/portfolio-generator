@@ -417,6 +417,34 @@ function calcPriorityScore(repo) {
   return score;
 }
 
+/**
+ * [FIXED] نفس أوزان calcPriorityScore بالظبط، بس شغالة على raw repo (زي ما
+ * راجعة من GitHub REST مباشرة، قبل ما نجيب languages/readme) — عشان نقدر
+ * نختار candidates الـ README-fetching بمعيار قريب جدًا من الترتيب النهائي
+ * في processRepos()، بدل الاعتماد على النجوم بس. بونص الـ has_readme (+2)
+ * اتشال هنا لأنه مش معروف أصلاً وقت اختيار الـ candidates (ده هو اللي
+ * هنكتشفه بعدين)؛ الفرق ده صغير جدًا (+2 بس) ومش هيغيّر الترتيب العام.
+ *
+ * @param {RawRepo} rawRepo
+ * @returns {number}
+ */
+function calcPreFetchScore(rawRepo) {
+  const now = Date.now();
+  const pushedAt = new Date(rawRepo.pushed_at).getTime();
+  const monthsAgo = (now - pushedAt) / (1000 * 60 * 60 * 24 * 30);
+
+  let score = 0;
+  score += (rawRepo.stargazers_count || 0) * 2;
+  score += rawRepo.description ? 10 : 0;
+  score += monthsAgo <= 3 ? 8 : monthsAgo <= 12 ? 4 : 0;
+  score += Array.isArray(rawRepo.topics) && rawRepo.topics.length > 0 ? 3 : 0;
+  score += (rawRepo.forks_count || 0) > 0 ? 1 : 0;
+  score -= rawRepo.fork     ? 8  : 0;
+  score -= rawRepo.archived ? 15 : 0;
+
+  return score;
+}
+
 /* ─────────────────────────────────────────────────────────────────
    6. FILTER & PROCESS REPOS
 ───────────────────────────────────────────────────────────────── */
@@ -572,11 +600,24 @@ async function fetchGitHubData(username, onProgress) {
   // ── Step 3/4: Languages + READMEs (parallel, capped) ──
   progress(40, 'Analysing languages and READMEs…');
 
-  // [FIXED] كان 20 — قللناها لـ MAX_CANDIDATES (8) عشان نقلل عدد النداءات
-  // لكل تشغيلة. Sort by stars first for pre-selection
+  // [FIXED] كان 20 — قللناها لـ MAX_CANDIDATES (8) عشان نقلل عدد النداءات لكل تشغيلة.
+  //
+  // [FIXED] سبب جذري جديد لمشكلة "العالق على نفس الريبو" — مستقل تمامًا عن
+  // rate-limit، وبيفضل موجود حتى مع الـ proxy المُصادَق شغال 100%: كنا بنختار
+  // الـ candidates (اللي هيتقرالها README) بترتيب stargazers_count بس، لكن
+  // القائمة النهائية اللي المستخدم بيشوفها (top_repos) بترتّبها processRepos()
+  // بمعيار مختلف تمامًا (calcPriorityScore — بيدي وزن كبير لـ description/
+  // حداثة التحديث/topics، مش بس النجوم). فلو عند المستخدم ريبو واحد بس عالي
+  // النجوم وباقي الريبوهات قليلة النجوم لكن حديثة/عندها description، الأخيرة
+  // دي كانت بتطلع فوق في top_repos من غير README خالص (لأنها مكنتش من الـ
+  // candidates)، وكان بيفضل ظاهر بس نفس الريبو عالي النجوم اللي فعلاً معاه
+  // README — يعني "عالق على نفس الريبو" بغض النظر عن حالة الـ rate-limit.
+  // الحل: نختار الـ candidates بنفس معيار calcPriorityScore (من غير بونص الـ
+  // readme، لأنه مش معروف وقت الاختيار) عشان الريبوهات اللي هتفضل فعلاً في
+  // top_repos النهائية تكون هي نفسها اللي اتقرا لها README.
   const candidates = [...rawRepos]
     .filter(r => !r.private && !r.disabled)
-    .sort((a, b) => (b.stargazers_count || 0) - (a.stargazers_count || 0))
+    .sort((a, b) => calcPreFetchScore(b) - calcPreFetchScore(a))
     .slice(0, MAX_CANDIDATES);
 
   // Fetch languages + READMEs in parallel batches of 5

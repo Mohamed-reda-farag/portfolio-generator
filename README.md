@@ -116,6 +116,8 @@ portfolio-generator/
         │   └── index.ts               # README Analyzer Edge Function — incl. LinkedIn Presence (Groq API)
         ├── improve-text/
         │   └── index.ts               # AI text improvement for Portfolio Builder (bio, skills, project_description)
+        ├── github-proxy/
+        │   └── index.ts               # GitHub API authenticated proxy — raises rate limit from 60/hr (unauthenticated, per-IP) to 5000/hr; allow-listed paths only
         └── check-expired-subscriptions/
             └── index.ts               # Daily cron — downgrades expired Pro users
 ```
@@ -290,24 +292,25 @@ ATS-optimised CV builder with full Arabic and English support.
 
 ## README Analyzer
 
-Upload any `.md` file — or, if you signed in with GitHub, auto-generate from your repos directly — and select which outputs to generate:
+Upload one or more `.md` files (up to 5, added incrementally with "+ Add") — or, if you signed in with GitHub, auto-generate from your repos directly — and select which outputs to generate:
 
-| Output | Description |
-|---|---|
-| Professional Bio | 150–200 word developer bio |
-| Project Description | Portfolio-ready project summary |
-| Skills & Technologies | Extracted tech stack list |
-| LinkedIn Posts | 3 posts with hashtags |
-| LinkedIn Presence Report | Score, keywords, benchmark, tips |
+| Output | Scope | Description |
+|---|---|---|
+| Professional Bio | Combined | One 150–200 word bio synthesizing all uploaded projects/repos together |
+| Project Descriptions | Per project | Independent portfolio-ready summary for each project, labeled by name |
+| Skills & Technologies | Combined | One de-duplicated tech stack list across all projects |
+| LinkedIn Posts | Per project | One post with hashtags for each project, labeled by name |
+| LinkedIn Presence Report | Combined | One holistic score, keywords, benchmark, and tips across the whole portfolio |
 
 ### GitHub Auto-Generate
-- **GitHub users:** an "Auto Generate from GitHub Repos" button pulls READMEs straight from your top repos — no manual upload needed
+- **GitHub users:** an "Auto Generate from GitHub Repos" button pulls READMEs straight from your top repos (up to 3, each analyzed as an independent project) — no manual upload needed
 - **Google users (no GitHub linked):** the same button prompts a "Connect GitHub" dialog, with manual upload always available as a fallback
+- GitHub API calls go through the `github-proxy` Edge Function (server-side authenticated token) rather than the browser calling `api.github.com` directly — raises the rate limit from 60/hr (unauthenticated, per-IP) to 5,000/hr (shared across all users of the app). If the shared budget is exhausted mid-request, the tool stops early, returns whatever repos it already fetched, and shows a clear "partial results" warning instead of silently returning incomplete data
 
 - This page is the single entry point for everything previously split across a separate LinkedIn Presence page — that page has been removed
-- **Free users:** up to 3 analyses
+- **Free users:** up to 3 analyses (counted per generation click, regardless of how many files/repos are included)
 - **Pro users:** unlimited
-- All content generated in a single Groq API call for coherence and speed
+- All content generated in a single Groq API call for coherence and speed — each project gets a fair, equal share of the content budget sent to the model, so no project is silently truncated in favor of another
 - Results appear inline with Copy and Edit buttons per section
 - Server-side usage enforcement in the Edge Function (defence in depth)
 
@@ -331,6 +334,13 @@ Dashboard — provider choice:
 Build Manually → portfolio-builder.html (7 steps)
 Connect GitHub → linkIdentity() → GitHub OAuth → auto-generate
 ```
+
+### Identity Integrity
+
+To prevent building a portfolio under someone else's identity, these fields are **never** taken as free text at the point of saving to the database — they're always re-derived from the verified session/DB row:
+
+- `gmail_address` — always the authenticated session email (`auth.users.email`), fetched fresh at save time
+- `github_username` — always `users.github_username`, which itself is only ever written by a real OAuth flow (`_ensureUserRow()` in `auth.js` or `connectGithub()` in `dashboard.html`), never by a manually-typed URL/handle
 
 ---
 
@@ -376,6 +386,9 @@ Enable Google provider in Supabase Dashboard → Authentication → Providers, t
 supabase secrets set GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxx
 # Optional: override the improve-text model
 supabase secrets set GROQ_MODEL=llama-3.3-70b-versatile
+# GitHub API proxy — classic PAT with no scopes needed (public data only);
+# raises the GitHub rate limit from 60/hr (unauthenticated) to 5,000/hr
+supabase secrets set GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxx
 ```
 
 **6. Deploy all Edge Functions**
@@ -383,6 +396,7 @@ supabase secrets set GROQ_MODEL=llama-3.3-70b-versatile
 supabase functions deploy generate
 supabase functions deploy readme-analyze
 supabase functions deploy improve-text
+supabase functions deploy github-proxy
 supabase functions deploy check-expired-subscriptions
 ```
 
