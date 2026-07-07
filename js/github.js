@@ -28,6 +28,12 @@
  *     عليه). ملحوظة: الحد ده بقى budget مشترك بين كل مستخدمي الموقع مش
  *     لكل IP لوحده — كافي جدًا للاستخدام العادي، بس تحت ضغط استخدام كبير
  *     ومتزامن ممكن يوصل له تأثير (نادر جدًا مقارنة بـ 60/ساعة القديمة).
+ *  4. [FIXED لاحقًا] السبب الجذري الفعلي اللي فضل مخفي رغم الإصلاحات فوق:
+ *     fetchGitHubData() كانت بتتخطى محاولة جلب README خالص لأي candidate
+ *     من غير "description" ومن غير نجوم على GitHub (شرط "توفير وقت" قديم)
+ *     — فمشاريع شخصية حقيقية بمعاها README كامل كانت بتتحط null من غير
+ *     ما نسأل GitHub أصلاً. اتشال الشرط ده؛ نجيب README لكل candidate
+ *     (أصلاً محدودين بـ MAX_CANDIDATES) من غير تصفية إضافية.
  *
  * API base (عبر الـ proxy): https://api.github.com
  */
@@ -643,13 +649,22 @@ async function fetchGitHubData(username, onProgress) {
         const langs = await fetchRepoLanguages(repo.full_name);
         languageMap.set(repo.full_name, langs);
 
-        // README (only for repos with descriptions — saves time)
-        if (repo.description || repo.stargazers_count > 0) {
-          const readme = await fetchRepoReadme(repo.full_name);
-          readmeMap.set(repo.full_name, readme);
-        } else {
-          readmeMap.set(repo.full_name, null);
-        }
+        // [FIXED] السبب الجذري الحقيقي والأخير لمشكلة "العالق على نفس
+        // الريبو" — كان موجود من قبل كل إصلاحات rate-limit/candidates:
+        // الشرط ده كان بيتجنّب حتى مجرد محاولة جلب الـ README لأي ريبو
+        // ملوش "description" مكتوب على GitHub وعدد نجومه صفر — تحسين كان
+        // القصد منه توفير نداءات، لكن نتيجته العملية: أي مشروع شخصي/جانبي
+        // (زي أغلب مشاريع أي مطوّر — description فاضي، 0 نجوم، لكن معاه
+        // README كامل ومكتوب كويس) كان بيتحط readme=null من غير ما
+        // نتأكد أصلاً، حتى لو فعليًا عنده ملف README حقيقي على GitHub.
+        // اتأكدنا من الداتا الفعلية: بالظبط الريبوهات اللي بالصدفة معاها
+        // 0 نجوم/من غير description كانت هي اللي بترجع hasReadme=false —
+        // مش لأنها فعلاً من غير README، لكن لأننا مكناش بنسأل GitHub خالص.
+        // بما إن الـ candidates أصلاً محدودة بـ MAX_CANDIDATES (8) قبل
+        // النقطة دي، مفيش داعي لطبقة تصفية تانية جوّاها — نجيب الـ README
+        // لكل candidate من غير شرط إضافي.
+        const readme = await fetchRepoReadme(repo.full_name);
+        readmeMap.set(repo.full_name, readme);
       }));
     } catch (err) {
       if (err instanceof GitHubError && err.code === 'RATE_LIMITED') {
