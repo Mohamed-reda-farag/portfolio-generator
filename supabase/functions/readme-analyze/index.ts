@@ -105,14 +105,18 @@ Return as a JSON array under the key "linkedin_posts", where each item is exactl
 { "project": "<one of the exact project names above>", "post": "...", "hashtags": ["hashtag1", "hashtag2", ...] }
 The array MUST contain exactly {{PROJECT_COUNT}} items, one per project, using the exact names given.`,
 
-  report: `Generate ONE overall LinkedIn Presence Report for a developer, based on ALL the projects
+  // [MODIFIED] كان اسمها "LinkedIn Presence Report" — بيوحي إنها بتحلل
+  // بروفايل LinkedIn موجود بالفعل، بينما هي فعليًا توصية مبنية على الـ
+  // READMEs بس (مفيش أي وصول حقيقي لـ LinkedIn). "Optimization Report"
+  // أدق لوظيفتها الحقيقية: تقييم + توصيات لتحسين البروفايل.
+  report: `Generate ONE overall LinkedIn Optimization Report for a developer, based on ALL the projects
 provided below combined — this is a holistic assessment of their whole portfolio, not per project.
 Include:
   - profile_strength_score: integer 0-100
   - key_strengths: array of 3-4 strings describing what this body of work demonstrates
   - recommended_keywords: array of 8-12 LinkedIn keywords to optimize the profile
   - industry_benchmark: 1-2 sentences comparing this portfolio's scope to typical industry standards
-  - improvement_tips: array of exactly 3 actionable tips to strengthen the LinkedIn presence
+  - improvement_tips: array of exactly 3 actionable tips to strengthen the LinkedIn profile
 Return as a JSON object under the key "report".`,
 
   skills: `Extract ALL technologies, frameworks, languages, tools, platforms, and libraries

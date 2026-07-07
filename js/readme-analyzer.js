@@ -36,10 +36,7 @@
 
   const uploadZone     = $('upload-zone');
   const fileInput      = $('file-input');
-  const filePill       = $('file-pill');
-  const fileNameEl     = $('file-name');
-  const removeFileBtn  = $('remove-file');
-  const addMoreFileBtn = $('add-more-file');
+  const itemsList      = $('items-list');   // [MODIFIED] كان file-pill واحد مُجمّع — بقى container لعدة chips مستقلة
   const generateBtn   = $('generate-btn');
   const usageBar      = $('usage-bar');
   const usageRemEl    = $('usage-remaining');
@@ -156,24 +153,9 @@
       if (files && files.length) _processFiles([...files]);
     });
 
-    // Remove button
-    removeFileBtn?.addEventListener('click', () => {
-      _uploadedItems = [];
-      window._autoReadmeItems = null;   // تنظيف auto state لو كان موجوداً
-      window._autoReadmeLabel = null;
-      fileInput.value = '';
-      filePill.classList.add('hidden');
-      filePill.removeAttribute('title');
-      uploadZone.style.display  = '';
-      uploadZone.style.opacity  = '1';   // إعادة opacity لو خُفِّفت عند auto load
-      _updateGenerateBtn();
-    });
-
-    // [FIXED] مشكلة إضافة ملف تاني — كان مفيش أي طريقة تضيف ملف بعد اختيار
-    // أول واحد (upload-zone بتتخفي فور ظهور الـ pill)، فكان لازم كل الملفات
-    // تُختار مرة واحدة من نفس المجلد. زر "+ Add" بيفتح نفس الـ file picker
-    // تاني، و_processFiles بقت تضيف (append) للمصفوفة الموجودة بدل استبدالها.
-    addMoreFileBtn?.addEventListener('click', () => fileInput.click());
+    // [MODIFIED] زر "مسح الكل" وزر "+ Add" الثابتين اتشالوا — دلوقتي كل
+    // چيب بيتعرض ليه زر ✕ خاص بيه (شوف _renderItemChips)، وزر "+ Add"
+    // بيتولّد ديناميكيًا جوه نفس الدالة عشان يفضل آخر عنصر في القايمة.
   }
 
   function _onFileSelected(e) {
@@ -251,8 +233,10 @@
       }
 
       // [FIXED] append بدل replace — كل ملف يفضل عنصر مستقل بالاسم
-      _uploadedItems = [..._uploadedItems, ...usable];
-      _showFilePill(_uploadedItems.map(r => r.name));
+      // [MODIFIED] بنعلّم مصدر العنصر ('upload') عشان الچيب يعرض أيقونة
+      // مناسبة، وبقى مُوحَّد مع عناصر GitHub جوه نفس المصفوفة _uploadedItems
+      _uploadedItems = [..._uploadedItems, ...usable.map(it => ({ ...it, source: 'upload' }))];
+      _renderItemChips();
 
     } catch (err) {
       console.error('[ReadmeAnalyzer] Failed to read file(s):', err);
@@ -280,39 +264,99 @@
    * @returns {string}
    */
   function _uniqueItemName(file, existingNames) {
-    const original = file.name;
-    const relPath  = file.webkitRelativePath || '';
-    const folder   = relPath.includes('/') ? relPath.split('/').slice(-2, -1)[0] : '';
+    const relPath = file.webkitRelativePath || '';
+    const folder  = relPath.includes('/') ? relPath.split('/').slice(-2, -1)[0] : '';
+    const original = folder ? `${folder}/${file.name}` : file.name;
+    return _makeUniqueName(original, existingNames);
+  }
 
-    let candidate = folder ? `${folder}/${original}` : original;
-    if (!existingNames.has(candidate)) return candidate;
+  /**
+   * [MODIFIED] المُنطق العام لتوليد اسم فريد (رقم تسلسلي "(2)", "(3)"...
+   * محافظًا على الامتداد لو موجود) — مُستخرَج من _uniqueItemName القديمة
+   * عشان يُستخدم كمان لعناصر GitHub (اللي اسمها repo name، مش File)، بدل
+   * ما يتكرر نفس المنطق في مكانين.
+   *
+   * @param {string} name
+   * @param {Set<string>} existingNames
+   * @returns {string}
+   */
+  function _makeUniqueName(name, existingNames) {
+    if (!existingNames.has(name)) return name;
 
-    const dot  = original.lastIndexOf('.');
-    const base = dot > 0 ? original.slice(0, dot) : original;
-    const ext  = dot > 0 ? original.slice(dot)     : '';
+    const dot  = name.lastIndexOf('.');
+    const base = dot > 0 ? name.slice(0, dot) : name;
+    const ext  = dot > 0 ? name.slice(dot)     : '';
 
     let n = 2;
-    candidate = folder ? `${folder}/${base} (${n})${ext}` : `${base} (${n})${ext}`;
+    let candidate = `${base} (${n})${ext}`;
     while (existingNames.has(candidate)) {
       n++;
-      candidate = folder ? `${folder}/${base} (${n})${ext}` : `${base} (${n})${ext}`;
+      candidate = `${base} (${n})${ext}`;
     }
     return candidate;
   }
 
   /**
-   * [FIXED] بقت بتقبل اسم واحد أو مصفوفة أسماء — تعرض "N files: a.md, b.md, +K more"
-   * لما يكون فيه أكثر من ملف، والاسم الكامل زي ما هو لو ملف واحد.
+   * [MODIFIED] بديل _showFilePill — بدل pill واحد مُجمّع، بترسم چيب مستقل
+   * لكل عنصر في _uploadedItems (سواء ملف مرفوع يدويًا أو README من GitHub)
+   * بزر ✕ خاص بيه (_removeItem)، بالإضافة لچيب "+ Add" في الآخر لإضافة
+   * ملف تاني. لو القايمة فاضية، ترجع upload-zone تظهر تاني.
    */
-  function _showFilePill(names) {
-    const list = Array.isArray(names) ? names : [names];
-    fileNameEl.textContent = list.length === 1
-      ? list[0]
-      : `${list.length} files: ${list.slice(0, 3).join(', ')}${list.length > 3 ? `, +${list.length - 3} more` : ''}`;
-    filePill.title = list.join(', ');
-    filePill.classList.remove('hidden');
-    uploadZone.style.display = 'none';
+  function _renderItemChips() {
+    itemsList.innerHTML = '';
+
+    _uploadedItems.forEach((item, i) => {
+      const chip = document.createElement('div');
+      chip.className = 'item-chip';
+
+      const icon = document.createElement('span');
+      icon.className = 'item-chip__icon';
+      icon.textContent = item.source === 'github' ? '🐙' : '📄';
+
+      const name = document.createElement('span');
+      name.className = 'item-chip__name';
+      name.textContent = item.name;
+      name.title = item.name;
+
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'item-chip__remove';
+      removeBtn.title = `Remove "${item.name}"`;
+      removeBtn.textContent = '✕';
+      removeBtn.addEventListener('click', () => _removeItem(i));
+
+      chip.appendChild(icon);
+      chip.appendChild(name);
+      chip.appendChild(removeBtn);
+      itemsList.appendChild(chip);
+    });
+
+    // ── چيب "+ Add" — بيفتح نفس الـ file picker، متاح طالما لسه فيه مكان
+    if (_uploadedItems.length < MAX_UPLOAD_FILES) {
+      const addBtn = document.createElement('button');
+      addBtn.className = 'item-chip--add';
+      addBtn.title = 'Add another file';
+      addBtn.textContent = '+ Add';
+      addBtn.addEventListener('click', () => fileInput.click());
+      itemsList.appendChild(addBtn);
+    }
+
+    const hasItems = _uploadedItems.length > 0;
+    itemsList.classList.toggle('hidden', !hasItems);
+    uploadZone.style.display = hasItems ? 'none' : '';
+    uploadZone.style.opacity = '1';
+
     _updateGenerateBtn();
+  }
+
+  /**
+   * [MODIFIED] الوظيفة الأساسية المطلوبة هنا — تشيل مشروع واحد بذاته من
+   * _uploadedItems (بغض النظر عن مصدره) من غير ما تأثر على الباقي، بدل
+   * الاضطرار لمسح كل حاجة وإعادة الرفع/الجلب من الأول.
+   * @param {number} index
+   */
+  function _removeItem(index) {
+    _uploadedItems = _uploadedItems.filter((_, i) => i !== index);
+    _renderItemChips();
   }
 
   /* ─────────────────────────────────────────────────────────────────────
@@ -334,7 +378,9 @@
   }
 
   function _updateGenerateBtn() {
-    const hasFile    = _uploadedItems.length > 0 || !!(window._autoReadmeItems && window._autoReadmeItems.length > 0);
+    // [MODIFIED] كل العناصر (رفع يدوي + GitHub) بقت في نفس المصفوفة
+    // _uploadedItems — مفيش داعي بعد كده لفحص window._autoReadmeItems منفصل
+    const hasFile    = _uploadedItems.length > 0;
     const hasOutputs = _getSelectedOutputs().length > 0;
     generateBtn.disabled = !(hasFile && hasOutputs);
   }
@@ -343,8 +389,8 @@
      GENERATE
   ───────────────────────────────────────────────────────────────────── */
   generateBtn.addEventListener('click', async () => {
-    // [FIXED] effectiveItems بقت مصفوفة مشاريع مسمّاة بدل نص واحد مُدمج
-    const effectiveItems = _uploadedItems.length ? _uploadedItems : (window._autoReadmeItems || []);
+    // [MODIFIED] _uploadedItems بقت المصدر الوحيد (رفع يدوي + GitHub مع بعض)
+    const effectiveItems = _uploadedItems;
 
     if (!effectiveItems.length) {
       window.toast('Please upload a README file or use Auto Generate from GitHub', 'warn');
@@ -601,13 +647,13 @@
       $('block-linkedin-posts').style.display = '';
     }
 
-    // ── LinkedIn presence report
+    // ── LinkedIn Optimization Report
+    // [MODIFIED] كانت بتتحط كـ JSON.stringify خام جوه نص عادي — المستخدم
+    // كان بيشوف بريكتس وquotes حرفيًا بدل تقرير مقروء، رغم إن الـ backend
+    // فعليًا بيرجّع 5 حقول منظّمة (score/strengths/keywords/benchmark/tips).
+    // _renderReport() بتوزّع كل حقل في قسمه المناسب بدل تفريغهم كنص واحد.
     if (outputs.report) {
-      // report can be a string or an object — normalise to readable text
-      const reportText = typeof outputs.report === 'string'
-        ? outputs.report
-        : JSON.stringify(outputs.report, null, 2);
-      $('content-report').textContent = reportText;
+      _renderReport(outputs.report);
       $('block-report').style.display = '';
     }
 
@@ -627,6 +673,123 @@
         list.appendChild(chip);
       });
       $('block-skills').style.display = '';
+    }
+  }
+
+  /**
+   * [MODIFIED] عرض منظّم لـ LinkedIn Optimization Report بدل JSON.stringify
+   * خام. الشكل المتوقع من edge function (راجع OUTPUT_PROMPTS.report في
+   * readme-analyze/index.ts):
+   *   { profile_strength_score, key_strengths[], recommended_keywords[],
+   *     industry_benchmark, improvement_tips[] }
+   * لو الشكل مختلف عن المتوقع (مفيش أي حقل معروف)، بنرجع لعرض الـ JSON
+   * الخام كـ fallback أخير — أهم من إخفاء البيانات تمامًا.
+   * @param {any} report
+   */
+  function _renderReport(report) {
+    const container = $('content-report');
+    container.innerHTML = '';
+
+    if (typeof report === 'string') {
+      container.textContent = report;
+      return;
+    }
+
+    const score = Number(report?.profile_strength_score);
+    if (Number.isFinite(score)) {
+      const color = score >= 75 ? 'var(--clr-accent)' : score >= 50 ? 'var(--clr-warn)' : 'var(--clr-error)';
+
+      const scoreWrap = document.createElement('div');
+      scoreWrap.className = 'report-score';
+
+      const ring = document.createElement('div');
+      ring.className = 'report-score__ring';
+      ring.style.borderColor = color;
+      ring.style.color = color;
+      ring.textContent = Math.round(score);
+
+      const label = document.createElement('div');
+      const labelTop = document.createElement('div');
+      labelTop.className = 'report-score__label';
+      labelTop.textContent = 'Profile Strength Score';
+      const labelVal = document.createElement('div');
+      labelVal.className = 'report-score__value';
+      labelVal.textContent = `${Math.round(score)} / 100`;
+      label.appendChild(labelTop);
+      label.appendChild(labelVal);
+
+      scoreWrap.appendChild(ring);
+      scoreWrap.appendChild(label);
+      container.appendChild(scoreWrap);
+    }
+
+    const addListSection = (title, items) => {
+      if (!Array.isArray(items) || !items.length) return;
+      const section = document.createElement('div');
+      section.className = 'report-section';
+
+      const h = document.createElement('div');
+      h.className = 'report-section__title';
+      h.textContent = title;
+
+      const ul = document.createElement('ul');
+      ul.className = 'report-list';
+      items.forEach(txt => {
+        const li = document.createElement('li');
+        li.textContent = txt;
+        ul.appendChild(li);
+      });
+
+      section.appendChild(h);
+      section.appendChild(ul);
+      container.appendChild(section);
+    };
+
+    addListSection('Key Strengths', report?.key_strengths);
+
+    if (Array.isArray(report?.recommended_keywords) && report.recommended_keywords.length) {
+      const section = document.createElement('div');
+      section.className = 'report-section';
+
+      const h = document.createElement('div');
+      h.className = 'report-section__title';
+      h.textContent = 'Recommended LinkedIn Keywords';
+
+      const wrap = document.createElement('div');
+      wrap.className = 'report-keywords';
+      report.recommended_keywords.forEach(kw => {
+        const chip = document.createElement('span');
+        chip.className = 'skill-chip';
+        chip.textContent = kw;
+        wrap.appendChild(chip);
+      });
+
+      section.appendChild(h);
+      section.appendChild(wrap);
+      container.appendChild(section);
+    }
+
+    if (report?.industry_benchmark) {
+      const section = document.createElement('div');
+      section.className = 'report-section';
+
+      const h = document.createElement('div');
+      h.className = 'report-section__title';
+      h.textContent = 'Industry Benchmark';
+
+      const p = document.createElement('p');
+      p.textContent = report.industry_benchmark;
+
+      section.appendChild(h);
+      section.appendChild(p);
+      container.appendChild(section);
+    }
+
+    addListSection('Improvement Tips', report?.improvement_tips);
+
+    // Fallback — شكل غير متوقع تمامًا: نعرض الـ JSON الخام بدل ما نخفي البيانات
+    if (!container.children.length) {
+      container.textContent = JSON.stringify(report, null, 2);
     }
   }
 
@@ -722,16 +885,11 @@
     _postsRaw     = [];
     _skillsRaw    = [];
 
-    // ── Auto-generate state (GitHub)
-    window._autoReadmeItems = null;
-    window._autoReadmeLabel = null;
-
     // ── File UI
+    // [MODIFIED] كان فيه pill واحد بيتشال يدويًا هنا — دلوقتي _renderItemChips()
+    // بتتعامل مع كل حالات العرض (فاضي/فيه عناصر) في مكان واحد بس
     fileInput.value = '';
-    filePill.classList.add('hidden');
-    filePill.removeAttribute('title');
-    uploadZone.style.display  = '';
-    uploadZone.style.opacity  = '1';   // أُعيد لو كان خُفِّف عند auto load
+    _renderItemChips();
 
     // ── GitHub hint text — أعد لقيمتها الأصلية بناءً على نوع المستخدم
     const hint = $('github-auto-hint');
@@ -905,28 +1063,36 @@
         return;
       }
 
-      // [FIXED] كل repo يفضل عنصر مستقل بالاسم — بدل دمجهم في نص واحد —
-      // عشان edge function يقدر يطلع وصف/بوست مستقل لكل repo (كل واحد
-      // بالفعل مقطوع 600 حرف بعد stripMarkdown من جوه fetchGitHubData)
-      const items = reposWithReadme.map(r => ({ name: r.name, content: r.readme }));
-
-      const label = `GitHub: @${githubUsername} (${reposWithReadme.length} repo${reposWithReadme.length > 1 ? 's' : ''})`;
-
-      // ── حقن المحتوى كـ "ملف مُحمَّل"
-      window._autoReadmeItems = items;
-      window._autoReadmeLabel = label;
-
-      // ── تحديث الـ UI
-      if (fileNameEl) fileNameEl.textContent = label;
-      if (filePill) {
-        filePill.classList.remove('hidden');
-        filePill.title = items.map(i => i.name).join(', ');
+      // [MODIFIED] بدل ما نحطهم في state منفصل (window._autoReadmeItems)،
+      // بندمجهم في نفس _uploadedItems اللي بيستخدمها الرفع اليدوي — عشان
+      // كل مشروع (رفع يدوي أو GitHub) يبقى چيب مستقل قابل للحذف بمفرده
+      // (راجع _renderItemChips/_removeItem) بدل pill واحد مُجمّع كان
+      // بيتشال كله مع بعضه. بنحترم نفس حد MAX_UPLOAD_FILES الإجمالي،
+      // وبنولّد اسم فريد لو فيه تعارض مع عنصر موجود بالفعل (زي repo
+      // بنفس اسم ملف اتضاف يدويًا قبل كده).
+      const remainingSlots = MAX_UPLOAD_FILES - _uploadedItems.length;
+      if (remainingSlots <= 0) {
+        window.toast(`You already have ${MAX_UPLOAD_FILES} projects loaded — remove one first to add GitHub repos.`, 'warn');
+        return;
       }
-      if (uploadZone) uploadZone.style.opacity = '0.4';   // خفِّف الـ upload zone (لا تُخفيها)
-      if (hint)       hint.textContent = `✓ Loaded ${reposWithReadme.length} README${reposWithReadme.length > 1 ? 's' : ''} — hit Analyze to generate!`;
 
-      _updateGenerateBtn();   // إعادة تقييم حالة الزر
-      window.toast(`Loaded READMEs from ${reposWithReadme.length} repos. Hit Analyze!`, 'success');
+      const toAdd = reposWithReadme.slice(0, remainingSlots);
+      if (toAdd.length < reposWithReadme.length) {
+        window.toast(`Only ${remainingSlots} more project(s) can be added (max ${MAX_UPLOAD_FILES} total).`, 'warn');
+      }
+
+      const existingNames = new Set(_uploadedItems.map(r => r.name));
+      const newItems = toAdd.map(r => {
+        const name = _makeUniqueName(r.name, existingNames);
+        existingNames.add(name);
+        return { name, content: r.readme, source: 'github' };
+      });
+
+      _uploadedItems = [..._uploadedItems, ...newItems];
+      _renderItemChips();   // إعادة تقييم حالة الزر متضمّنة جوّاها
+
+      if (hint) hint.textContent = `✓ Loaded ${newItems.length} README${newItems.length > 1 ? 's' : ''} — hit Analyze to generate!`;
+      window.toast(`Loaded READMEs from ${newItems.length} repo${newItems.length > 1 ? 's' : ''}. Hit Analyze!`, 'success');
 
     } catch (err) {
       console.error('[ReadmeAnalyzer] autoGenerateFromGitHub error:', err);
