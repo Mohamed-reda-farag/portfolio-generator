@@ -437,7 +437,18 @@
     // في Development: نقبل localhost و127.0.0.1
     const origin = window.location.origin;
     const base   = origin + window.location.pathname;
-    return base.replace(/\/[^/]*$/, '/dashboard.html');
+    const dest   = base.replace(/\/[^/]*$/, '/dashboard.html');
+
+    // [FIX] Referral bug: كان بيتم قطع أي query string (زي ?ref=CODE من
+    // referral link على index.html) هنا لأننا كنا بنبني الـ redirectTo من
+    // pathname بس. الـ OAuth redirect (GitHub/Google) بيودّي المستخدم
+    // مباشرة لـ dashboard.html (redirectTo)، ومفيش أي صفحة تانية بتلقط أو
+    // تحافظ على ?ref= في النص ده — فكان بيضيع بصمت قبل ما
+    // trackReferralIfNeeded() في dashboard.html يقدر يقراه من
+    // window.location.search، فالـ referral مكانش بيتسجّل خالص من غير أي
+    // error ظاهر. الحل: نحافظ على أي query string موجودة وقت الضغط على
+    // "Sign in" (بما فيها ?ref=CODE) عشان توصل سليمة لـ dashboard.html.
+    return dest + window.location.search;
   }
 
   function _buildRelativeURL(page) {
