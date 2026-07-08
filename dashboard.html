@@ -1309,6 +1309,16 @@
     }
 
     // ─── Track Referral (لو جه من ref link) ──────────────────
+    // [FIX] كانت بتعمل SELECT مباشر على جدول users بالـ referral_code من
+    // جانب الـ client، وده بيترفض بـ 406 (0 rows) بسبب RLS: أي مستخدم
+    // بيقدر يقرا صفّه هو بس (auth.uid() = id)، فمقدرش يشوف صف المُحيل
+    // خالص عشان يجيب id بتاعه — حتى لو الكود صحيح 100%. اتنقل المنطق
+    // كله (البحث عن المُحيل + التحقق من self-referral + الـ insert)
+    // لـ RPC واحدة SECURITY DEFINER اسمها record_referral على السيرفر،
+    // زي نفس الباترن المستخدم أصلاً في generate_user_referral_code() و
+    // get_referral_stats(). ده كمان بيقفل ثغرة احتمالية: referred_id
+    // بقى بيتحدد من auth.uid() جوه الـ RPC نفسها بدل ما يتاخد من متغيّر
+    // JS على الـ client (نفس فئة ثغرة الانتحال اللي اتصلحت قبل كده).
     async function trackReferralIfNeeded(userId) {
       const params    = new URLSearchParams(window.location.search);
       const refCode   = params.get('ref');
@@ -1318,31 +1328,16 @@
       if (!sb) return;
 
       try {
-        // جيب الـ referrer بالـ code
-        const { data: referrer } = await sb
-          .from('users')
-          .select('id')
-          .eq('referral_code', refCode)
-          .single();
+        const { error } = await sb.rpc('record_referral', { p_code: refCode });
+        if (error) throw error;
 
-        if (!referrer || referrer.id === userId) return; // مش referral نفسك
-
-        // حاول تسجّل الـ referral (الـ UNIQUE constraint بتحمي من التكرار)
-        await sb.from('referrals').insert({
-          referrer_id: referrer.id,
-          referred_id: userId,
-        });
-
-        // امسح الـ ref من الـ URL
+        // امسح الـ ref من الـ URL بعد المحاولة
         const url = new URL(window.location.href);
         url.searchParams.delete('ref');
         window.history.replaceState({}, '', url.toString());
 
       } catch (err) {
-        // unique_violation = اتسجّل قبل كده — مش error
-        if (!err.message?.includes('unique')) {
-          console.warn('[Dashboard] Referral tracking error:', err);
-        }
+        console.warn('[Dashboard] Referral tracking error:', err);
       }
     }
 
